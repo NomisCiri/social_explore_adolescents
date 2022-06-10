@@ -15,7 +15,7 @@ pacman::p_load(here,tidyverse,brms)
 Here we will have a first look at the pilot data
 
 ```{r load}
-pilot_data<-read_csv(file = "./Behav_Data/Pilot1/clean_data.csv")
+pilot_data<-read_csv(file = "./Behav_Data/Pilot1/clean_data_1.csv")
 env_gem="environments_gem_250_var25max.json"
 env_no_gem="environments_no_gem_var25max.json"
 
@@ -33,7 +33,8 @@ pilot_data%>%group_by(player)%>%
          explore=ifelse(lead(cells)!=cells,1,0))%>%
   pivot_longer(cols=c(exploit,explore),names_to = "explore_exploit")%>%
   ggplot(aes(x=points,y=value,color=explore_exploit))+
-  stat_summary()
+  stat_summary()+
+  theme_minimal(20)
 ```
 ```{r}
 pilot_data%>%
@@ -80,7 +81,7 @@ pilot_data%>%
 
 # average trial number with gem found
 Could figure out how to do this on the fly
-```{r}
+```{r eval=FALSE}
 #max(pilot_data$player)
 
 pilot_data%>%
@@ -119,5 +120,22 @@ pilot_data%>%
 ```
 
 # reward environments
+When there is no gem present, people encounter more losses
+
 ```{r}
+pilot_data%>%
+  group_by(player)%>%
+  mutate(exploit=ifelse(lead(cells)==cells,1,0),
+         explore=ifelse(lead(cells)!=cells,1,0))%>%
+  mutate(out_cat=case_when(points>0~"reward",
+                           points<=0~"loss",
+                           #TRUE>2
+    )
+  )%>%
+  ggplot(aes(x=out_cat,fill=as.factor(gempresent)))+
+  geom_bar(stat="count",position="dodge")+
+  scale_fill_discrete(name="Gem Present")+
+  theme_minimal(20)
+
+  #facet_wrap(~gempresent)
 ```
