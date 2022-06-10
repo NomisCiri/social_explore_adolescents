@@ -1,0 +1,677 @@
+---
+title: "Adaptive_Adolescence_multi"
+author: "Simy"
+date: "28/08/2020"
+output:
+  github_document:
+    toc: true
+    toc_depth: 2
+---
+
+# you have to clean this up Simon
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+pacman::p_load(tidyverse,cowplot,matrixcalc,gganimate,ggformula,pracma,doParallel,viridis)
+```
+
+# Project
+Adolescent social sentivity adaptive?
+Premise: younger individuals are easier influenced by SI. see Molleman et al 2022 or Ciranka & van den Bos 2022 (hopefully).
+So let us explore the kind of envirionment in which higher SI leads to better reward.
+I had the idea that if we hide "Rare events" in our task, using social information would make it easier to detect those if individuals have a limited search horizon. As if one sees someone sampling one option often, one believes that the other must´ve found sth worthwile.
+
+# Social
+
+One particular feature about adolescents is that they are sensitive to social information. In order to invesitage how such a sensitivity impacts 1) exploration behavior and 2) encountered outcomes. For this i let _n_ agents perform the task in parallel and introduce a bonus to the choice utilites that depends on how many others have visited this option in the previous trial.
+
+```{r setupsims}
+# get sd of whole environemt for normalizing model input
+source("models.R")
+set.seed(as.numeric(Sys.time()))
+loadfromdisk=T
+###
+###
+###
+###
+### PARAMETERS
+###
+###
+###
+#get lambda
+#get beta
+cntrl_social<-list(
+  beta=0,# this scales risk attitude.
+  #get tau
+  tau=1,
+  mu0=100,#exploration bonus
+  var0=40,
+  #create a parameter vector
+  parVec <- c(0.8, 0.8, 1, .0001) ,
+  #loop through trials
+  out=NULL,
+  AllChoices_social=NULL,
+  dummy=NULL,
+  overallCnt=1,
+  dat_social=expand.grid(x1=1:10,x2=1:10),
+  
+  HowManyOthers=19,
+  diminishingSocial=0.8
+  # info about the agents
+)
+
+```
+
+# randomly hide gems
+Here i replace some reward distributions with much higher ones. 
+I generate 11 envirionments that contain increasing number of high reward distributions options, from 0 to 10.
+
+```{r}
+#envirionmentMeanAdol=seq(-100,100,length.out=8)
+#envirionmentVarianceAdol=seq(1,80,length.out=8)
+#EnvirionemntAdol1=expand.grid(Mean=envirionmentMeanAdol,Variance=envirionmentVarianceAdol)
+
+envirionmentMeanAdol=seq(-100,100,length.out=10)
+envirionmentVarianceAdol=seq(1,80,length.out=10)
+dat_social=expand.grid(x1=1:10,x2=1:10)
+# number of hidden gems
+gems=1:10
+GemEnvs=list()
+for (i in gems){
+  EnvirionemntAdol=expand.grid(Mean=envirionmentMeanAdol,Variance=envirionmentVarianceAdol)
+  index=sample(x=1:length(EnvirionemntAdol[,1]),size=i)
+  Gem=rnorm(i,mean=150,sd=10)
+  EnvirionemntAdol[index,1]=Gem
+  GemEnvs[[i]]=EnvirionemntAdol%>%mutate(HowManyGems=i)%>%mutate(x=dat_social$x1,y=dat_social$x2)
+}
+EnvirionemntAdol=expand.grid(Mean=envirionmentMeanAdol,Variance=envirionmentVarianceAdol)
+GemEnvs[[i+1]]=EnvirionemntAdol%>%mutate(HowManyGems=0)%>%mutate(x=dat_social$x1,y=dat_social$x2)# note: 0 gems is always last!!!
+
+library(colorspace)
+GemEnvs%>%do.call(rbind,.)%>%dplyr::rowwise()%>%mutate(value=rnorm(1,mean = Mean,sd=Variance))%>%
+  ggplot(aes(x=x,y=y,fill=value))+geom_tile()+
+  scale_fill_continuous_divergingx(palette = 'Spectral', mid = 0)+
+  #scale_fill_distiller(name="Outcome",palette = "Spectral",trans = "reverse")+
+  facet_wrap(~HowManyGems,scales="free")+
+  theme_minimal(14)+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),aspect.ratio = 1)
+
+```
+-> where is the sweet spot? 
+
+# Simulation
+The simulation varies the amount of other agents as well as the weight each agent puts on social information and loops through all of the above generated environments.
+
+```{r}
+HowManyOthers=c(2,3,4,5)
+socialB=seq(from=0,to=2,length.out=20)
+
+#otherLoc=0
+ntrialss=200
+loadfromdisk=T
+if (loadfromdisk==F){
+  registerDoParallel(detectCores()-5)
+  
+  Plot_dat_social_All<-foreach(trials=1:ntrialss, .combine='rbind') %dopar%{
+    library(dplyr)
+    explorations=NULL
+    for(i in c(1,4,8,11)){
+      for (soc in socialB){
+        for (k in HowManyOthers){
+          #update cntrl.
+          cntrl_social<-list(
+            beta=0,# this scales risk attitude.
+            #get tau
+            tau=1,
+            mu0=100,#exploration bonus
+            var0=40,
+            #create a parameter vector
+            parVec <- c(0.8, 0.8, 1, .0001) ,
+            #loop through trials
+            out=NULL,
+            AllChoices_social=NULL,
+            dummy=NULL,
+            overallCnt=1,
+            dat_social=expand.grid(x1=1:8,x2=1:8),
+            
+            HowManyOthers=k,
+            diminishingSocial=soc
+            # info about the agents
+          )
+          #trials=1
+          EnvirionemntAdol=GemEnvs[[i]][,c(1,2)]#subset for one environment
+          explorations=rbind(explorations,exploreEnv_Social(explore_func=bayesianMeanTracker,
+                                                            choiceRule=ucb,
+                                                            socialfunc=WhereIsEverybody,
+                                                            env2=EnvirionemntAdol,
+                                                            env1=EnvirionemntKids,
+                                                            cntrl=cntrl_social,
+                                                            trials)%>%
+                               mutate(gems=i,socWeight=soc,howMany=k))
+        }
+      }
+    }
+    explorations
+  }
+  saveRDS(file="../A_GeneratedFiles/Plot_dat_social_All_04_4_22.rds",object=Plot_dat_social_All)
+  # stopCluster(cl)
+  
+} else{
+  Plot_dat_social_All<-readRDS(file="../A_GeneratedFiles/Plot_dat_social_All.rds")
+  Plot_dat_social_AllNew<-readRDS(file="../A_GeneratedFiles/Plot_dat_social_All_04_4_22.rds")
+  
+}
+```
+
+
+# results
+okay looks like this hidden gems idea wasnt the way to go but there seems to be a natural sweetspot
+of social wieght in envirionments that do not have this gem... 
+probably has something to do with the spatial structure; kalman agents dont internalize that
+
+# Indivual scale for gems
+
+```{r fig.width=10}
+HowManyGems<-Plot_dat_social_AllNew%>%.$gems%>%unique()
+HowManyGemsTit<-c(1,4,8,0)
+# does how many 1 mean 0???
+plotlist=list()
+for (i in 1:length(HowManyGems)){
+  plotlist[[i]]<-Plot_dat_social_AllNew%>%ungroup()%>%filter(gems==HowManyGems[i])%>%
+    dplyr::group_by(howMany,gems,socWeight,trials,iter)%>%
+    dplyr::summarise(meanRew=mean(out))%>%
+    mutate(found=ifelse(meanRew>200,1,0))%>%
+    dplyr::group_by(howMany,gems,socWeight,trials)%>%#mean over iterations
+    dplyr::summarise(gemsFoundIter=mean(found))%>%
+    dplyr::group_by(howMany,gems,socWeight)%>%#sum over trials
+    dplyr::summarise(gemsFoundTrial=sum(gemsFoundIter))%>%
+    ggplot(aes(x = socWeight,y=as.factor(howMany),fill=gemsFoundTrial))+
+    geom_tile()+
+    ggtitle(paste0("n Gems=",HowManyGemsTit[i]))+
+    scale_fill_viridis()+theme_bw(14)
+}
+plot_grid(plotlist[[1]],plotlist[[2]],plotlist[[3]],plotlist[[4]])
+ggsave("environments_SI.png",width=8,height=8)
+```
+
+```{r}
+Plot_dat_social_AllNew%>%ungroup()%>%#filter(gems==HowManyGems[i])%>%
+  dplyr::group_by(howMany,gems,socWeight,trials,iter)%>%
+  dplyr::summarise(meanRew=mean(out))%>%
+  mutate(found=ifelse(meanRew>200,1,0))%>%
+  dplyr::group_by(howMany,gems,socWeight,trials)%>%#mean over iterations
+  dplyr::summarise(meanRewT=mean(meanRew))->preprocFig
+
+preprocFig%>%ggplot(aes(x = socWeight,y=meanRewT,color=as.factor(howMany)))+
+  geom_point(alpha=0.05)+
+  geom_smooth()+
+  scale_fill_viridis()+facet_wrap(~gems,scales="free")+theme_bw()
+```
+
+
+# Model with social infuence not on raw but on transforemd utility
+
+
+# Simulation
+The simulation varies the amount of other agents as well as the weight each agent puts on social information and loops through all of the above generated environments.
+
+# smaller environment. randomly hide gems
+Here i replace some reward distributions with much higher ones. 
+I generate 11 envirionments that contain increasing number of high reward distributions options, from 0 to 10.
+
+```{r}
+loadfromdisk=F
+envirionmentMeanAdol=seq(-50,50,length.out=8)
+envirionmentVarianceAdol=rep(c(2,10,15,25),length.out=8)
+dat_social=expand.grid(x1=1:8,x2=1:8)
+
+# number of hidden gems
+gem_envs=list()
+#make gem environments
+for (i in 1:6){
+  #shuffle environment
+  EnvirionemntAdol=expand.grid(Mean=envirionmentMeanAdol,Variance=envirionmentVarianceAdol)%>%
+    .[sample(1:nrow(.)),]
+  index=sample(x=1:length(EnvirionemntAdol[,1]),size=2)
+  Gem=rnorm(2,mean=150,sd=10)
+  EnvirionemntAdol[index,1]=Gem
+  gem_envs[[i]]=EnvirionemntAdol%>%mutate(env_idx=i)%>%mutate(x=dat_social$x1,y=dat_social$x2)
+}# to be nested for SI - no SI
+
+no_gem_envs=list()
+#make no gem environment
+for (i in 1:6){
+  #shuffle environment
+  EnvirionemntAdol=expand.grid(Mean=envirionmentMeanAdol,Variance=envirionmentVarianceAdol)%>%
+    .[sample(1:nrow(.)),]
+  no_gem_envs[[i]]=EnvirionemntAdol%>%mutate(env_idx=i)%>%mutate(x=dat_social$x1,y=dat_social$x2)
+}# to be nested for SI - no SI
+
+
+library(colorspace)
+environments_with_gems<-gem_envs%>%do.call(rbind,.)%>%dplyr::rowwise()%>%mutate(value=rnorm(1,mean = Mean,sd=Variance))%>%
+  ggplot(aes(x=x,y=y,fill=value))+geom_tile()+
+  scale_fill_continuous_divergingx(palette = 'Spectral', mid = 0)+
+  ggtitle("Environ with Gems")+
+  facet_wrap(~env_idx,scales="free")+
+  theme_minimal(14)+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),aspect.ratio = 1)
+ggsave(environments_with_gems,filename = "environments_with_gem.png")
+
+environments_without_gems<-no_gem_envs%>%do.call(rbind,.)%>%dplyr::rowwise()%>%mutate(value=rnorm(1,mean = Mean,sd=Variance))%>%
+  ggplot(aes(x=x,y=y,fill=value))+geom_tile()+
+  scale_fill_continuous_divergingx(palette = 'Spectral', mid = 0)+
+  ggtitle("Environ without Gems")+
+  facet_wrap(~env_idx,scales="free")+
+  theme_minimal(14)+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),aspect.ratio = 1)
+
+ggsave(environments_without_gems,filename = "environments_without_gem.png")
+
+```
+
+
+
+
+```{r}
+loadfromdisk=F
+
+HowManyOthers=c(2,3,4)
+socialB=seq(from=0,to=8,length.out=50)
+
+#otherLoc=0
+ntrialss=50
+if (loadfromdisk==F){
+  cores=detectCores()-5
+  cl <- makeCluster(cores)  
+  registerDoParallel(cl)  
+  
+  Plot_dat_social_AllProb<-foreach(trials=1:ntrialss, .combine='rbind') %dopar%{
+    library(dplyr)
+    explorations=NULL
+    #for(i in c(4,11)){
+    for (soc in socialB){
+      for (k in HowManyOthers){
+        #update cntrl.
+        cntrl_social<-list(
+          beta=0,# this scales risk attitude.
+          #get tau
+          tau=1,
+          mu0=50,#exploration bonus
+          var0=20,
+          #create a parameter vector
+          parVec <- c(0.8, 0.8, 1, .0001) ,
+          #loop through trials
+          out=NULL,
+          AllChoices_social=NULL,
+          dummy=NULL,
+          overallCnt=1,
+          dat_social=expand.grid(x1=1:8,x2=1:8),
+          
+          HowManyOthers=k,
+          diminishingSocial=soc
+          # info about the agents
+        )
+        #trials=1
+        EnvirionemntAdol=gem_envs[[sample(1:6,1)]][,c(1,2)]#subset for one environment
+        explorations=rbind(explorations,exploreEnv_SocialProb(explore_func=bayesianMeanTracker,
+                                                              choiceRule=ucb,
+                                                              socialfunc=WhereIsEverybody,
+                                                              env2=EnvirionemntAdol,
+                                                              env1=EnvirionemntKids,
+                                                              cntrl=cntrl_social,
+                                                              trials)%>%
+                             mutate(socWeight=soc,howMany=k))
+      }
+    }
+    explorations
+  }
+  saveRDS(file="../A_GeneratedFiles/Plot_dat_social_AllProb_07_6_22.rds",object=Plot_dat_social_AllProb)
+  # stopCluster(cl)
+} else{
+  Plot_dat_social_All<-readRDS(file="../A_GeneratedFiles/Plot_dat_social_All.rds")
+  Plot_dat_social_AllNew<-readRDS(file="../A_GeneratedFiles/Plot_dat_social_AllProb_07_6_22.rds")
+  
+}
+```
+
+
+# results
+okay looks like this hidden gems idea wasnt the way to go but there seems to be a natural sweetspot
+of social wieght in envirionments that do not have this gem... 
+probably has something to do with the spatial structure; kalman agents dont internalize that
+
+# Indivual scale for gems
+
+```{r fig.width=10}
+# does how many 1 mean 0???
+plotlist=list()
+#for (i in 1:length(HowManyGems)){
+#plotlist[[i]]<-
+gems_rew_plot<-Plot_dat_social_AllNew%>%ungroup()%>%#filter(gems==HowManyGems[i])%>%
+  dplyr::group_by(howMany,socWeight)%>%
+  dplyr::summarise(meanRew=mean(out))%>%
+  ggplot(aes(x = socWeight,y=as.factor(howMany),fill=meanRew))+
+  geom_tile()+
+  ggtitle(paste0("n Gems=2"))+
+  scale_fill_viridis()+theme_bw(14)
+#}#
+
+unique(Plot_dat_social_AllNew$iter)
+
+#aaaah<-Plot_dat_social_AllNew%>%filter(socWeight %in% socialPruned, iter %in% 1:50)
+#saveRDS(file="../A_GeneratedFiles/Plot_dat_social_AllProb_23_4_22_small.rds",object=aaaah)
+```
+
+```{r}
+Plot_dat_social_AllNew%>%ungroup()%>%#filter(gems==HowManyGems[i])%>%
+  dplyr::group_by(howMany,gems,socWeight,trials,iter)%>%
+  dplyr::summarise(meanRew=mean(out))%>%
+  mutate(found=ifelse(meanRew>200,1,0))%>%
+  dplyr::group_by(howMany,gems,socWeight,trials)%>%#mean over iterations
+  dplyr::summarise(meanRewT=mean(meanRew))->preprocFig
+
+preprocFig%>%ggplot(aes(x = socWeight,y=meanRewT,color=as.factor(howMany)))+
+  geom_point(alpha=0.05)+
+  geom_smooth()+
+  scale_fill_viridis()+facet_wrap(~gems,scales="free")+theme_bw()
+```
+# no gems:
+
+```{r}
+HowManyOthers=c(2,3,4)
+socialB=seq(from=0,to=8,length.out=50)
+
+#otherLoc=0
+ntrialss=50
+loadfromdisk=F
+if (loadfromdisk==F){
+  cores=detectCores()-5
+  cl <- makeCluster(cores)  
+  registerDoParallel(cl)  
+  
+  Plot_dat_social_AllProb<-foreach(trials=1:ntrialss, .combine='rbind') %dopar%{
+    library(dplyr)
+    explorations=NULL
+    #for(i in c(4,11)){
+    for (soc in socialB){
+      for (k in HowManyOthers){
+        #update cntrl.
+        cntrl_social<-list(
+          beta=0,# this scales risk attitude.
+          #get tau
+          tau=1,
+          mu0=50,#exploration bonus
+          var0=20,
+          #create a parameter vector
+          parVec <- c(0.8, 0.8, 1, .0001) ,
+          #loop through trials
+          out=NULL,
+          AllChoices_social=NULL,
+          dummy=NULL,
+          overallCnt=1,
+          dat_social=expand.grid(x1=1:8,x2=1:8),
+          
+          HowManyOthers=k,
+          diminishingSocial=soc
+          # info about the agents
+        )
+        #trials=1
+        EnvirionemntAdol=no_gem_envs[[sample(1:6,1)]][,c(1,2)]#subset for one environment
+        explorations=rbind(explorations,exploreEnv_SocialProb(explore_func=bayesianMeanTracker,
+                                                              choiceRule=ucb,
+                                                              socialfunc=WhereIsEverybody,
+                                                              env2=EnvirionemntAdol,
+                                                              env1=EnvirionemntKids,
+                                                              cntrl=cntrl_social,
+                                                              trials)%>%
+                             mutate(socWeight=soc,howMany=k))
+      }
+    }
+    explorations
+  }
+  saveRDS(file="../A_GeneratedFiles/Plot_dat_social_AllProb_NoGem_7_6_22.rds",object=Plot_dat_social_AllProb)
+  # stopCluster(cl)
+} else{
+  #Plot_dat_social_All<-readRDS(file="../A_GeneratedFiles/Plot_dat_social_All.rds")
+  Plot_dat_social_all_no_gem<-readRDS(file="../A_GeneratedFiles/Plot_dat_social_AllProb_NoGem_23_4_22.rds")
+  
+}
+#saveRDS(file="../A_GeneratedFiles/Plot_dat_social_AllProb_NoGem_23_4_22_small.rds",object=aaaaaah2)
+```
+
+
+# Indivual scale for gems
+
+```{r fig.width=10}
+# does how many 1 mean 0???
+#for (i in 1:length(HowManyGems)){
+#plotlist[[i]]<-
+no_gems_rew_plot<-Plot_dat_social_all_no_gem%>%ungroup()%>%#filter(gems==HowManyGems[i])%>%
+  dplyr::group_by(howMany,socWeight)%>%
+  dplyr::summarise(meanRew=mean(out))%>%
+  ggplot(aes(x = socWeight,y=as.factor(howMany),fill=meanRew))+
+  geom_tile()+
+  ggtitle(paste0("n Gems=0"))+
+  scale_fill_viridis(option="inferno")+theme_bw(14)
+# write environments into jsons
+```
+
+```{r}
+sims<-plot_grid(no_gems_rew_plot,gems_rew_plot)
+ggsave(sims,filename = "simulations.png",height = 5,width = 10)
+```
+
+```{r makejsons}
+library(jsonlite)
+#library(jsontools)
+
+#gems
+gem_json1<-gem_envs[[1]]%>%toJSON(dataframe = 'columns')
+gem_json2<-gem_envs[[2]]%>%toJSON(dataframe = 'columns')
+gem_json3<-gem_envs[[3]]%>%toJSON(dataframe = 'columns')
+gem_json4<-gem_envs[[4]]%>%toJSON(dataframe = 'columns')
+gem_json5<-gem_envs[[5]]%>%toJSON(dataframe = 'columns')
+gem_json6<-gem_envs[[6]]%>%toJSON(dataframe = 'columns')
+
+gem_json <- cat('{"1":', gem_json1, 
+                ',"2":', gem_json2, 
+                ',"3":', gem_json3,
+                ',"4":', gem_json4,
+                ',"5":', gem_json5,
+                ',"6":', gem_json6,
+                '}',
+                sep = ' ',
+                file = "environments_gem_150_var25max.json"
+)
+
+```
+
+```{r}
+#no gems
+no_gem_json1<-no_gem_envs[[1]]%>%toJSON(dataframe = 'columns')
+no_gem_json2<-no_gem_envs[[2]]%>%toJSON(dataframe = 'columns')
+no_gem_json3<-no_gem_envs[[3]]%>%toJSON(dataframe = 'columns')
+no_gem_json4<-no_gem_envs[[4]]%>%toJSON(dataframe = 'columns')
+no_gem_json5<-no_gem_envs[[5]]%>%toJSON(dataframe = 'columns')
+no_gem_json6<-no_gem_envs[[6]]%>%toJSON(dataframe = 'columns')
+
+cat('{"1":', no_gem_json1, 
+    ',"2":', no_gem_json2, 
+    ',"3":', no_gem_json3,
+    ',"4":', no_gem_json4,
+    ',"5":', no_gem_json5,
+    ',"6":', no_gem_json6,
+    '}',
+    sep = ' ',
+    file = "environments_no_gem_var25max.json"
+)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#### Graveyard
+```{r}
+Plot_dat_social_All%>%ungroup()%>%#filter(gems==11)%>%
+  dplyr::group_by(howMany,gems,socWeight)%>%
+  dplyr::summarise(meanRew=mean(out))%>%
+  ggplot(aes(x = socWeight,y=howMany,fill=meanRew))+
+  geom_tile()+
+  scale_fill_viridis()+facet_wrap(~gems)
+```
+
+# Lets look at SI impact in more detail
+
+```{r}
+HowManyOthers=4
+socialB=seq(from=0,to=5,length.out=50)
+prior=seq(from=-100,to=100,length.out=20)
+
+ntrialss=100
+#otherLoc=0
+#ntrialss=25
+loadfromdisk=F
+if (loadfromdisk==F){
+  registerDoParallel(detectCores()-5)
+  
+  Plot_dat_social_All<-foreach(trials=1:ntrialss, .combine='rbind') %dopar%{
+    library(dplyr)
+    explorations=NULL
+    #for(i in 1:11){
+    for (i in 1:4){
+      for (soc in socialB){
+        for (k in prior){
+          #update cntrl.
+          cntrl_social<-list(
+            beta=0,# this scales risk attitude.
+            #get tau
+            tau=1,
+            mu0=k,#exploration bonus
+            var0=40,
+            #create a parameter vector
+            parVec <- c(0.8, 0.8, 1, .0001) ,
+            #loop through trials
+            out=NULL,
+            AllChoices_social=NULL,
+            dummy=NULL,
+            overallCnt=1,
+            dat_social=expand.grid(x1=1:8,x2=1:8),
+            
+            HowManyOthers=i,
+            diminishingSocial=soc
+            # info about the agents
+          )
+          #trials=1
+          EnvirionemntAdol=GemEnvs[[11]][,c(1,2)]#subset for one environment
+          explorations=rbind(explorations,exploreEnv_Social(explore_func=bayesianMeanTracker,
+                                                            choiceRule=ucb,
+                                                            socialfunc=WhereIsEverybody,
+                                                            env2=EnvirionemntAdol,
+                                                            env1=EnvirionemntKids,
+                                                            cntrl=cntrl_social,
+                                                            trials)%>%
+                               mutate(gems=i,socWeight=soc,prior=k,OthersN=i))
+        }
+      }
+    }
+    explorations
+  }
+  saveRDS(file="../A_GeneratedFiles/Plot_dat_social_All_finegraindSOthersN.rds",object=Plot_dat_social_All)
+} else{
+  Plot_dat_social_All<-readRDS(file="../A_GeneratedFiles/Plot_dat_social_All_finegraindSOthersN.rds")
+}
+```
+
+```{r}
+#this really kills the working memory. do for every iteration
+allSummed=NULL
+for (i in 1:ntrialss){
+  one<-Plot_dat_social_All%>%ungroup()%>%filter(iter==i)%>%
+    dplyr::group_by(prior,socWeight)%>%
+    dplyr::summarise(meanRew=mean(out),ci=qnorm(0.975)*sd(out)/sqrt(n()))
+  
+  allSummed<-rbind(allSummed,one)
+}
+saveRDS(file="../A_GeneratedFiles/Plot_dat_social_All_finegraindSSummed.rds",object=allSummed)
+allSummed%>%#filter(prior>80)%>%
+  ggplot(aes(x = socWeight,y=meanRew,color=prior))+
+  #geom_tile()+
+  #geom_point()+
+  #geom_errorbar(aes(ymin=meanRew-ci,ymax=meanRew+ci),width=0)+
+  #stat_summary(aes(group=prior),geom="line",fun.data="mean_cl_boot")+
+  ggtitle("Groupsize 4")+
+  stat_smooth(aes(group=prior),fill=NA)+
+  stat_smooth()+
+  scale_color_viridis()+
+  theme_minimal(14)#+theme(panel.grid=element_blank())
+#facet_wrap(~gems)
+
+```
+
+# Exploration
+
+Another variable in the model is exploration. we can vary this by setting optimistic or pessimistic priors with more optimism generating the motivation to explore more.
+
+```{r}
+```
+
+# stuff to think about:
+
+Currently all agents have the same social sensitivity. we could change that, as in real life this is probably not the case.
