@@ -46,6 +46,10 @@ pilot_data%>%
 
 ``` 
 
+# Exploration changes depending on outcomes
+
+Gems make ppl exploit. losses explore but also after gains, they explore more. 
+backed up by regressions. 
 ```{r}
 pilot_data%>%
   group_by(player)%>%
@@ -81,6 +85,7 @@ pilot_data%>%
 
 # average trial number with gem found
 Could figure out how to do this on the fly
+
 ```{r eval=FALSE}
 #max(pilot_data$player)
 
@@ -105,6 +110,7 @@ pilot_data%>%
 # exploration environments
 Average exploration in different environments
 Exploration is greater in nongem envs.
+
 ```{r}
 pilot_data%>%
   group_by(player)%>%
