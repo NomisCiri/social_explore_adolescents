@@ -1,0 +1,81 @@
+---
+title: "Analyses_Pilot"
+author: "Simon"
+date: '2022-06-10'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+pacman::p_load(here,tidyverse,brms)
+```
+
+## Social Bandits Explore
+
+Here we will have a first look at the pilot data
+
+```{r load}
+pilot_data<-read_csv(file = "./Behav_Data/Pilot1/clean_data.csv")
+env_gem="environments_gem_250_var25max.json"
+env_no_gem="environments_no_gem_var25max.json"
+
+```
+
+## Test
+
+Switches given gem
+average exploration given gemenot notgemenv
+
+
+```{r pressure, echo=FALSE}
+pilot_data%>%group_by(player)%>%
+  mutate(exploit=ifelse(lead(cells)==cells,1,0),
+         explore=ifelse(lead(cells)!=cells,1,0))%>%
+  pivot_longer(cols=c(exploit,explore),names_to = "explore_exploit")%>%
+  ggplot(aes(x=points,y=value,color=explore_exploit))+
+  stat_summary()
+```
+```{r}
+pilot_data%>%
+  group_by(player)%>%
+  mutate(exploit=ifelse(lead(cells)==cells,1,0),
+         explore=ifelse(lead(cells)!=cells,1,0))%>%
+  mutate(gem=ifelse(points>150,1,0))%>%
+  brm(data=.,explore~gem+(1|player),cores=4,family = bernoulli)
+
+``` 
+
+```{r}
+pilot_data%>%
+  group_by(player)%>%
+  mutate(exploit=ifelse(lead(cells)==cells,1,0),
+         explore=ifelse(lead(cells)!=cells,1,0))%>%
+  mutate(out_cat=case_when(points>150~1,
+                           points<0~3,
+                           TRUE~2
+  )
+  )%>%pivot_longer(cols=c(exploit,explore),names_to = "explore_exploit")%>%
+  ggplot(aes(x=out_cat,y=value,color=explore_exploit,shape=explore_exploit))+
+  stat_summary(size=1)+
+  stat_summary(geom="line")+
+  scale_y_continuous(name="Proportion")+
+  scale_x_continuous(name="Category",breaks=c(1,2,3),labels=c("gem","no gem","loss"))+
+  theme_minimal(20)
+
+
+
+
+
+pilot_data%>%
+  group_by(player)%>%
+  mutate(exploit=ifelse(lead(cells)==cells,1,0),
+         explore=ifelse(lead(cells)!=cells,1,0))%>%
+  mutate(out_cat=case_when(points>150~1,
+                           points<0~3,
+                           TRUE~2
+  )
+  )%>%
+  brm(data=.,explore~as.factor(out_cat)+(1|player),cores=4,family = bernoulli)
+```
+
+# What we need:
