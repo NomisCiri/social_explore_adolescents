@@ -97,7 +97,6 @@ modelFit<-function(par, subjD, acquisition, k,  horizonLength, rounds){
       }
     }
     #print(utilities)
-    #browser()
     if (inherits(acquisition, "softmax")){
       #Softmax rule
       p <- exp(utilities/tau)
@@ -174,9 +173,10 @@ Xnew<-as.matrix(expand.grid(0:7,0:7)) #do this outside the loop for better speed
 #rescore rewards
 explore_data<-explore_data%>%mutate(z=(points-mean(points))/sd(points))
 #cross-validation routine
-for (r in roundList){ #loop through rounds in roundList
-  cv <- cvfun(selector=1, kernelFun=bayesianMeanTracker, acquisition = ucb, leaveoutindex=r)
+for (r in 1:12){ #loop through rounds in roundList
+  cv <- cvfun(selector=1, kernelFun=bayesianMeanTracker, acquisition = ucb, leaveoutindex=r)# only try one sub
   routput <- rbind(output, cv)
 }
 
 ```
+
