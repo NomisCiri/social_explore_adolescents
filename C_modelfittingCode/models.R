@@ -320,3 +320,4 @@ WSLS <- function(Yt, Xt){
 }
 
 class(WSLS) <- c(class(WSLS), "WSLS")
+

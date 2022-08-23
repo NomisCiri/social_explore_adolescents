@@ -8,9 +8,12 @@ packages <- c('plyr', 'jsonlite', 'DEoptim', "matrixcalc", "fields")
 #invisible(lapply(packages, install.packages, character.only = TRUE))
 invisible(lapply(packages, require, character.only = TRUE)) #loads packages
 
-#Source dependencies
-source('../models.R')
-source('../dataProcessing.R')
+#in#Source dependencies
+# source('../models.R')
+# source('../dataProcessing.R')
+
+# if working in Windows
+source('C_modelfittingCode/models.R')
 
 
 ##############################################################################################################
@@ -20,13 +23,13 @@ source('../dataProcessing.R')
 #data <- dataImport_Adolescent() #sourced from dataProcessing.R
 # import preprocessed data
 # data = read.csv('data/AdolescentGrid.csv')
-data = read.csv('../data/kwgdata_all.csv')
+data = read.csv('Data/data_coord.csv')
 # only Meder and Schulz data
-data = subset(data, experiment != 'Adolescent')
+#data = subset(data, experiment != 'Adolescent')
 #Normalize data
-data$z <- (data$z - 25) / 50
+#data$z <- (data$z - 25) / 50
 
-nParticipants = length(unique(data$id))
+nParticipants = length(unique(data$player))
 
 # nParticipants <- 150
 # 151 participants, but id 35 is not available
