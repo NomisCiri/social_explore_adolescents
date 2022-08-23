@@ -51,7 +51,7 @@ modelFit<-function(par, subjD, acquisition, k,  horizonLength, rounds){
     roundD <- subset(subjD, round==r)
     horizon <- nrow(roundD)
     #Observations of subject choice behavior
-    chosen <- roundD$cell
+    chosen <- roundD$cells
     chosen <- chosen[2:length(chosen)] # trim first observation, since it wasn't a choice but a randomly revealed tile
     y  <- roundD$z[0:(horizon-1)] #trim off the last observation, because it was not used to inform a choice (round already over)
     x1 <- roundD$x[0:(horizon-1)]
@@ -123,9 +123,11 @@ modelFit<-function(par, subjD, acquisition, k,  horizonLength, rounds){
 
 cvfun<-function(selector, kernelFun, acquisition, leaveoutindex){
   #subselect participant, horizon and rounds not left out
-  d1<-subset(explore_data, player==selector)
+  
+  # andrea changed: only round with gems
+  d1<-subset(explore_data, player==selector & gempresent == 1)
   #training set
-  rounds <- 1:12
+  rounds <- 1:6
   #rounds <- count(d1$round)[count(d1$round)$freq>=2,]$x #only rounds where at least 2 clicks have been made
   trainingSet <- rounds[! rounds==leaveoutindex] #remove round specified by leaveoutindex
   #test set
@@ -173,7 +175,8 @@ Xnew<-as.matrix(expand.grid(0:7,0:7)) #do this outside the loop for better speed
 #rescore rewards
 explore_data<-explore_data%>%mutate(z=(points-mean(points))/sd(points))
 #cross-validation routine
-for (r in 1:12){ #loop through rounds in roundList
+for (r in 1:6){ #loop through rounds in roundList
+  
   cv <- cvfun(selector=1, kernelFun=bayesianMeanTracker, acquisition = ucb, leaveoutindex=r)# only try one sub
   routput <- rbind(output, cv)
 }
