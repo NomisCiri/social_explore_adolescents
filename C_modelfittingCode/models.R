@@ -225,7 +225,7 @@ class(exploreCounts) <- c(class(exploreCounts), "exploreCounts")
 greedyMean <- function(out){
   outtotal<-out$mu #the value of each choice is solely based on the expectation of reward
   #avoid borderline cases
-  outtotal[outtotal<0]<-0.0001
+  outtotal[outtotal<0]<-0.0001# adjust the range of the envirionment
   outtotal[outtotal>50]<-50
   outtotal<-matrix(outtotal, nrow=nrow(out)/64, byrow=TRUE)
   return(t(outtotal))
