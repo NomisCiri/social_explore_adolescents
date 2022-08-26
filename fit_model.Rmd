@@ -121,7 +121,7 @@ modelFit<-function(par, subjD, acquisition, k,  horizonLength, rounds){
 
 ```{r}
 
-cvfun<-function(data, kernelFun, acquisition, leaveoutindex,gems_yes_no){
+cvfun<-function(data, kernelFun, acquisition, leaveoutindex){
   #subselect participant, horizon and rounds not left out
   
   # andrea changed: only round with gems
