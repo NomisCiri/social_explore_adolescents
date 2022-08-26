@@ -7,7 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-pacman::p_load(tidyverse,rjson,DEoptim)
+pacman::p_load(tidyverse,rjson,DEoptim,doParallel)
 source("C_modelfittingCode/models.R")
 ```
 
@@ -125,7 +125,7 @@ cvfun<-function(selector, kernelFun, acquisition, leaveoutindex){
   #subselect participant, horizon and rounds not left out
   
   # andrea changed: only round with gems
-  d1<-subset(explore_data, player==selector & gempresent == 1)
+  d1<-subset(explore_data, player==selector & gempresent == 0)
   #training set
   rounds <- 1:6
   #rounds <- count(d1$round)[count(d1$round)$freq>=2,]$x #only rounds where at least 2 clicks have been made
@@ -171,14 +171,31 @@ cvfun<-function(selector, kernelFun, acquisition, leaveoutindex){
 # Fit
 ```{r}
 #dummy environment
-Xnew<-as.matrix(expand.grid(0:7,0:7)) #do this outside the loop for better speed
 #rescore rewards
 explore_data<-explore_data%>%mutate(z=(points-mean(points))/sd(points))
-#cross-validation routine
-for (r in 1:6){ #loop through rounds in roundList
-  
-  cv <- cvfun(selector=1, kernelFun=bayesianMeanTracker, acquisition = ucb, leaveoutindex=r)# only try one sub
-  routput <- rbind(output, cv)
+
+#parallelize over players
+doParallel::registerDoParallel()
+n.cores <- parallel::detectCores() - 1
+#create the cluster
+my.cluster <- parallel::makeCluster(
+  n.cores, 
+  type = "PSOCK"
+)
+doParallel::registerDoParallel(cl = my.cluster)
+
+foreach(
+  x=unique(explore_data$player),
+  .packages = c("DEoptim","dplyr")
+)%do%{
+  Xnew<-as.matrix(expand.grid(0:7,0:7)) #do this outside the loop for better speed
+  print(x)
+  for (r in 1:6){ #loop through rounds in roundList
+    
+    cv <- cvfun(selector=x, kernelFun=bayesianMeanTracker, acquisition = ucb, leaveoutindex=r)# only try one sub
+    routput <- rbind(output, cv)
+  }
+  saveRDS(routput,file=paste0("A_GeneratedFiles/modelfits/fit_",x))
 }
 
 ```
