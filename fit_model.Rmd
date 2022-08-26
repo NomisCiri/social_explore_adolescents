@@ -139,7 +139,7 @@ cvfun<-function(selector, kernelFun, acquisition, leaveoutindex){
   if (inherits(kernelFun, 'GP') | inherits(kernelFun, 'KalmanFilter')){
     nParams <- nParams + 1 #add lambda or error variance
   }
-  #Set upper and lower bounds based on nParams
+  #Set upper and lower bounds based on nParams this is logspace!
   lbound <- rep(-5, nParams)
   ubound <- rep(4, nParams)
   
