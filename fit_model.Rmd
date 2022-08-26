@@ -198,5 +198,8 @@ foreach(
   saveRDS(output,file=paste0("A_GeneratedFiles/modelfits/fit_",x))
 }
 
+#readRDS(paste0("A_GeneratedFiles/modelfits/fit_",1))
+
+
 ```
 
