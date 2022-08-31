@@ -24,6 +24,7 @@ explore_data=read_csv(file = "Data/data_coord.csv")
 
 # load the generated environments
 envs<-fromJSON(file = "A_GeneratedFiles/environments_gem_250_var25max.json") # max gem value: 250; variance: 25
+
 ```
 
 
@@ -31,124 +32,187 @@ envs<-fromJSON(file = "A_GeneratedFiles/environments_gem_250_var25max.json") # m
 
 # load parameter vector
 
-fit <- readRDS(paste0("A_GeneratedFiles/modelfits/fit_",10))
+model_fit <- readRDS(paste0("A_GeneratedFiles/modelfits/GM_fit_",10))
 
+# calculate the mean of the parameters fitted (currently 2 with GM algorithm),
+# and put them in one vector
+
+#88***** LATER TO DO: SCALE THIS TO ALL SUBJECTS, POSSIBLY ADD SENSIBLE NAMES
+par <- c(mean(model_fit[,3]), mean(model_fit[,4]))
+
+rounds <- as.numeric(model_fit[,1])
 
 ```
 
 
 
-
 ```{r}
 
+
 # Function to simulate data from parameters estimated from model fitting procedure.
-# Takes as input the parameters, the data, the 
+# Takes as input the parameters, the data, the
 
-modelSim<-function(par, subjD, acquisition, k,  horizonLength, rounds){
-  
-  # Make a loop for subjects
-  
-  #  Extract and process parameters
-  if (inherits(acquisition, "epsilonGreedy")){
-    epsilon<- 1/(1+exp(-(par[length(par)]))) #transform back from unbounded space; epsilon is the last parameter for epsilon greedy
+modelSim <-
+  function(par,
+           subjD,
+           acquisition,
+           k,
+           horizonLength,
+           rounds) {
+    # Make a loop for subjects
     
-  }
-
-  # Exponentiate parameters to make a non-negative and convex optimization surface
-  par<-exp(par) 
-  
-  # Last parameter for all other models is always inverse temperature for softmax
-  tau<-par[length(par)]
-
-  #Which posterior function to use; therefore, which parameters to use
-  if (inherits(k, "KalmanFilter")){ #null kernel indicates kalman filter model
-    kNoise <- par[1]
-    parVec <- c(kNoise) #Vector of parameters to send to the KF posterior function
-  } else if (inherits(k, "GP")){ #lambda
-    lambda <- par[1]
-    parVec <- c(lambda, lambda, 1, .0001) # Vector of parameters to send to the GP posterior vector, where sF and sN are fixed
-  }
-  
-  #Additional acquisition function dependent parameters
-  if (inherits(acquisition, "UCB")| inherits(acquisition, 'exploreCounts')| inherits(acquisition, 'epsilonGreedy')){ #check if UCB is used
-    beta <- par[length(par)-1] #If UCB, beta is always 2nd last
-    #refactor beta and tau into gamma and beta_star, where gamma = 1/tau and beta_star = beta/tau
-  }
-  
-  #which rounds to consider?
-  trainingSet <- subset(subjD, round %in% rounds)
-  
-  #Vector to store negative log likelihods
-  nLL <- rep(0,length(rounds))
-  for (r in unique(trainingSet$round)){ #Begin looping through each round
-    #subset of data for round r
-    roundD <- subset(subjD, round==r)
-    horizon <- nrow(roundD)
-    #Observations of subject choice behavior
-    chosen <- roundD$cells
-    chosen <- chosen[2:length(chosen)] # trim first observation, since it wasn't a choice but a randomly revealed tile
-    y  <- roundD$z[0:(horizon-1)] #trim off the last observation, because it was not used to inform a choice (round already over)
-    x1 <- roundD$x[0:(horizon-1)]
-    x2 <- roundD$y[0:(horizon-1)]
-    #create observation matrix
-    X<-as.matrix(cbind(x1,x2))
-    #make sure X is a matrix
-    X<-as.matrix(X)
-    Xnew<-as.matrix(Xnew)
-    #Utilties of each choice
-    utilities <- NULL
-    prevPost <- NULL #set the previous posterior computation to NULL for the kalman filter
-    pMat <- NULL
-    chocies<-NULL
-    #loop through observations
-    for (i in 1:(horizon-1)){ #skip the last observation, because no choice was made based on that information
-      #new observation
-      X1<-matrix(X[1:i,], ncol=2)
-      y1<-y[1:i]
-      #Which posterior function to use
-      if (inherits(k, "KalmanFilter")){# kalman filter model
-        out<- bayesianMeanTracker(x = X1[i,], y=y[i], prevPost = prevPost, theta = parVec)
-        #update prevPost for the next round
-        prevPost <- out
-      }else if (inherits(k, 'GP')){# GP with length-scale parameterized kernel
-        out <- gpr(X.test=Xnew, theta=parVec, X=X1, Y=y1, k=k) #Mu and Sigma predictions for each of the arms; either GP or Kalman filter
-      }else if (inherits(k, 'Null')){ #null model
-        out <- nullModel() #Mu and Sigma predictions for each of the arms; either GP or Kalman filter
-      }
-      #Slightly different function calls for each acquisition function
-      if (inherits(acquisition, "UCB")){ #UCB takes a beta parameter
-        utilityVec<-acquisition(out, c(beta))
-      } else if (inherits(acquisition, 'exploreCounts')){ #count-based exploration
-        utilityVec <- exploreCounts(out, roundD$chosen[1:i], c(beta))
-      }else if (inherits(acquisition, "epsilonGreedy")){
-        p <- epsilonGreedy(out, beta, epsilon)
-        pMat <- rbind(pMat, t(p))
-      }else{ #any other
-        utilityVec <- acquisition(out)
-      }
-      if (inherits(acquisition, "softmax")){
-        utilityVec <- utilityVec - max(utilityVec) #avoid overflow
-        utilities <- rbind(utilities, t(utilityVec)) # build horizon_length x options matrix, where each row holds the utilities of each choice at each decision time in the search horizon
-      }
+    # subset data to player nr
+    
+    #  Extract and process parameters
+    if (inherits(acquisition, "epsilonGreedy")) {
+      epsilon <-
+        1 / (1 + exp(-(par[length(par)]))) #transform back from unbounded space; epsilon is the last parameter for epsilon greedy
     }
-    #print(utilities)
-    if (inherits(acquisition, "softmax")){
-      #Softmax rule
-      p <- exp(utilities/tau)
-      p <- p/rowSums(p)
-      #avoid underflow by setting a floor and a ceiling
-      p <- (pmax(p, 0.00001))
-      p <- (pmin(p, 0.99999))
-      pMat<- p
-      
-      # Here estimate deviation from optimal choices
-      
+    
+    # Exponentiate parameters to make a non-negative and convex optimization surface
+    par <- exp(par)
+    
+    # Last parameter for all other models is always inverse temperature for softmax
+    tau <- par[length(par)]
+    
+    #Which posterior function to use; therefore, which parameters to use
+    if (inherits(k, "KalmanFilter")) {
+      #null kernel indicates kalman filter model
+      kNoise <- par[1]
+      parVec <-
+        c(kNoise) #Vector of parameters to send to the KF posterior function
+    } else if (inherits(k, "GP")) {
+      #lambda
+      lambda <- par[1]
+      parVec <-
+        c(lambda, lambda, 1, .0001) # Vector of parameters to send to the GP posterior vector, where sF and sN are fixed
     }
-
+    
+    #Additional acquisition function dependent parameters
+    if (inherits(acquisition, "UCB") |
+        inherits(acquisition, 'exploreCounts') |
+        inherits(acquisition, 'epsilonGreedy')) {
+      #check if UCB is used
+      beta <- par[length(par) - 1] #If UCB, beta is always 2nd last
+      #refactor beta and tau into gamma and beta_star, where gamma = 1/tau and beta_star = beta/tau
+    }
+    
+    #which rounds to consider?
+    trainingSet <- subset(subjD, round %in% rounds)
+    
+    #Vector to store negative log likelihods
+    nLL <- rep(0, length(rounds))
+    for (r in unique(trainingSet$round)) {
+      #Begin looping through each round
+      #subset of data for round r
+      roundD <- subset(subjD, round == r)
+      horizon <- nrow(roundD)
+      #Observations of subject choice behavior
+      chosen <- roundD$cells
+      chosen <-
+        chosen[2:length(chosen)] # trim first observation, since it wasn't a choice but a randomly revealed tile
+      y  <-
+        roundD$z[0:(horizon - 1)] #trim off the last observation, because it was not used to inform a choice (round already over)
+      x1 <- roundD$x[0:(horizon - 1)]
+      x2 <- roundD$y[0:(horizon - 1)]
+      #create observation matrix
+      X <- as.matrix(cbind(x1, x2))
+      #make sure X is a matrix
+      X <- as.matrix(X)
+      Xnew <- as.matrix(Xnew)
+      #Utilties of each choice
+      utilities <- NULL
+      prevPost <-
+        NULL #set the previous posterior computation to NULL for the kalman filter
+      pMat <- NULL
+      chocies <- NULL
+      #loop through observations
+      for (i in 1:(horizon - 1)) {
+        #skip the last observation, because no choice was made based on that information
+        #new observation
+        X1 <- matrix(X[1:i, ], ncol = 2)
+        y1 <- y[1:i]
+        #Which posterior function to use
+        if (inherits(k, "KalmanFilter")) {
+          # kalman filter model
+          out <-
+            bayesianMeanTracker(
+              x = X1[i, ],
+              y = y[i],
+              prevPost = prevPost,
+              theta = parVec
+            )
+          #update prevPost for the next round
+          prevPost <- out
+        } else if (inherits(k, 'GP')) {
+          # GP with length-scale parameterized kernel
+          out <-
+            gpr(
+              X.test = Xnew,
+              theta = parVec,
+              X = X1,
+              Y = y1,
+              k = k
+            ) #Mu and Sigma predictions for each of the arms; either GP or Kalman filter
+        } else if (inherits(k, 'Null')) {
+          #null model
+          out <-
+            nullModel() #Mu and Sigma predictions for each of the arms; either GP or Kalman filter
+        }
+        #Slightly different function calls for each acquisition function
+        if (inherits(acquisition, "UCB")) {
+          #UCB takes a beta parameter
+          utilityVec <- acquisition(out, c(beta))
+        } else if (inherits(acquisition, 'exploreCounts')) {
+          #count-based exploration
+          utilityVec <-
+            exploreCounts(out, roundD$chosen[1:i], c(beta))
+        } else if (inherits(acquisition, "epsilonGreedy")) {
+          p <- epsilonGreedy(out, beta, epsilon)
+          pMat <- rbind(pMat, t(p))
+        } else{
+          #any other
+          utilityVec <- acquisition(out)
+        }
+        if (inherits(acquisition, "softmax")) {
+          utilityVec <- utilityVec - max(utilityVec) #avoid overflow
+          utilities <-
+            rbind(utilities, t(utilityVec)) # build horizon_length x options matrix, where each row holds the utilities of each choice at each decision time in the search horizon
+        }
+      }
+      #print(utilities)
+      if (inherits(acquisition, "softmax")) {
+        #Softmax rule
+        p <- exp(utilities / tau)
+        p <- p / rowSums(p)
+        #avoid underflow by setting a floor and a ceiling
+        p <- (pmax(p, 0.00001))
+        p <- (pmin(p, 0.99999))
+        pMat <- p
+        
+      }
+      
+    }  # ofend loop through rounds
+    
+    # Here estimate deviation from optimal choices
+    # sample choice based on probability
+    
+    # fix at some point
+    # apply(X = pMat, MARGIN = c(64, 24), FUN = sample(x = 1:64, size = 1 , prob =  X))
+    
+    indices <- NULL
+    
+    for (p in 1:nrow(pMat)) {
+      sampled <- sample(x = 1:64,
+                        size = 1 ,
+                        prob =  pMat[p, ])
+      indices <- c(indices, sampled)
+    }
+    
+    return(pMat)  #Return negative log likelihoods of all observations
   }
-  #end loop through rounds
-  return(pMat)  #Return negative log likelihoods of all observations
-}
+
+
 ```
    
 
@@ -158,8 +222,10 @@ modelSim<-function(par, subjD, acquisition, k,  horizonLength, rounds){
 
 # Run simulations
 
-#parvec_sim<-c(1.706844,-3.624321,-4.052927)
-modelSim(par=parvec_sim, subjD=d1, acquisition=ucb, k=bayesianMeanTracker, rounds=rounds)
+
+#**** to change: whole dataset, subset within loop
+
+modelSim(par = par, subjD=d1, acquisition=greedyMean, k=bayesianMeanTracker, rounds=rounds)
 
 
 
