@@ -30,21 +30,6 @@ envs<-fromJSON(file = "A_GeneratedFiles/environments_gem_250_var25max.json") # m
 
 ```{r}
 
-# specify player nr, remove when full loop is implemented
-
-playerNr = 1
-
-# load parameter vector
-
-model_fit <- readRDS(paste0("A_GeneratedFiles/modelfits/GM_fit_",playerNr))
-
-# calculate the mean of the parameters fitted (currently 2 with GM algorithm),
-# and put them in one vector
-
-#88***** LATER TO DO: SCALE THIS TO ALL SUBJECTS, POSSIBLY ADD SENSIBLE NAMES
-par <- c(mean(model_fit[,3]), mean(model_fit[,4]))
-
-rounds <- as.numeric(model_fit[,1])
 
 ```
 
@@ -62,10 +47,7 @@ modelSim <-
            k,
            horizonLength,
            rounds) {
-    # Make a loop for subjects
-    
-    # subset data to player nr
-    
+
     #  Extract and process parameters
     if (inherits(acquisition, "epsilonGreedy")) {
       epsilon <-
@@ -105,6 +87,7 @@ modelSim <-
     
     #Vector to store negative log likelihods
     nLL <- rep(0, length(rounds))
+    
     for (r in unique(trainingSet$round)) {
       #Begin looping through each round
       #subset of data for round r
@@ -200,9 +183,8 @@ modelSim <-
         pMat <- p
         
       }
-    }  # of end loop through rounds
-    
-    # Here estimate deviation from optimal choices
+      
+    # Here estimate deviation from optimal choices ? or at later stage
     # sample choice based on probability
     
     # fix at some point
@@ -210,17 +192,24 @@ modelSim <-
     
     indices <- NULL
     
-    for (p in 1:nrow(pMat)) {
+    for (q in 1:nrow(pMat)) {
       sampled <- sample(x = 1:64,
                         size = 1 ,
-                        prob =  pMat[p, ])
+                        prob =  pMat[q, ])
       indices <- c(indices, sampled)
     }
     
-    as_tibble(pMat) -> pMat
-    pMat[,65] <- indices
+    # at the end of each row (probabilites of choosing a cell each time point)
+    # add the cell that is chosen by the simulation
     
-    return(pMat)  
+    p_indices <- rbind(r, indices)
+    
+    # put that in a 3d matrix DO WE WANT THIS?
+    # PMat_allrounds[,,r] <- p_indices
+    
+    }  # of end loop through rounds
+    
+    return(PMat_allrounds)  
   }
 
 
@@ -230,7 +219,6 @@ modelSim <-
 
 
 ```{r}
-
 # Run simulations
 
 #rescore rewards
@@ -238,16 +226,59 @@ explore_data <- explore_data %>%
   mutate(z = (points - mean(points)) / sd(points))
 
 
+#parallelize over players
+doParallel::registerDoParallel()
+n.cores <- parallel::detectCores() - 1
+#create the cluster
+my.cluster <- parallel::makeCluster(
+  n.cores, 
+  type = "PSOCK"
+)
+doParallel::registerDoParallel(cl = my.cluster)
+```
+
+
+```{r}
+# parallelize computations
+
+foreach(
+  playerNr = unique(explore_data$player),
+  .packages = c("DEoptim", "dplyr")
+) %dopar% {
+  # load parameter vector
+  model_fit <-
+    readRDS(paste0("A_GeneratedFiles/modelfits/GM_fit_", playerNr))
+  
+  # calculate the mean of the parameters fitted (currently 2 with GM algorithm),
+  # and put them in one vector
+  
+  par <- c(mean(model_fit[, 3]), mean(model_fit[, 4]))
+
   d1 <- subset(explore_data, player == playerNr & gempresent == 0)
   rounds <- unique(d1$round)
-
-#**** to change: whole dataset, subset within loop
- Xnew <-
+  
+  #**** to change: whole dataset, subset within loop
+  Xnew <-
     as.matrix(expand.grid(0:7, 0:7)) #do this outside the loop for better speed
-  output <- c()
+  
+  PMat_allrounds = array(NA, dim=c(24,65,6))
 
-simulated_choice <- modelSim(par = par, subjD=d1, acquisition=greedyMean, k=bayesianMeanTracker, rounds=rounds)
+  simulated_choice <-
+    modelSim(
+      par = par,
+      subjD = d1,
+      acquisition = greedyMean,
+      k = bayesianMeanTracker,
+      rounds = rounds
+    )
+  
+  # print to know where we are
+  print(paste("player", playerNr, "done"))
+  
+  saveRDS(PMat_allrounds,
+          file = paste0("A_GeneratedFiles/modelfits/GM_fit_", playerNr))
 
 
+}
 
 ```
