@@ -263,7 +263,7 @@ class(greedyVar)<- c(class(greedyVar), "softmax")
 ##############################################################################################################
 #INERTIA MODEL
 ##############################################################################################################
-#The inertial model only uses inverse manhattan distance from the RANDOM INITIALIZATION POINT in order to model behavior
+#The inertial model only uses inverse manhattan distance from the RANDOM INITIALIATION POINT in order to model behavior
 #Here we use it like a posterior, where the means are the inverse euclidean distance, and the variance is always zero
 #Combined with the UCB model, these posteriors will yield a behavior akin to inertia
 #since the variance is always zero, it will be a greedy mean strategy
@@ -280,7 +280,6 @@ inertia<-function(blocks, trialnumber){
   return(predictions)
 }
 class(inertia) <- c(class(inertia), "inertia")
-
 
 
 
