@@ -233,6 +233,7 @@ explore_data <- explore_data %>%
 
 
 #parallelize over players
+
 doParallel::registerDoParallel()
 n.cores <- parallel::detectCores() - 1
 #create the cluster
@@ -253,7 +254,7 @@ foreach(
 ) %dopar% {
   # load parameter vector
   model_fit <-
-    readRDS(paste0("A_GeneratedFiles/modelfits/GM_fit_", playerNr))
+    readRDS(paste0("A_GeneratedFiles/modelfits/GM_fit_", playerNr, ".rds"))
   
   # calculate the mean of the parameters fitted (currently 2 with GM algorithm),
   # and put them in one vector
@@ -288,7 +289,7 @@ foreach(
   
   saveRDS(simulated_choices,
           file = paste0("A_GeneratedFiles/simulations/simulated_choices", playerNr))
-
+readRDS(file = paste0("A_GeneratedFiles/simulations/simulated_choices", playerNr))
 
 }
 
