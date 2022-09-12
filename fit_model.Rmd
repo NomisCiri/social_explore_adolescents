@@ -300,7 +300,7 @@ foreach(
   saveRDS(output,file=paste0("A_GeneratedFiles/modelfits/GM_fit_",x,".rds"))
 }
 
-fit<-readRDS(paste0("A_GeneratedFiles/modelfits/fit_",10,".rds"))
+fit<-readRDS(paste0("A_GeneratedFiles/modelfits/GM_fit_",10,".rds"))
 
 
 #parvec_sim<-c(1.706844,-3.624321,-4.052927)
