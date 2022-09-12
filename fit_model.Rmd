@@ -297,10 +297,10 @@ foreach(
     cv <- cvfun(data=d1, kernelFun=bayesianMeanTracker, acquisition = greedyMean, leaveoutindex=r)# only try one sub
     output <- rbind(output, cv)
   }
-  saveRDS(output,file=paste0("A_GeneratedFiles/modelfits/GM_fit_",x))
+  saveRDS(output,file=paste0("A_GeneratedFiles/modelfits/GM_fit_",x,".rds"))
 }
 
-fit<-readRDS(paste0("A_GeneratedFiles/modelfits/fit_",10))
+fit<-readRDS(paste0("A_GeneratedFiles/modelfits/fit_",10,".rds"))
 
 
 #parvec_sim<-c(1.706844,-3.624321,-4.052927)
