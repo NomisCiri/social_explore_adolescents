@@ -249,9 +249,11 @@ doParallel::registerDoParallel(cl = my.cluster)
 # parallelize computations
 
 foreach(
+  
   playerNr = unique(explore_data$player),
   .packages = c("DEoptim", "dplyr")
 ) %dopar% {
+  
   # load parameter vector
   model_fit <-
     readRDS(paste0("A_GeneratedFiles/modelfits/GM_fit_", playerNr, ".rds"))
@@ -260,7 +262,6 @@ foreach(
   # and put them in one vector
   
   par <- c(mean(model_fit[, 3]), mean(model_fit[, 4]))
-
   d1 <- subset(explore_data, player == playerNr & gempresent == 0)
   rounds <- unique(d1$round)
   
@@ -274,8 +275,9 @@ foreach(
   choices <- data.frame(round = numeric(6),
              choices = numeric(6))
   
-  simulated_choices <- NULL 
-  simulated_choice <-
+  simulated_choices <- NULL
+  
+  simulated_choices <-
     modelSim(
       par = par,
       subjD = d1,
@@ -289,7 +291,6 @@ foreach(
   
   saveRDS(simulated_choices,
           file = paste0("A_GeneratedFiles/simulations/simulated_choices", playerNr))
-readRDS(file = paste0("A_GeneratedFiles/simulations/simulated_choices", playerNr))
 
 }
 
