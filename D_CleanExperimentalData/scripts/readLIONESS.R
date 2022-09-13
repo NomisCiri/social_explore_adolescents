@@ -8,7 +8,7 @@ library(readxl)
 
 # function takes the folder path and the number of periods expected from complete participants as input
 
-readLIONESS <- function(folder, writinglocation) {
+readLIONESS <- function(folder, writinglocation, periods) {
   merged_data <- data.frame()
   
   # how many raw files are in the folder?
@@ -31,13 +31,14 @@ readLIONESS <- function(folder, writinglocation) {
     
     # which players completed the experiment
     player_finished <- core %>%
-      filter(onPage == 'end') %>%
+      filter(period == periods & onPage == 'end') %>%
       select(playerNr)
     
     # exclude incomplete participants
     decisions <- decisions %>%
       filter(playerNr %in% player_finished$playerNr)
     
+ 
     # append to other batches (if existing)
     merged_data <-
       bind_rows(merged_data, decisions)
