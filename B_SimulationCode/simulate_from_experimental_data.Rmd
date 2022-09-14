@@ -30,13 +30,6 @@ envs<-fromJSON(file = "A_GeneratedFiles/environments_gem_250_var25max.json") # m
 
 ```{r}
 
-
-```
-
-
-
-```{r}
-
 # Function to simulate data from parameters estimated from model fitting procedure.
 # Takes as input the parameters, the data, the
 
@@ -46,7 +39,8 @@ modelSim <-
            acquisition,
            k,
            horizonLength,
-           rounds) {
+           rounds,
+           env_numbers) {
 
     #  Extract and process parameters
     if (inherits(acquisition, "epsilonGreedy")) {
@@ -206,11 +200,25 @@ modelSim <-
     
     # at the end of each row (probabilites of choosing a cell each time point)
     # add the cell that is chosen by the simulation
-    
-    choices$round[counter] <- r
-    choices$choices[counter] <- list(indices)
+
+    choices_this_round <- data.frame(
+      round = r,
+      choice = indices,
+      env_number = env_numbers[counter],
+      rewards = numeric(24)
+    )
     
     ## ADD ASSOCIATED REWARDS OF THESE CHOICES
+    this_env <- envs[env_numbers[counter]]
+    
+    for (row in 1:nrow(choices_this_round)){
+      
+      
+    #browser()
+      choices_this_round$rewards[row] <- rnorm(1, this_env[[1]]$Mean[choices_this_round$choice[row]], this_env[[1]]$Variance[[choices_this_round$choice[row]]])
+    }
+
+     choices <- rbind(choices, choices_this_round)          
     
     # put that in a 3d matrix DO WE WANT THIS?
     # PMat_allrounds[,,r] <- p_indices
@@ -266,6 +274,11 @@ foreach(
   par <- c(mean(model_fit[, 3]), mean(model_fit[, 4]))
   d1 <- subset(explore_data, player == playerNr & gempresent == 0)
   rounds <- unique(d1$round)
+  env_numbers <- d1 %>% 
+    select(env_number, round) %>% 
+    distinct() %>% 
+    select(env_number) %>% 
+    pull()
   
   #**** to change: whole dataset, subset within loop
   Xnew <-
@@ -274,8 +287,10 @@ foreach(
   #PMat_allrounds = array(NA, dim=c(24,65,6))
   # create df of choices by round
   
-  choices <- data.frame(round = numeric(6),
-             choices = numeric(6))
+  choices <- data.frame(round = numeric(0),
+             choices = numeric(0),
+             env_number = numeric(0),
+             rewards = numeric(0))
   
   simulated_choices <- NULL
   
@@ -285,7 +300,8 @@ foreach(
       subjD = d1,
       acquisition = greedyMean,
       k = bayesianMeanTracker,
-      rounds = rounds
+      rounds = rounds,
+      env_numbers = env_numbers
     )
   
   # print to know where we are
