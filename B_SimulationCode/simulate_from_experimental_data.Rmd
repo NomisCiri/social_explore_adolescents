@@ -210,6 +210,8 @@ modelSim <-
     choices$round[counter] <- r
     choices$choices[counter] <- list(indices)
     
+    ## ADD ASSOCIATED REWARDS OF THESE CHOICES
+    
     # put that in a 3d matrix DO WE WANT THIS?
     # PMat_allrounds[,,r] <- p_indices
     
