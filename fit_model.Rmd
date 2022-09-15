@@ -221,11 +221,11 @@ cvfun <- function(data,
 
 ```{r}
 #dummy environment
-#rescore rewards
-explore_data<-explore_data%>%mutate(z=(points-mean(points))/sd(points))
+
 #parallelize over players
 doParallel::registerDoParallel()
 n.cores <- parallel::detectCores() - 1
+
 #create the cluster
 my.cluster <- parallel::makeCluster(
   n.cores, 
@@ -248,7 +248,9 @@ foreach(
   output <- c()
   
   #preallocate round selection because we subset by gems and we cant simply count from 1 to n anymore...
-  d1 <- subset(explore_data, player == playerNr & gempresent == 0)
+  d1 <- subset(explore_data, player == playerNr & gempresent == 0) %>% 
+    mutate(z=(points-mean(points))/sd(points))
+  
   print(d1)
   
   rounds<-unique(d1$round)

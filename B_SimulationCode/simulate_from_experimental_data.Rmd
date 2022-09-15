@@ -237,11 +237,6 @@ modelSim <-
 ```{r}
 # Run simulations
 
-#rescore rewards
-explore_data <- explore_data %>%
-  mutate(z = (points - mean(points)) / sd(points))
-
-
 #parallelize over players
 
 doParallel::registerDoParallel()
@@ -272,8 +267,12 @@ foreach(
   # and put them in one vector
   
   par <- c(mean(model_fit[, 3]), mean(model_fit[, 4]))
-  d1 <- subset(explore_data, player == playerNr & gempresent == 0)
+  
+  d1 <- subset(explore_data, player == playerNr & gempresent == 0) %>% 
+    mutate(z=(points-mean(points))/sd(points))
+  
   rounds <- unique(d1$round)
+  
   env_numbers <- d1 %>% 
     select(env_number, round) %>% 
     distinct() %>% 
