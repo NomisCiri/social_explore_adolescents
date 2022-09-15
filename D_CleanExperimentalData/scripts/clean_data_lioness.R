@@ -9,11 +9,12 @@ library(readxl)
 
 source('D_CleanExperimentalData/scripts/readLIONESS.R')
 
-
 folder <- 'D_CleanExperimentalData/raw_data/lioness/'
 writinglocation <- 'D_CleanExperimentalData/raw_data'
+periods <- 12 # how many max periods in this 
 
-data <- readLIONESS(folder, writinglocation)
+# function input: 
+data <- readLIONESS(folder, writinglocation, periods)
 
 # calculate S and substitute playerNr with ID
 
@@ -27,13 +28,14 @@ data_long <- data.frame(player = numeric(0),
                         gem_present = numeric(0),
                         tot_points = numeric(0))
 
-
 for (n in 1:length(unique(data$playerNr))){
   
+  # create empty df
   playerMat <- data.frame()
   
+  # select current player
   one_player_data <- data %>% 
-    filter(playerNr == data$playerNr[n])
+    filter(playerNr == unique(data$playerNr)[n])
   
 
   for (t in 1:12){
@@ -42,7 +44,6 @@ for (n in 1:length(unique(data$playerNr))){
     cells <-  as.numeric(unlist(str_split(one_player_data$clickedCells[t], ",")))
     env_number <- as.numeric(unlist(str_split(one_player_data$orderEnvs[1], ",")))[t]
     gempresent <- as.numeric(unlist(str_split(one_player_data$orderTreatment[1], ",")))[t]
-    
     
     temp <- data.frame(player = rep(n, length(points)),
      points = points,

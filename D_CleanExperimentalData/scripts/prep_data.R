@@ -2,17 +2,7 @@ rm(list = ls())
 
 # DATA PREP
 
-library(lme4)
-library(lmerTest)
 library(tidyverse)
-library(tibble)
-library(lawstat)
-library(jtools)
-library(kableExtra)
-library(broom)
-library(parameters)
-library(cowplot)
-library(gghalves)
 
 # create variables
 
@@ -22,4 +12,4 @@ data <-
          x = cell%%8,
          y = trunc(cell/8,0)) 
 
-write.csv(data, "DATA/data_coord.csv")
+write.csv(data, "Data/data_coord.csv", row.names = FALSE)
