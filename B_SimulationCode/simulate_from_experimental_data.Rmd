@@ -23,7 +23,7 @@ Simulate choice behavior from the parameters fitted to the pilot of the experime
 explore_data=read_csv(file = "Data/data_coord.csv")
 
 # load the generated environments
-envs<-fromJSON(file = "A_GeneratedFiles/environments_gem_250_var25max.json") # max gem value: 250; variance: 25
+envs<-fromJSON(file = "A_GeneratedFiles/environments_no_gem_var25max.json") # max gem value: 250; variance: 25
 
 ```
 
@@ -67,62 +67,90 @@ modelSim <-
         c(lambda, lambda, 1, .0001) # Vector of parameters to send to the GP posterior vector, where sF and sN are fixed
     }
     
+    
     #Additional acquisition function dependent parameters
     if (inherits(acquisition, "UCB") |
         inherits(acquisition, 'exploreCounts') |
         inherits(acquisition, 'epsilonGreedy')) {
+      
       #check if UCB is used
       beta <- par[length(par) - 1] #If UCB, beta is always 2nd last
       #refactor beta and tau into gamma and beta_star, where gamma = 1/tau and beta_star = beta/tau
     }
     
-    #which rounds to consider?
+    #which rounds to consider? @simon: is this working? now it takes everything
     trainingSet <- subset(subjD, round %in% rounds)
     
-    #Vector to store negative log likelihods
+    #Vector to store negative log likelihoods
     nLL <- rep(0, length(rounds))
     
     # simple counter to know which iteration this is
     counter <- 0
     
     for (r in unique(trainingSet$round)) {
+      
       #Begin looping through each round
       #subset of data for round r
       
       counter <- counter + 1
       roundD <- subset(subjD, round == r)
       horizon <- nrow(roundD)
-      #Observations of subject choice behavior
+      
+      # Which tiles where clicked?
       chosen <- roundD$cells
-      chosen <- chosen[2:length(chosen)] # trim first observation, since it wasn't a choice but a randomly revealed tile
       
-      y  <- roundD$z[0:(horizon - 1)] #trim off the last observation, because it was not used to inform a choice (round already over)
-      x1 <- roundD$x[0:(horizon - 1)]
-      x2 <- roundD$y[0:(horizon - 1)]
-      #create observation matrix
+      # trim first observation, since it wasn't a choice but a randomly revealed tile
+      chosen <- chosen[2:length(chosen)] 
+      
+      ### Get first observation, to start the cycle of simulating choices
+
+      y  <- roundD$z[1] # rewards (standardized at round level)
+      x1 <- roundD$x[1] # x position
+      x2 <- roundD$y[1] # y position
+      
+      # bind into an observation matrix
       X <- as.matrix(cbind(x1, x2))
-      #make sure X is a matrix
-      X <- as.matrix(X)
-      Xnew <- as.matrix(Xnew)
       
-      #Utilties of each choice
+      # @simon: do we need this line?
+      # Xnew <- as.matrix(Xnew)
+      
+      # Utilties of each choice
+      
       utilities <- NULL
-      prevPost <-  NULL #set the previous posterior computation to NULL for the kalman filter
+      prevPost <-  NULL #set the previous posterior computation to NULL for the kalman filter 
       pMat <- NULL
-      #chocies <- NULL
+      choices <- NULL
+
       
+      # loop through observations I (until i - 1)
+      # skip the last observation, because no choice was made based on that information
+
       
-      #loop through observations
       for (i in 1:(horizon - 1)) {
         
-        #skip the last observation, because no choice was made based on that information
-        #new observation
-        # @simon: is this line the reason why we lose one observation?
-        
-        X1 <- matrix(X[1:i, ], ncol = 2)
+        # in first round, get the real choice of the participant and associated reward
+        if (i == 1){
+
+        X1 <- matrix(X[1:i, ], ncol = 2) 
         y1 <- y[1:i]
+        choices <- data.frame(choice_index = x1 + 1 + (x2*8),
+                             x_new_choice = x1,
+                             y_new_choice = x2,
+                             z_new_choice = y ,
+                             trial = 1)
+        
+        } else { 
+          
+        X1 <- matrix(choices[1:i, 2:3], ncol = 2) 
+        y <- choices[1:i, 4]
+          
+          
+        }
+        
         #Which posterior function to use
-        if (inherits(k, "KalmanFilter")) {
+        
+        #if (inherits(k, "KalmanFilter")) {
+        
           # kalman filter model
           out <-
             bayesianMeanTracker(
@@ -131,99 +159,80 @@ modelSim <-
               prevPost = prevPost,
               theta = parVec
             )
-          #update prevPost for the next round
-          prevPost <- out
-        } else if (inherits(k, 'GP')) {
-          # GP with length-scale parameterized kernel
-          out <-
-            gpr(
-              X.test = Xnew,
-              theta = parVec,
-              X = X1,
-              Y = y1,
-              k = k
-            ) #Mu and Sigma predictions for each of the arms; either GP or Kalman filter
-        } else if (inherits(k, 'Null')) {
-          #null model
-          out <-
-            nullModel() #Mu and Sigma predictions for each of the arms; either GP or Kalman filter
-        }
-        
+          
+          # @ temporarely get rid of this @simon maybe forever? or may come back?
+        #   #update prevPost for the next round
+        #   prevPost <- out
+        # } else if (inherits(k, 'GP')) {
+        #   # GP with length-scale parameterized kernel
+        #   out <-
+        #     gpr(
+        #       X.test = Xnew,
+        #       theta = parVec,
+        #       X = X1,
+        #       Y = y1,
+        #       k = k
+        #     ) #Mu and Sigma predictions for each of the arms; either GP or Kalman filter
+        # } else if (inherits(k, 'Null')) {
+        #   #null model
+        #   out <-
+        #     nullModel() #Mu and Sigma predictions for each of the arms; either GP or Kalman filter
+        # }
+          
         #Slightly different function calls for each acquisition function
         if (inherits(acquisition, "UCB")) {
           #UCB takes a beta parameter
           utilityVec <- acquisition(out, c(beta))
+          
         } else if (inherits(acquisition, 'exploreCounts')) {
           #count-based exploration
           utilityVec <-
             exploreCounts(out, roundD$chosen[1:i], c(beta))
+          
         } else if (inherits(acquisition, "epsilonGreedy")) {
           p <- epsilonGreedy(out, beta, epsilon)
           pMat <- rbind(pMat, t(p))
+          
         } else{
           #any other
           utilityVec <- acquisition(out)
         }
+          
         if (inherits(acquisition, "softmax")) {
           utilityVec <- utilityVec - max(utilityVec) #avoid overflow
+          
           utilities <-
             rbind(utilities, t(utilityVec)) # build horizon_length x options matrix, where each row holds the utilities of each choice at each decision time in the search horizon
         }
-      }
-      
-      #print(utilities)
-      if (inherits(acquisition, "softmax")) {
-        #Softmax rule
+          
+        # use softmax to transform utilites inti probabilities
+        
         p <- exp(utilities / tau)
         p <- p / rowSums(p)
+        
         #avoid underflow by setting a floor and a ceiling
         p <- (pmax(p, 0.00001))
         p <- (pmin(p, 0.99999))
+        
         pMat <- p
         
+        # make a choice based on the probabilites
+        # @Simon: would you sample more than once? otherwise pretty random
+        
+        this_env <- envs[env_numbers[counter]]
+        
+        new_choice <- make_a_choice(p, this_env, i)
+        choices <- as.matrix(rbind(choices, new_choice))
+        
+          
       }
+  
+    
       
-    # Here estimate deviation from optimal choices ? or at later stage
-    # sample choice based on probability
-    
-    # fix at some point
-    # apply(X = pMat, MARGIN = c(64, 24), FUN = sample(x = 1:64, size = 1 , prob =  X))
-    
-    indices <- NULL
-    
-    for (q in 1:nrow(pMat)) {
-      sampled <- sample(x = 1:64,
-                        size = 1 ,
-                        prob =  pMat[q, ])
-      indices <- c(indices, sampled)
-    }
-    
-    # at the end of each row (probabilites of choosing a cell each time point)
-    # add the cell that is chosen by the simulation
 
-    choices_this_round <- data.frame(
-      round = r,
-      choice = indices,
-      env_number = env_numbers[counter],
-      rewards = numeric(24)
-    )
-    
-    ## ADD ASSOCIATED REWARDS OF THESE CHOICES
-    this_env <- envs[env_numbers[counter]]
-    
-    for (row in 1:nrow(choices_this_round)){
-      
-      
-    #browser()
-      choices_this_round$rewards[row] <- rnorm(1, this_env[[1]]$Mean[choices_this_round$choice[row]], this_env[[1]]$Variance[[choices_this_round$choice[row]]])
     }
-
-     choices <- rbind(choices, choices_this_round)          
-    
-    # put that in a 3d matrix DO WE WANT THIS?
-    # PMat_allrounds[,,r] <- p_indices
-    
-    }  #  end of loop through rounds
+   
+      #  end of loop through rounds
     
     return(choices)  
   }
@@ -286,11 +295,13 @@ foreach(
   #PMat_allrounds = array(NA, dim=c(24,65,6))
   # create df of choices by round
   
+  
+  # @ANDREA delete if not useful when finished
   choices <- data.frame(round = numeric(0),
-             choices = numeric(0),
+             choice = numeric(0),
              env_number = numeric(0),
              rewards = numeric(0))
-  
+
   simulated_choices <- NULL
   
   simulated_choices <-

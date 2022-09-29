@@ -141,27 +141,37 @@ gpr <- function(X.test, theta, X,Y, k){
 ##Mean Tracker
 ##############################################################################################################
 bayesianMeanTracker <- function(x, y, theta=c(1), prevPost=NULL){ #Updates the previous posterior based on a single observation
+  
   #parameters
   mu0 <- 0 #prior mean
   var0 <- 5 #prior variance
   vare <- theta[1] #error varriance
+  
   if (is.null(prevPost)){#if no posterior prior, assume it is the first observation
-    predictions <- data.frame(mu=rep(mu0,64), sig=rep(var0,64))
+    predictions <- data.frame(mu=rep(mu0,64),
+                              sig=rep(var0,64))
+    
   }else{#if previous posterior is provided, update
     predictions <- prevPost
   }
+  
   #Which of the 121 options were chosen at time?
   allopts<-expand.grid(0:7, 0:7)
   chosen <- which(allopts$Var1==x[1] & allopts$Var2==x[2])
+  
   #Kalman gain
   kGain <- predictions$sig[chosen] / (predictions$sig[chosen] + vare^2)
+  
   #update mean
   predictions$mu[chosen] <- predictions$mu[chosen] + (kGain * (y-predictions$mu[chosen]))
+  
   #update variance for observed arm
   predictions$sig[chosen] <- predictions$sig[chosen] * (1 - kGain)
+  
   #return output
   return(predictions)
 }
+
 class(bayesianMeanTracker)<- c(class(bayesianMeanTracker), "KalmanFilter")
 
 
@@ -320,3 +330,40 @@ WSLS <- function(Yt, Xt){
 
 class(WSLS) <- c(class(WSLS), "WSLS")
 
+
+
+##############################################################################################################
+# make a choice when simulating data
+##############################################################################################################
+
+make_a_choice <- function(p, this_env, trial){
+  
+  trial <- trial + 1
+  choice_index <- sample(x = 1:64,
+                       size = 1 ,
+                       prob =  pMat[i, ]
+                       #replace = T ## if we want more deterministic then increase size and add replacement
+  )
+  
+  x_new_choice <- this_env[[1]]$x[choice_index] - 1
+  y_new_choice <- this_env[[1]]$y[choice_index] - 1
+  
+  ## THIS removed when indices will be fixed in real task
+  if (choice_index < 64){
+  z_new_choice <-  rnorm(1,
+                         # BIG THING THIS WAS A BUG IN LIONES SO I NEED TO ADD +1 HERE
+                         this_env[[1]]$Mean[choice_index + 1],
+                         this_env[[1]]$Variance[choice_index + 1]) * .02}
+  else{
+    z_new_choice = 0
+  }
+  
+  choice_this_round <- cbind(choice_index,
+                             x_new_choice,
+                             y_new_choice,
+                             z_new_choice, ### temporary fix
+                             trial)
+  
+  return(choice_this_round)
+  
+}
