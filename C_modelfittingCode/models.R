@@ -350,10 +350,11 @@ make_a_choice <- function(p, this_env, trial){
   
   ## THIS removed when indices will be fixed in real task
   if (choice_index < 64){
+    
   z_new_choice <-  rnorm(1,
                          # BIG THING THIS WAS A BUG IN LIONES SO I NEED TO ADD +1 HERE
                          this_env[[1]]$Mean[choice_index + 1],
-                         this_env[[1]]$Variance[choice_index + 1]) * .02}
+                         this_env[[1]]$Variance[choice_index + 1]) * .02} # find a solution for scaling (either the level of the environment or the participant)
   else{
     z_new_choice = 0
   }

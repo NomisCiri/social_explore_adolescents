@@ -133,7 +133,8 @@ modelSim <-
 
         X1 <- matrix(X[1:i, ], ncol = 2) 
         y1 <- y[1:i]
-        choices <- data.frame(choice_index = x1 + 1 + (x2*8),
+        
+        choices <- data.frame(choice_index = x1 + 1 + (x2 * 8),
                              x_new_choice = x1,
                              y_new_choice = x2,
                              z_new_choice = y ,
@@ -144,8 +145,7 @@ modelSim <-
         X1 <- matrix(choices[1:i, 2:3], ncol = 2) 
         y <- choices[1:i, 4]
           
-          
-        }
+                  }
         
         #Which posterior function to use
         
@@ -221,15 +221,13 @@ modelSim <-
         
         this_env <- envs[env_numbers[counter]]
         
-        new_choice <- make_a_choice(p, this_env, i)
+        new_choice <- make_a_choice(pMat, this_env, i)
         choices <- as.matrix(rbind(choices, new_choice))
+        prevPost <- out
         
           
       }
   
-    
-      
-
     }
    
       #  end of loop through rounds
