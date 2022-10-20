@@ -336,12 +336,18 @@ class(WSLS) <- c(class(WSLS), "WSLS")
 # make a choice when simulating data
 ##############################################################################################################
 
-make_a_choice <- function(p, this_env, trial){
+make_a_choice <- function(p, this_env, trial, subjD, counter){
+  
+  #browser()
+  
+  env_number <- this_env[[1]]$env_idx[1]
+  env_counter  <- counter
   
   trial <- trial + 1
   choice_index <- sample(x = 1:64,
-                       size = 1 ,
-                       prob =  pMat[i, ]
+                       size = 1,
+                       prob =  p[trial - 1, ],
+                      
                        #replace = T ## if we want more deterministic then increase size and add replacement
   )
   
@@ -351,19 +357,27 @@ make_a_choice <- function(p, this_env, trial){
   ## THIS removed when indices will be fixed in real task
   if (choice_index < 64){
     
-  z_new_choice <-  rnorm(1,
+  points_new_choice <-  rnorm(1,
                          # BIG THING THIS WAS A BUG IN LIONES SO I NEED TO ADD +1 HERE
                          this_env[[1]]$Mean[choice_index + 1],
-                         this_env[[1]]$Variance[choice_index + 1]) * .02} # find a solution for scaling (either the level of the environment or the participant)
-  else{
-    z_new_choice = 0
-  }
+                         this_env[[1]]$Variance[choice_index + 1]) 
   
-  choice_this_round <- cbind(choice_index,
+  z_new_choice <- (points_new_choice - subjD$mean_points[1]) / subjD$sd_points[1] ### check: does this work?
+  
+  } 
+  
+  else{
+    z_new_choice <-  0
+    points_new_choice <-  0}
+  
+  choice_this_round <- data.frame(choice_index,
+                             points_new_choice,
                              x_new_choice,
                              y_new_choice,
-                             z_new_choice, ### temporary fix
-                             trial)
+                             z_new_choice, 
+                             trial,
+                             env_number,
+                             env_counter)
   
   return(choice_this_round)
   
