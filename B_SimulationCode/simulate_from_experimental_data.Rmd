@@ -86,6 +86,15 @@ modelSim <-
     
     # simple counter to know which iteration this is
     counter <- 0
+    choices_round <- data.frame(choice_index = numeric(0),
+                             points_new_choice = numeric(0),
+                             x_new_choice = numeric(0),
+                             y_new_choice = numeric(0),
+                             z_new_choice = numeric(0),
+                             trial = numeric(0),
+                             env_number = numeric(0), 
+                             env_counter = numeric(0)
+                             )
     
     for (r in unique(trainingSet$round)) {
       
@@ -103,8 +112,9 @@ modelSim <-
       chosen <- chosen[2:length(chosen)] 
       
       ### Get first observation, to start the cycle of simulating choices
-
-      y  <- roundD$z[1] # rewards (standardized at round level)
+      
+      points <- roundD$points[1] #absolute n of points
+      y  <- roundD$z[1] # rewards (standardized at environment type level, maybe refine?)
       x1 <- roundD$x[1] # x position
       x2 <- roundD$y[1] # y position
       
@@ -120,7 +130,6 @@ modelSim <-
       prevPost <-  NULL #set the previous posterior computation to NULL for the kalman filter 
       pMat <- NULL
       choices <- NULL
-
       
       # loop through observations I (until i - 1)
       # skip the last observation, because no choice was made based on that information
@@ -128,22 +137,27 @@ modelSim <-
       
       for (i in 1:(horizon - 1)) {
         
+        #browser()
         # in first round, get the real choice of the participant and associated reward
         if (i == 1){
 
         X1 <- matrix(X[1:i, ], ncol = 2) 
         y1 <- y[1:i]
         
+        #make df to update over loop
         choices <- data.frame(choice_index = x1 + 1 + (x2 * 8),
+                             points_new_choice = points,
                              x_new_choice = x1,
                              y_new_choice = x2,
                              z_new_choice = y ,
-                             trial = 1)
+                             trial = 1, 
+                             env_number = r, 
+                             env_counter = counter)
         
         } else { 
           
-        X1 <- matrix(choices[1:i, 2:3], ncol = 2) 
-        y <- choices[1:i, 4]
+        X1 <- matrix(choices[1:i, 3:4], ncol = 2) 
+        y <- choices[1:i, 5]
           
                   }
         
@@ -221,25 +235,29 @@ modelSim <-
         
         this_env <- envs[env_numbers[counter]]
         
-        new_choice <- make_a_choice(pMat, this_env, i)
-        choices <- as.matrix(rbind(choices, new_choice))
+        #browser()
+        new_choice <- make_a_choice(pMat, this_env, i, subjD, counter)
+        choices <- as.matrix(rbind(choices, new_choice)) 
         prevPost <- out
-        
           
       }
+      #browser()
+      choices_round <- rbind(choices_round, choices)
   
     }
-   
-      #  end of loop through rounds
+    #  end of loop through rounds
     
-    return(choices)  
+    choices_round <- choices_round %>% 
+      mutate(playerNr = subjD$player[1],
+             learning_rate = parVec,
+             temperature = tau)
+    
+    return(choices_round)  
   }
 
 
 ```
    
-
-
 
 ```{r}
 # Run simulations
@@ -276,8 +294,10 @@ foreach(
   par <- c(mean(model_fit[, 3]), mean(model_fit[, 4]))
   
   d1 <- subset(explore_data, player == playerNr & gempresent == 0) %>% 
-    mutate(z=(points-mean(points))/sd(points))
-  
+    mutate(mean_points = mean(points),
+           sd_points = sd(points) ,
+           z=(points-mean_points)/sd_points)
+
   rounds <- unique(d1$round)
   
   env_numbers <- d1 %>% 
@@ -295,12 +315,20 @@ foreach(
   
   
   # @ANDREA delete if not useful when finished
-  choices <- data.frame(round = numeric(0),
-             choice = numeric(0),
-             env_number = numeric(0),
-             rewards = numeric(0))
+  # choices <- data.frame(round = numeric(0),
+  #            choice = numeric(0),
+  #            env_number = numeric(0),
+  #            rewards = numeric(0))
 
   simulated_choices <- NULL
+  
+  ### only when debugging:
+
+  subjD = d1
+  acquisition = greedyMean
+  k = bayesianMeanTracker
+
+  ###
   
   simulated_choices <-
     modelSim(
