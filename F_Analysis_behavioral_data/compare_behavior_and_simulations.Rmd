@@ -1,0 +1,114 @@
+---
+title: "analysis_behavioral_data"
+output: html_document
+date: "2022-10-25"
+---
+
+
+```{r}
+
+# Load environments
+
+# load the generated environments
+envs_no_gem <-
+  fromJSON(file = "A_GeneratedFiles/environments_no_gem_var25max.json") # max gem value: 250; variance: 25
+
+envs_gem <-
+  fromJSON(file = "A_GeneratedFiles/environments_gem_250_var25max.json") # max gem value: 250; variance: 25
+
+# @andrea not sure if this useful
+envs_all <- c(envs_gem, envs_no_gem)
+
+
+# Load experimental data
+
+explore_data <- read_csv(file = "data/data_coord.csv")
+
+```
+
+
+```{r}
+
+# How long did people take to do the experiment?
+
+
+
+
+
+
+```
+
+
+```{r}
+
+# Compare behavioral differences between treatments
+
+# a) switches
+
+
+# b) boxes opened
+
+explore_data %>% 
+  group_by(player, env_number, gempresent) %>% 
+  summarise(boxes_opened = length(unique(cells))) %>% 
+  ggplot(aes(x = env_number, y = boxes_opened)) +
+  geom_point(alpha = .02)+
+  stat_summary() +
+  facet_wrap(~gempresent) +
+  theme_bw(base_size = 20)
+
+# 
+
+# c) explore exploit
+
+# d) points scored
+
+# absolute points
+explore_data %>% 
+  select(player, env_number, gempresent, tot_points) %>% 
+  distinct() %>% 
+  ggplot(aes(x = env_number, y = tot_points)) +
+  geom_point(alpha = .02)+
+  stat_summary() +
+  facet_wrap(~gempresent) +
+  theme_bw(base_size = 20)
+
+# z transformed points
+explore_data %>% 
+  group_by(player) %>% 
+  mutate(z = (points - mean(points)) / sd(points)) %>%
+  select(player, env_number, gempresent, z) %>% 
+  distinct() %>% 
+  ggplot(aes(x = env_number, y = z)) +
+  geom_point(alpha = .02)+
+  stat_summary() +
+  facet_wrap(~gempresent) +
+  theme_bw(base_size = 20)
+
+
+
+# points scored when gem not found
+
+explore_data %>% 
+
+
+
+
+```
+
+
+
+```{r}
+
+# compare performance in model vs simulations
+
+
+```
+
+```{r}
+
+# check up subjects with weird learning rates
+
+
+```
+
