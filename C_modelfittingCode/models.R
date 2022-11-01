@@ -336,7 +336,9 @@ class(WSLS) <- c(class(WSLS), "WSLS")
 # make a choice when simulating data
 ##############################################################################################################
 
-make_a_choice <- function(p, this_env, trial, subjD, counter){
+make_a_choice <- function(p, this_env, trial, subjD, counter, is_gem){
+  
+  env_type <- is_gem
   
   #browser()
   
@@ -377,7 +379,8 @@ make_a_choice <- function(p, this_env, trial, subjD, counter){
                              z_new_choice, 
                              trial,
                              env_number,
-                             env_counter)
+                             env_counter,
+                             env_type)
   
   return(choice_this_round)
   
