@@ -4,103 +4,219 @@ output: html_document
 date: "2022-10-25"
 ---
 
-
-```{r}
-
-# Load environments
-
-# load the generated environments
-envs_no_gem <-
-  fromJSON(file = "A_GeneratedFiles/environments_no_gem_var25max.json") # max gem value: 250; variance: 25
-
-envs_gem <-
-  fromJSON(file = "A_GeneratedFiles/environments_gem_250_var25max.json") # max gem value: 250; variance: 25
-
-# @andrea not sure if this useful
-envs_all <- c(envs_gem, envs_no_gem)
+---
+title: "compare_simulations_to_behavioral_Data"
+author: "Andrea"
+date: "2022-11-01"
+output: html_document
+---
 
 
-# Load experimental data
+```{r echo=FALSE}
 
-explore_data <- read_csv(file = "data/data_coord.csv")
-
-```
-
-
-```{r}
-
-# How long did people take to do the experiment?
-
-
-
-
+pacman::p_load(tidyverse, rjson, data.table, gghalves)
 
 
 ```
 
+```{r load data, echo=FALSE}
+
+explore_data <- read_csv(file = "data/data_coord.csv") %>% 
+  filter(player != 188)
+#nogems <- subset(explore_data, gempresent == 0)
+                   
+                   
+simd_data <- NULL
+
+for (n in 1:length(unique(explore_data$player))) {
+  
+  # all gems
+  
+  one_player <-  readRDS(file = paste0("A_GeneratedFiles/simulations/all_envs/simulated_choices", n)) %>% 
+    mutate(gem_label = ifelse(env_type == 1, "with gem", "no gem"))
+  
+  # only no gems
+  # one_player <-  readRDS(file = paste0("A_GeneratedFiles/simulations/simulated_choices", n))
+simd_data <- bind_rows(simd_data, one_player)
+}
+
+```
+
+```{r merge datasets}
+
+  
+simd_data <- simd_data %>% 
+  select(playerNr, choice_index, points_new_choice, z_new_choice, env_type, env_counter, trial, learning_rate, temperature) %>% 
+  rename(player = playerNr,
+         z = z_new_choice,
+         cells = choice_index,
+         points = points_new_choice,
+         gempresent = env_type,
+         round = env_counter) %>% 
+  mutate(gem = ifelse(points > 180, 1, 0),
+         data_source = 'simulation')
+
+
+par_data <- simd_data %>% 
+  select(learning_rate, temperature)
+
+explore_data <- explore_data %>% 
+  mutate(mean_points = mean(points),
+           sd_points = sd(points) ,
+           z=(points-mean_points)/sd_points,
+          data_source = 'experiment') %>% 
+  select(player, points, cells, gempresent, gem, round, z, data_source) %>% 
+  group_by(player, round) %>% 
+  mutate(trial = 1:25)
+
+explore_data <- bind_cols(explore_data, par_data) 
+
+all_data <- bind_rows(simd_data, explore_data)
+
+
+
+```
+
+# Compare behavior of participants in the game and agents in the simulation
+
+## n of boxes open in gems vs non-gems, data vs simulation
 
 ```{r}
 
-# Compare behavioral differences between treatments
+all_data %>% 
+  group_by(round, player, gempresent, data_source) %>% 
+  summarise(boxes_opened = n_distinct(cells)) %>% 
+  ggplot(aes(x = factor(gempresent), y = boxes_opened)) +
+  geom_boxplot(aes(fill = factor(gempresent))) +
+  labs(x = "gem_present", y = 'n of different boxes') +
+  theme_bw(base_size = 20) +
+  facet_wrap(~ data_source) +
+  guides(fill = FALSE)
 
-# a) switches
+```
 
 
-# b) boxes opened
+# distribution of points scored
 
-explore_data %>% 
-  group_by(player, env_number, gempresent) %>% 
-  summarise(boxes_opened = length(unique(cells))) %>% 
-  ggplot(aes(x = env_number, y = boxes_opened)) +
-  geom_point(alpha = .02)+
-  stat_summary() +
-  facet_wrap(~gempresent) +
-  theme_bw(base_size = 20)
+the simulation reproduces the pattern of the experiments and agents are better than chance,
+but it seems they are a bit less sticky to good positive outcomes.
 
-# 
+there was no difference between gems and non gems rounds in this.
 
-# c) explore exploit
-
-# d) points scored
-
+```{r}
 # absolute points
-explore_data %>% 
-  select(player, env_number, gempresent, tot_points) %>% 
+
+all_data %>% 
+  group_by(player, gempresent, points, data_source) %>% 
   distinct() %>% 
-  ggplot(aes(x = env_number, y = tot_points)) +
-  geom_point(alpha = .02)+
-  stat_summary() +
-  facet_wrap(~gempresent) +
-  theme_bw(base_size = 20)
+  ggplot() +
+  geom_histogram(aes( x = points, y = stat(y = ..count.. / nrow(all_data))), binwidth = 10, fill = "black") +
+  geom_vline(xintercept = 0, lty = 1, size = 1.5, color = 'red') + 
+  #geom_half_point(aes(x = factor(gempresent), y = points), alpha = 0.02) +
+  facet_wrap(~ data_source) +
+  theme_bw(base_size = 20) +
+  labs(y = 'proportion')
 
-# z transformed points
-explore_data %>% 
-  group_by(player) %>% 
-  mutate(z = (points - mean(points)) / sd(points)) %>%
-  select(player, env_number, gempresent, z) %>% 
-  distinct() %>% 
-  ggplot(aes(x = env_number, y = z)) +
-  geom_point(alpha = .02)+
-  stat_summary() +
-  facet_wrap(~gempresent) +
-  theme_bw(base_size = 20)
+```
 
 
+# are agents better than players at finding gems?
 
-# points scored when gem not found
+## number of environments in which at least one gem was discovered
 
-explore_data %>% 
+most players find gems in half of the environments that contain them (3 out 6), and rarely more than that.
+agents explore more and 
 
 
+```{r}
+all_data %>% 
+  filter(gempresent == 1) %>% 
+  group_by(player, round, data_source) %>% 
+  summarise(gem_found = ifelse(1 %in% gem, 1, 0)) %>% 
+  group_by(player, data_source) %>% 
+  summarise(n_gems = sum(gem_found)) %>% 
+  ggplot() +
+  geom_histogram(aes(x =  n_gems), binwidth = 1, fill = "black")+
+  facet_wrap(~ data_source) +
+  theme_bw(base_size = 20) +
+  labs(x = 'n of environments in which a gem was found')
 
 
 ```
 
 
 
+# individual level boxes opened
+
+agents in the simulation systematically open more boxes than the participants from whom the learning rate was estimated. the trend is especially strong when gems are not present.
+
+
 ```{r}
 
-# compare performance in model vs simulations
+all_data %>%
+  group_by(player, gempresent, data_source, round) %>%
+  summarise(boxes_opened = n_distinct(cells)) %>%
+  ungroup() %>%
+  group_by(player, gempresent, data_source) %>%
+  summarise(mean_boxes_opened = mean(boxes_opened)) %>%
+  pivot_wider(names_from = data_source, values_from = mean_boxes_opened) %>%
+  ggplot(aes(x = experiment, y = simulation)) +
+  geom_point(alpha = .8) +
+  geom_abline(intercept = 0,
+              slope = 1,
+              color = "red") +
+  facet_wrap( ~ gempresent)
+
+```
+
+
+# explore exploit after gem or not
+
+agents in the simulation are more volatile, especially in the non gem non loss rounds. they also explore after a gem more often than humans
+
+ 
+```{r}
+# 
+all_data %>%
+  group_by(player) %>%
+  mutate(exploit = ifelse(lead(cells) == cells, 1, 0),
+         explore = ifelse(lead(cells) != cells, 1, 0)) %>%
+  mutate(out_cat = case_when(points > 150 ~ 1,
+                             points < 0 ~ 3,
+                             TRUE ~ 2)) %>% pivot_longer(cols = c(exploit, explore), names_to = "explore_exploit") %>%
+  ggplot(aes(
+    x = out_cat,
+    y = value,
+    color = explore_exploit,
+    shape = explore_exploit
+  )) +
+  stat_summary(size = 1) +
+  stat_summary(geom = "line") +
+  scale_y_continuous(name = "Proportion") +
+  scale_x_continuous(
+    name = "Category",
+    breaks = c(1, 2, 3),
+    labels = c("gem", "no gem", "loss")
+  ) +
+  theme_minimal(20) +
+  facet_wrap( ~ data_source)
+
+
+```
+
+
+# performance in experiment vs. simulation as function of learning rate
+
+```{r}
+
+
+ all_data %>% 
+   group_by(player, learning_rate, data_source) %>% 
+   summarise(tot_point = sum(points)) %>% 
+   ggplot() +
+   geom_point(aes(x = learning_rate, y = tot_point), alpha = .5) +
+   theme_bw(base_size = 20) +
+   facet_wrap(~data_source)
 
 
 ```
