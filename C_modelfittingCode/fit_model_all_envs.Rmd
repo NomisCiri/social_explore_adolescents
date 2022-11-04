@@ -1,66 +1,58 @@
 ---
-title: "simulate_from_experimental_data"
-author: "Andrea"
-date: "2022-08-30"
+title: "Modelfitting"
+author: "Simon&Andrea"
+date: '2022-10-120'
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-
-# load packages
-pacman::p_load(tidyverse,rjson,DEoptim,doParallel)
-
-# functions to do the model fitting
+pacman::p_load(tidyverse, rjson, DEoptim, doParallel)
 source("C_modelfittingCode/models.R")
 ```
 
-Simulate choice behavior from the parameters fitted to the pilot of the experiment run in schools.
+In this document, we will fit a kalman filter to the "social bandit" task that Andrea and I developed. 
+First, lets load some data.
 
 ```{r}
 
-# load the experimental data
-explore_data=read_csv(file = "Data/data_coord.csv")
-
-# load the generated environments
-envs<-fromJSON(file = "A_GeneratedFiles/environments_gem_250_var25max.json") # max gem value: 250; variance: 25
+# load behavioral data
+explore_data = read_csv(file = "Data/data_coord.csv")
 
 ```
 
-
 ```{r}
 
-# Function to simulate data from parameters estimated from model fitting procedure.
-# Takes as input the parameters, the data, the
-
-modelSim <-
+modelFit <-
   function(par,
            subjD,
            acquisition,
            k,
            horizonLength,
-           rounds,
-           env_numbers) {
-
-    #  Extract and process parameters
+           rounds) {
+    
+    #Extract and process parameters
+    
     if (inherits(acquisition, "epsilonGreedy")) {
       epsilon <-
         1 / (1 + exp(-(par[length(par)]))) #transform back from unbounded space; epsilon is the last parameter for epsilon greedy
     }
     
-    # Exponentiate parameters to make a non-negative and convex optimization surface
-    par <- exp(par)
+    par <-  exp(par) #exponentiate parameters to make a non-negative and convex optimization surface
+    #last parameter for all other models is always inverse temperature for softmax
     
-    # Last parameter for all other models is always inverse temperature for softmax
     tau <- par[length(par)]
-    
     #Which posterior function to use; therefore, which parameters to use
+    
     if (inherits(k, "KalmanFilter")) {
+      
       #null kernel indicates kalman filter model
       kNoise <- par[1]
-      parVec <-
-        c(kNoise) #Vector of parameters to send to the KF posterior function
+      
+      parVec <-  c(kNoise) #Vector of parameters to send to the KF posterior function
+      
     } else if (inherits(k, "GP")) {
+      
       #lambda
       lambda <- par[1]
       parVec <-
@@ -68,35 +60,40 @@ modelSim <-
     }
     
     #Additional acquisition function dependent parameters
+    
     if (inherits(acquisition, "UCB") |
         inherits(acquisition, 'exploreCounts') |
         inherits(acquisition, 'epsilonGreedy')) {
+      
       #check if UCB is used
+      
       beta <- par[length(par) - 1] #If UCB, beta is always 2nd last
+      
       #refactor beta and tau into gamma and beta_star, where gamma = 1/tau and beta_star = beta/tau
     }
-    
     #which rounds to consider?
+    
     trainingSet <- subset(subjD, round %in% rounds)
     
     #Vector to store negative log likelihods
+    
     nLL <- rep(0, length(rounds))
     
-    # simple counter to know which iteration this is
-    counter <- 0
-    
     for (r in unique(trainingSet$round)) {
+      
       #Begin looping through each round
       #subset of data for round r
       
-      counter <- counter + 1
       roundD <- subset(subjD, round == r)
       horizon <- nrow(roundD)
-      #Observations of subject choice behavior
-      chosen <- roundD$cells
-      chosen <- chosen[2:length(chosen)] # trim first observation, since it wasn't a choice but a randomly revealed tile
       
-      y  <- roundD$z[0:(horizon - 1)] #trim off the last observation, because it was not used to inform a choice (round already over)
+      #Observations of subject choice behavior
+      
+      chosen <- roundD$cells
+      chosen <-
+        chosen[2:length(chosen)] # trim first observation, since it wasn't a choice but a randomly revealed tile
+      y  <-
+        roundD$z[0:(horizon - 1)] #trim off the last observation, because it was not used to inform a choice (round already over)
       x1 <- roundD$x[0:(horizon - 1)]
       x2 <- roundD$y[0:(horizon - 1)]
       #create observation matrix
@@ -104,21 +101,15 @@ modelSim <-
       #make sure X is a matrix
       X <- as.matrix(X)
       Xnew <- as.matrix(Xnew)
-      
       #Utilties of each choice
       utilities <- NULL
-      prevPost <-  NULL #set the previous posterior computation to NULL for the kalman filter
+      prevPost <-
+        NULL #set the previous posterior computation to NULL for the kalman filter
       pMat <- NULL
-      #chocies <- NULL
-      
-      
       #loop through observations
       for (i in 1:(horizon - 1)) {
-        
         #skip the last observation, because no choice was made based on that information
         #new observation
-        # @simon: is this line the reason why we lose one observation?
-        
         X1 <- matrix(X[1:i, ], ncol = 2)
         y1 <- y[1:i]
         #Which posterior function to use
@@ -148,7 +139,6 @@ modelSim <-
           out <-
             nullModel() #Mu and Sigma predictions for each of the arms; either GP or Kalman filter
         }
-        
         #Slightly different function calls for each acquisition function
         if (inherits(acquisition, "UCB")) {
           #UCB takes a beta parameter
@@ -170,7 +160,6 @@ modelSim <-
             rbind(utilities, t(utilityVec)) # build horizon_length x options matrix, where each row holds the utilities of each choice at each decision time in the search horizon
         }
       }
-      
       #print(utilities)
       if (inherits(acquisition, "softmax")) {
         #Softmax rule
@@ -180,67 +169,128 @@ modelSim <-
         p <- (pmax(p, 0.00001))
         p <- (pmin(p, 0.99999))
         pMat <- p
-        
       }
-      
-    # Here estimate deviation from optimal choices ? or at later stage
-    # sample choice based on probability
-    
-    # fix at some point
-    # apply(X = pMat, MARGIN = c(64, 24), FUN = sample(x = 1:64, size = 1 , prob =  X))
-    
-    indices <- NULL
-    
-    for (q in 1:nrow(pMat)) {
-      sampled <- sample(x = 1:64,
-                        size = 1 ,
-                        prob =  pMat[q, ])
-      indices <- c(indices, sampled)
+      #Calculate Negative log likelihood
+      nLL[which(unique(trainingSet$round) == r)] <-
+        -sum(log(pMat[cbind(c(1:(horizon - 1)), chosen)]))
     }
-    
-    # at the end of each row (probabilites of choosing a cell each time point)
-    # add the cell that is chosen by the simulation
-
-    choices_this_round <- data.frame(
-      round = r,
-      choice = indices,
-      env_number = env_numbers[counter],
-      rewards = numeric(24)
-    )
-    
-    ## ADD ASSOCIATED REWARDS OF THESE CHOICES
-    this_env <- envs[env_numbers[counter]]
-    
-    for (row in 1:nrow(choices_this_round)){
-      
-      
-    #browser()
-      choices_this_round$rewards[row] <- rnorm(1, this_env[[1]]$Mean[choices_this_round$choice[row]], this_env[[1]]$Variance[[choices_this_round$choice[row]]])
-    }
-
-     choices <- rbind(choices, choices_this_round)          
-    
-    # put that in a 3d matrix DO WE WANT THIS?
-    # PMat_allrounds[,,r] <- p_indices
-    
-    }  #  end of loop through rounds
-    
-    return(choices)  
+    #end loop through rounds
+    return(sum(nLL))  #Return negative log likelihoods of all observations
   }
 
-
 ```
-   
 
 
+# Define function for fitting
 
 ```{r}
-# Run simulations
+
+cvfun <- function(data,
+                  kernelFun,
+                  acquisition,
+                  leaveoutindex) {
+  #subselect participant, horizon and rounds not left out
+  
+  # andrea changed: only round with gems
+  d1 <- data
+  #training set
+  #get round names
+  rounds <- unique(d1$round)
+  #browser()
+  #rounds <- 1:6
+  #rounds <- count(d1$round)[count(d1$round)$freq>=2,]$x #only rounds where at least 2 clicks have been made
+  trainingSet <-
+    rounds[!rounds == leaveoutindex] #remove round specified by leaveoutindex
+  #test set
+  testSet <- leaveoutindex
+  nParams <- 1
+  if (inherits(acquisition, 'UCB') |
+      inherits(acquisition, 'exploreCounts') |
+      inherits(acquisition, 'epsilonGreedy')) {
+    nParams <- nParams + 1 #add beta parameter
+  }
+  if (inherits(kernelFun, 'GP') |
+      inherits(kernelFun, 'KalmanFilter')) {
+    nParams <- nParams + 1 #add lambda or error variance
+  }
+  #Set upper and lower bounds based on nParams this is logspace!
+  lbound <- rep(-5, nParams)
+  ubound <- rep(4, nParams)
+  
+  if (nParams >= 2) {
+    #if 2 or more parameters
+    #TRAINING SET
+    
+    #this here.
+    fit <-
+      DEoptim(
+        modelFit,
+        lower = lbound,
+        upper = ubound,
+        subjD = d1,
+        k = kernelFun,
+        rounds = trainingSet,
+        acquisition = acquisition,
+        DEoptim.control(itermax = 100)
+      )
+    
+    paramEstimates <-
+      fit$optim$bestmem #MODEL DEPENDENT PARAMETER ESTIMATES
+    #TEST SET
+    predict <-
+      modelFit(
+        par = paramEstimates,
+        subjD = d1,
+        acquisition = acquisition,
+        k = kernelFun,
+        rounds = testSet
+      )
+    output <-
+      c(leaveoutindex, predict, fit$optim$bestmem) # leaveoutindex, nLL, parameters....
+  } else{
+    
+    #TRAINING SET
+    fit <-
+      optimize(
+        modelFit,
+        lower = lbound,
+        upper = ubound,
+        subjD = d1,
+        k = kernelFun,
+        rounds = trainingSet,
+        acquisition = acquisition
+      )
+    
+    paramEstimates <-
+      fit$minimum #MODEL DEPENDENT PARAMETER ESTIMATES
+    #TEST SET
+    predict <-
+      modelFit(
+        par = paramEstimates,
+        subjD = d1,
+        acquisition = acquisition,
+        k = kernelFun,
+        rounds = testSet
+      )
+    
+    output <-
+      c(leaveoutindex, predict, fit$minimum) #leaveoutindex, nLL, parameters....
+  }
+  
+  return(output) #return optimized value
+}
+
+```
+
+# Fit
+
+```{r}
+#dummy environment
 
 #parallelize over players
-
 doParallel::registerDoParallel()
 n.cores <- parallel::detectCores() - 1
+
 #create the cluster
 my.cluster <- parallel::makeCluster(
   n.cores, 
@@ -249,66 +299,37 @@ my.cluster <- parallel::makeCluster(
 doParallel::registerDoParallel(cl = my.cluster)
 ```
 
+# fit that thing in parallel
 
 ```{r}
-# parallelize computations
 
 foreach(
+  playerNr= unique(explore_data$player),
+  .packages = c("DEoptim","dplyr")
   
-  playerNr = unique(explore_data$player),
-  .packages = c("DEoptim", "dplyr")
-) %dopar% {
+)%dopar%{
   
-  # load parameter vector
-  model_fit <-
-    readRDS(paste0("A_GeneratedFiles/modelfits/GM_fit_", playerNr, ".rds"))
+  #browser()
+  Xnew<-as.matrix(expand.grid(0:7,0:7)) #do this outside the loop for better speed
+  output <- c()
   
-  # calculate the mean of the parameters fitted (currently 2 with GM algorithm),
-  # and put them in one vector
+  #preallocate round selection because we subset by gems and we cant simply count from 1 to n anymore...
+  # andrea: maybe we can now do this inside the function since we don't split anymore?
   
-  par <- c(mean(model_fit[, 3]), mean(model_fit[, 4]))
-  
-  d1 <- subset(explore_data, player == playerNr & gempresent == 0) %>% 
+  d1 <- subset(explore_data, player == playerNr) %>% 
     mutate(z=(points-mean(points))/sd(points))
   
-  rounds <- unique(d1$round)
+  print(d1)
   
-  env_numbers <- d1 %>% 
-    select(env_number, round) %>% 
-    distinct() %>% 
-    select(env_number) %>% 
-    pull()
-  
-  #**** to change: whole dataset, subset within loop
-  Xnew <-
-    as.matrix(expand.grid(0:7, 0:7)) #do this outside the loop for better speed
-  
-  #PMat_allrounds = array(NA, dim=c(24,65,6))
-  # create df of choices by round
-  
-  choices <- data.frame(round = numeric(0),
-             choices = numeric(0),
-             env_number = numeric(0),
-             rewards = numeric(0))
-  
-  simulated_choices <- NULL
-  
-  simulated_choices <-
-    modelSim(
-      par = par,
-      subjD = d1,
-      acquisition = greedyMean,
-      k = bayesianMeanTracker,
-      rounds = rounds,
-      env_numbers = env_numbers
-    )
-  
-  # print to know where we are
-  print(paste("player", playerNr, "done"))
-  
-  saveRDS(simulated_choices,
-          file = paste0("A_GeneratedFiles/simulations/simulated_choices", playerNr))
+  rounds<-unique(d1$round)
 
-}
+  for (r in rounds){ #loop through rounds in roundList
+    cv <- cvfun(data=d1, kernelFun = bayesianMeanTracker, acquisition = greedyMean, leaveoutindex=r)# only try one sub
+    output <- rbind(output, cv)
+  }
+  
+  saveRDS(output,file=paste0("A_GeneratedFiles/modelfits/all_envs/GM_fit_",playerNr,".rds"))
+  }
 
 ```
+

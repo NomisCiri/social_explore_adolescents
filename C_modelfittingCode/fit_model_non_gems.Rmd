@@ -16,7 +16,6 @@ First, lets load some data.
 
 ```{r}
 explore_data=read_csv(file = "Data/data_coord.csv")
-envs<-fromJSON(file = "A_GeneratedFiles/environments_gem_250_var25max.json")
 ```
 
 ```{r}
@@ -260,7 +259,7 @@ foreach(
     output <- rbind(output, cv)
   }
   
-  saveRDS(output,file=paste0("A_GeneratedFiles/modelfits/GM_fit_",playerNr,".rds"))
+  saveRDS(output,file=paste0("A_GeneratedFiles/modelfits/only_non_gems/GM_fit_",playerNr,".rds"))
   }
 
 readRDS(file=paste0("A_GeneratedFiles/modelfits/GM_fit_",2,".rds"))
