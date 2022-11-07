@@ -41,7 +41,6 @@ modelFit <-
     
     par <-  exp(par) #exponentiate parameters to make a non-negative and convex optimization surface
     #last parameter for all other models is always inverse temperature for softmax
-    
     tau <- par[length(par)]
     #Which posterior function to use; therefore, which parameters to use
     
@@ -49,7 +48,6 @@ modelFit <-
       
       #null kernel indicates kalman filter model
       kNoise <- par[1]
-      
       parVec <-  c(kNoise) #Vector of parameters to send to the KF posterior function
       
     } else if (inherits(k, "GP")) {
@@ -60,7 +58,7 @@ modelFit <-
         c(lambda, lambda, 1, .0001) # Vector of parameters to send to the GP posterior vector, where sF and sN are fixed
     } else if (inherits(k,'bmt_free_priors')){
       
-      prior_mu<-par[1]
+      prior_mu<-log(par[1])# put back into native space between -100 and 100
       prior_var<-par[2]
       kNoise<-par[3]
       parVec<-c(prior_mu,prior_var,kNoise)
@@ -123,6 +121,17 @@ modelFit <-
           # kalman filter model
           out <-
             bayesianMeanTracker(
+              x = X1[i, ],
+              y = y[i],
+              prevPost = prevPost,
+              theta = parVec
+            )
+          #update prevPost for the next round
+          prevPost <- out
+        } else if (inherits(k, "bmt_free_priors")) {
+          # kalman filter model with free priors
+          out <-
+            bmt_free_priors(
               x = X1[i, ],
               y = y[i],
               prevPost = prevPost,
@@ -218,12 +227,18 @@ cvfun <- function(data,
   if (inherits(kernelFun, 'GP') |
       inherits(kernelFun, 'KalmanFilter')) {
     nParams <- nParams + 1 #add lambda or error variance
-  } if (inherits(kernelFun,'bmt_free_priors')){
+  } else if (inherits(kernelFun,'bmt_free_priors')){
     nParams <- nParams + 3# add error variance and priors
   }
   #Set upper and lower bounds based on nParams this is logspace!
-  lbound <- rep(-6, nParams)
+  lbound <- rep(-10, nParams)
   ubound <- rep(4, nParams)
+  
+  if (inherits(kernelFun,'bmt_free_priors')){
+    #no logspace on the boundaries of the prior mu.
+    lbound[1]<- -100
+    ubound[1]<- 100
+  }
   
   if (nParams >= 2) {
     #if 2 or more parameters
@@ -239,7 +254,7 @@ cvfun <- function(data,
         k = kernelFun,
         rounds = trainingSet,
         acquisition = acquisition,
-        DEoptim.control(itermax = 100)
+        DEoptim.control(itermax = 200)
       )
     
     paramEstimates <-
@@ -309,7 +324,7 @@ doParallel::registerDoParallel(cl = my.cluster)
 
 # fit that thing in parallel
 
-```{r}
+```{r eval=F}
 
 foreach(
   playerNr= unique(explore_data$player),
@@ -372,11 +387,11 @@ foreach(
   rounds<-unique(d1$round)
 
   for (r in rounds){ #loop through rounds in roundList
-    cv <- cvfun(data=d1, kernelFun = bayesianMeanTracker, acquisition = greedyMean, leaveoutindex=r)# only try one sub
+    cv <- cvfun(data=d1, kernelFun = bmt_free_priors, acquisition = greedyMean, leaveoutindex=r)# only try one sub
     output <- rbind(output, cv)
   }
   
-  saveRDS(output,file=paste0("A_GeneratedFiles/modelfits/all_envs/GM_fit_",playerNr,".rds"))
+  saveRDS(output,file=paste0("A_GeneratedFiles/modelfits/all_envs/GM_free_prior_fit_",playerNr,".rds"))
   }
 
 ```
