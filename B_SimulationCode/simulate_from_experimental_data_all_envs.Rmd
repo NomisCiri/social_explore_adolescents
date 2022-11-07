@@ -82,7 +82,12 @@ modelSim <-
       lambda <- par[1]
       parVec <-
         c(lambda, lambda, 1, .0001) # Vector of parameters to send to the GP posterior vector, where sF and sN are fixed
-    }
+    } else if (inherits(k,'bmt_free_priors')){
+      prior_mu<-log(par[1])# put back into native space between -100 and 100
+      prior_var<-par[2]
+      kNoise<-par[3]
+      parVec<-c(prior_mu,prior_var,kNoise)
+  }
     
     
     #Additional acquisition function dependent parameters
@@ -185,7 +190,7 @@ modelSim <-
         
         # Which posterior function to use
         
-        #if (inherits(k, "KalmanFilter")) {
+        if (inherits(k, "KalmanFilter")) {
         
           # kalman filter model
           out <-
@@ -196,10 +201,20 @@ modelSim <-
               theta = parVec
             )
           
-          # @ temporarely get rid of this @simon maybe forever? or may come back?
-        #   #update prevPost for the next round
-        #   prevPost <- out
-        # } else if (inherits(k, 'GP')) {
+        #update prevPost for the next round
+           prevPost <- out
+         } else if (inherits(k, "bmt_free_priors")) {
+          # kalman filter model with free priors
+          out <-
+            bmt_free_priors(
+              x = X1[i, ],
+              y = y[i],
+              prevPost = prevPost,
+              theta = parVec
+            )
+          #update prevPost for the next round
+          prevPost <- out
+         }
         #   # GP with length-scale parameterized kernel
         #   out <-
         #     gpr(
@@ -274,7 +289,7 @@ modelSim <-
         #browser()
         new_choice <- make_a_choice(pMat, this_env_data, i, subjD, counter, is_gem)
         choices <- as.matrix(rbind(choices, new_choice))
-        prevPost <- out
+        #prevPost <- out
           
       }
       #browser()
