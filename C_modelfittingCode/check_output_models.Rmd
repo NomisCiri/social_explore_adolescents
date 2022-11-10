@@ -22,7 +22,7 @@ fitted_data <- bind_rows(fitted_data, one_player)
 
 ```{r}
 
-# exclude parameters that are wost than random
+# exclude parameters that are wose than random
 
 randomModelLL <- -log(1/64)*25
 
