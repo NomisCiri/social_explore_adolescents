@@ -9,15 +9,17 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 
 # load packages
-pacman::p_load(tidyverse, rjson, DEoptim, doParallel, jsonlite, data.table)
+pacman::p_load(tidyverse, rjson, DEoptim, doParallel, jsonlite, data.table,here)
+knitr::opts_knit$set(root.dir = here())# set root fot the whole file
 
 # functions to do the model fitting
-source("C_modelfittingCode/models.R")
 ```
 
 Simulate choice behavior from the parameters fitted to the pilot of the experiment run in schools.
 
 ```{r}
+source("C_modelfittingCode/models.R")
+
 # load the experimental data
 explore_data <- read_csv(file = "Data/data_coord.csv")
 
@@ -171,7 +173,7 @@ modelSim <-
         y1 <- y[1:i]
         
         #make df to update over loop
-        choices <- data.frame(choice_index = x1 + 1 + (x2 * 8),
+        choices <- data.frame(choice_index = x1 + 1 + (x2 * 8),# interesting!
                              points_new_choice = points,
                              x_new_choice = x1,
                              y_new_choice = x2,

@@ -8,7 +8,6 @@ output: html_document
 ```{r setup, include=FALSE}
 pacman::p_load(tidyverse, rjson, DEoptim, doParallel,here)
 knitr::opts_knit$set(root.dir = here())# set root fot the whole file
-source("../C_modelfittingCode/models.R")#more reproducible
 ```
 
 In this document, we will fit a kalman filter to the "social bandit" task that Andrea and I developed. 
@@ -16,6 +15,8 @@ First, lets load some data.
 
 ```{r}
 getwd()
+source("./C_modelfittingCode/models.R")#more reproducible
+
 # load behavioral data
 explore_data = read_csv(file = paste0("./Data/data_coord.csv"))
 
