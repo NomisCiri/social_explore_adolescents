@@ -175,6 +175,45 @@ bayesianMeanTracker <- function(x, y, theta=c(1), prevPost=NULL){ #Updates the p
 class(bayesianMeanTracker)<- c(class(bayesianMeanTracker), "KalmanFilter")
 
 
+
+
+##############################################################################################################
+#NULL MODEL (used with heuristics)
+##############################################################################################################
+bmt_free_priors <- function(x, y, theta=c(0,5,1), prevPost=NULL){ #Updates the previous posterior based on a single observation
+  
+  #parameters
+  mu0 <- theta[1] #prior mean
+  var0 <- theta[2] #prior variance
+  vare <- theta[3] #error varriance
+  
+  if (is.null(prevPost)){#if no posterior prior, assume it is the first observation
+    predictions <- data.frame(mu=rep(mu0,64),
+                              sig=rep(var0,64))
+    
+  }else{#if previous posterior is provided, update
+    predictions <- prevPost
+  }
+  
+  #Which of the 121 options were chosen at time?
+  allopts<-expand.grid(0:7, 0:7)
+  chosen <- which(allopts$Var1==x[1] & allopts$Var2==x[2])
+  
+  #Kalman gain
+  kGain <- predictions$sig[chosen] / (predictions$sig[chosen] + vare^2)
+  
+  #update mean
+  predictions$mu[chosen] <- predictions$mu[chosen] + (kGain * (y-predictions$mu[chosen]))
+  
+  #update variance for observed arm
+  predictions$sig[chosen] <- predictions$sig[chosen] * (1 - kGain)
+  
+  #return output
+  return(predictions)
+}
+
+class(bmt_free_priors)<- c(class(bmt_free_priors), "bmt_free_priors")
+
 ##############################################################################################################
 #NULL MODEL (used with heuristics)
 ##############################################################################################################
