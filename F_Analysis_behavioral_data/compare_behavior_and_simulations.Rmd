@@ -230,3 +230,20 @@ agents in the simulation are more volatile, especially in the non gem non loss r
 ```
 
 This one was harder to interpret, but it seems than in the experiment there is no strong relationship between learning rate and points earned.
+
+
+# which gems were open
+
+```{r}
+
+all_data %>%
+  filter(gempresent == 1) %>%
+  ggplot(aes(x = x, y = y)) +
+  geom_bin_2d(binwidth = c(1, 1)) +
+  geom_rect(data=gems_coords, size=.5, fill=NA, colour="yellow",
+  aes(xmin = x - 1, xmax = x  , ymin = y - 1, ymax = y )) +
+  facet_wrap( ~ env_number + data_source, ncol = 4) 
+
+
+```
+
