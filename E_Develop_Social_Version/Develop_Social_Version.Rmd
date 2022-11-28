@@ -9,6 +9,7 @@ output: html_document
 ```{r}
 
 pacman::p_load(tidyverse, rjson, data.table, gghalves)
+`%!in%` = Negate(`%in%`)
 
 ```
 
@@ -21,104 +22,101 @@ pacman::p_load(tidyverse, rjson, data.table, gghalves)
 - n of consecutive clicks
 - n of gems founds
 
-n of pointsearned vs. expected points (better than chance)
+n of point searned vs. expected points (better than chance)
 
 ```{r load data, echo=FALSE, warning=FALSE, message=FALSE }
+
+
 
 explore_data <- read_csv(file = "data/data_coord.csv")
  
 explore_data <- explore_data %>% 
-  filter(player != 188)
-#nogems <- subset(explore_data, gempresent == 0)
-                   
-                   
-simd_data <- NULL
-
-for (n in 1:length(unique(explore_data$player))) {
-  
-  # all gems
-  
-  one_player <-  readRDS(file = paste0("A_GeneratedFiles/simulations/all_envs/simulated_choices", n))
-  
-  one_player <- one_player%>% 
-    mutate(gem_label = ifelse(env_type == 1, "with gem", "no gem"))
-  
-  # only no gems
-  # one_player <-  readRDS(file = paste0("A_GeneratedFiles/simulations/simulated_choices", n))
-simd_data <- bind_rows(simd_data, one_player)
-}
-
-```
-
-```{r merge datasets, warning=FALSE, echo=FALSE, message=FALSE}
-
-  
-simd_data <- simd_data %>% 
-  select(playerNr, choice_index, points_new_choice, x_new_choice, y_new_choice, z_new_choice, env_type, env_counter, trial, learning_rate, temperature, env_number, ) %>% 
-  rename(player = playerNr,
-         x = x_new_choice,
-         y = y_new_choice,
-         z = z_new_choice,
-         cells = choice_index,
-         points = points_new_choice,
-         gempresent = env_type,
-         round = env_counter) %>% 
-  mutate(gem = ifelse(points > 180, 1, 0),
-         data_source = 'simulation')
-
-
-par_data <- simd_data %>% 
-  select(learning_rate, temperature)
-
-explore_data <- explore_data %>% 
-  mutate(mean_points = mean(points),
-           sd_points = sd(points) ,
-           z=(points-mean_points)/sd_points,
-          data_source = 'experiment') %>% 
-  select(player, points, cells, gempresent, gem, round, x, y, z, data_source, env_number) %>% 
+  filter(player != 188) %>% 
   group_by(player, round) %>% 
-  mutate(trial = 1:25)
-
-explore_data <- bind_cols(explore_data, par_data) 
-
-all_data <- bind_rows(simd_data, explore_data)
-
-gems_coords <- all_data %>% 
-  filter(data_source == "experiment" & points >160) %>% 
-  select(x , y, env_number) %>% 
-  distinct()
-
-
-```
-
-## heatmap of 
-
-
-```{r}
-
-all_data %>%
-  filter(gempresent == 1) %>%
-  ggplot(aes(x = x, y = y)) +
-  geom_bin_2d(binwidth = c(1, 1)) +
-  geom_rect(data=gems_coords, size=.5, fill=NA, colour="yellow",
-  aes(xmin = x - 1, xmax = x  , ymin = y - 1, ymax = y )) +
-  facet_wrap( ~ env_number + data_source, ncol = 4) 
-
-```
-
-```{r}
-
-# explore exploit decisions
-
-explore_exploit <- explore_data %>%
-  group_by(player, round) %>%
-  mutate(exploit = ifelse(lead(cells) == cells, 1, 0),
-         explore = ifelse(lead(cells) != cells, 1, 0)) %>%
-  mutate(out_cat = case_when(points > 150 ~ 1,
-                             points < 0 ~ 3,
-                             TRUE ~ 2)) %>% pivot_longer(cols = c(exploit, explore), names_to = "explore_exploit")
-
-
-```
+    mutate(trial = 1:25,
+           unique_rounds = cur_group_id())
   
+  
+#nogems <- subset(explore_data, gempresent == 0)
+
+
+
+```
+
+
+# finding social info:
+
+criteria:
+- points are representative to average
+- gem not found before round 10
+- exploration is conistent
+
+
+
+## find average points when a gem is found
+```{r}
+
+points_when_gem_found <- explore_data %>% 
+  group_by(player, gempresent, tot_points, env_number) %>% 
+  filter(gempresent == 1 & sum(gem) > 1) %>% 
+  select(player, gempresent, tot_points, unique_rounds, env_number) %>% 
+  distinct() %>% 
+  ungroup() %>% 
+  group_by(env_number) %>% 
+  mutate(performance_group = ntile(tot_points, 3))
+
+
+# distribution of point when gem is found
+
+points_when_gem_found %>% 
+  ggplot() +
+  geom_histogram(aes( x = tot_points, fill = factor(performance_group)), binwidth = 40)+
+ #, color = "white") +
+  #geom_vline(aes(xintercept = mean(tot_points)), lty = 2, size = 1, color = 'black') + 
+  #geom_half_point(aes(x = factor(gempresent), y = points), alpha = 0.02) +
+  #theme_bw(base_size = 20) +
+  facet_wrap(~env_number)
+  guides(fill = "none")
+
+
+
+```
+
+## timing
+
+now filter for gem not found before round 10
+
+```{r}
+# list of players 
+
+avg_rounds <- points_when_gem_found %>% 
+  filter(performance_group == 2 | performance_group == 1) %>% 
+  ungroup() %>% 
+  select(unique_rounds)
+
+avg_rounds <- avg_rounds$unique_rounds
+
+early_gems_idx <- which(explore_data$gem & explore_data$trial <= 5)
+round_to_exclude <- unique(explore_data$unique_rounds[early_gems_idx])
+
+
+late_gems <- explore_data %>% 
+  filter(unique_rounds %in% avg_rounds)%>% 
+  filter(unique_rounds %!in% round_to_exclude) %>% 
+  group_by(env_number) %>% 
+  summarise(sum = n())
+
+```
+
+# visualize social info
+
+```{r}
+
+
+
+
+```
+
+
+
   
