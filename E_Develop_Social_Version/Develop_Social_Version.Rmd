@@ -8,7 +8,7 @@ output: html_document
 
 ```{r}
 
-pacman::p_load(tidyverse, rjson, data.table, gghalves)
+pacman::p_load(tidyverse, rjson, data.table, gghalves, plotly, gganimate)
 `%!in%` = Negate(`%in%`)
 
 ```
@@ -102,7 +102,10 @@ round_to_exclude <- unique(explore_data$unique_rounds[early_gems_idx])
 
 late_gems <- explore_data %>% 
   filter(unique_rounds %in% avg_rounds)%>% 
-  filter(unique_rounds %!in% round_to_exclude) %>% 
+  filter(unique_rounds %!in% round_to_exclude)
+
+
+how_may_late_gems <- late_gems%>% 
   group_by(env_number) %>% 
   summarise(sum = n())
 
@@ -113,6 +116,16 @@ late_gems <- explore_data %>%
 ```{r}
 
 
+one_sequence <- late_gems %>% 
+  filter(player == 42 & round == 2) %>%
+  ggplot() +
+  geom_bin_2d(aes(x = x, y = y, frame = trial),  binwidth = c(1, 1)) +
+  transitio
+  scale_x_continuous(limits = c(-1, 7), breaks = -1:7)+
+  scale_y_continuous(limits = c(-1, 7), breaks = -1:7)+
+  theme_minimal()
+
+ggplotly(one_sequence)
 
 
 ```
