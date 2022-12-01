@@ -35,21 +35,24 @@ for (n in 1:length(unique(explore_data$player))) {
   # all gems
   
   one_player_free_prior <-  readRDS(file = paste0("../A_GeneratedFiles/simulations/all_envs/simulated_choices_free_prior", n))
+  one_player_old_bounds <-  readRDS(file = paste0("../A_GeneratedFiles/simulations/all_envs/simulated_choices_old_bounds", n))
   one_player_new_bounds <-  readRDS(file = paste0("../A_GeneratedFiles/simulations/all_envs/simulated_choices_new_bounds", n))
-  one_player_old_bounds <-  readRDS(file = paste0("../A_GeneratedFiles/simulations/all_envs/simulated_choices", n))
+  one_player_new_bounds_round <-  readRDS(file = paste0("../A_GeneratedFiles/simulations/all_envs/simulated_choices_new_bounds_by_round", n))
+
+
   
   #one_player_free_prior$prior_mu
-  one_player_old_bounds$prior_mu<-NA
-  one_player_old_bounds$prior_var<-NA
-  one_player_old_bounds$LL<-NA
-  one_player_old_bounds$n_worse_than_chance<-NA
+  #one_player_old_bounds$prior_mu<-NA
+  #one_player_old_bounds$prior_var<-NA
+  #one_player_old_bounds$LL<-NA
+  #one_player_old_bounds$n_worse_than_chance<-NA
   one_player_old_bounds$data_source="old_bounds"
   one_player_free_prior$data_source="free_prior"
   one_player_new_bounds$data_source="new_bounds"
-  
+  one_player_new_bounds_round$data_source="within_round_norm"
   # only no gems
   # one_player <-  readRDS(file = paste0("A_GeneratedFiles/simulations/simulated_choices", n))
-  simd_data <- bind_rows(simd_data, one_player_old_bounds,one_player_new_bounds,one_player_free_prior)
+  simd_data <- bind_rows(simd_data, one_player_old_bounds,one_player_new_bounds,one_player_free_prior,one_player_new_bounds_round)
 }
 
 simd_data <- simd_data%>% 
@@ -122,7 +125,9 @@ participants open more boxes on average in non-gems environment (x = 0), agents 
 ## individual level comparison boxes opened
 
 ```{r warning=FALSE, echo=FALSE,  message=FALSE}
-
+###
+### Old parameter boundaries
+###
 all_data %>%
   group_by(player, gempresent, data_source, round) %>%
   summarise(boxes_opened = n_distinct(cells)) %>%
@@ -135,7 +140,9 @@ all_data %>%
   geom_abline(intercept = 0,
               slope = 1,
               color = "red")+theme_bw(14)
-
+###
+### New paramter boundaries
+###
 all_data %>%
   group_by(player, gempresent, data_source, round) %>%
   summarise(boxes_opened = n_distinct(cells)) %>%
@@ -148,7 +155,9 @@ all_data %>%
   geom_abline(intercept = 0,
               slope = 1,
               color = "red")+theme_bw(14)
-
+###
+### Free priors
+###
 all_data %>%
   group_by(player, gempresent, data_source, round) %>%
   summarise(boxes_opened = n_distinct(cells)) %>%
@@ -157,6 +166,22 @@ all_data %>%
   summarise(mean_boxes_opened = mean(boxes_opened))%>%
   pivot_wider(names_from = data_source, values_from = mean_boxes_opened)%>%
   ggplot(aes(x = experiment, y = free_prior,color=as.factor(gempresent))) +
+  geom_point(alpha = .8) +
+  geom_abline(intercept = 0,
+              slope = 1,
+              color = "red")+theme_bw(14)
+
+###
+### Within round normalization
+###
+all_data %>%
+  group_by(player, gempresent, data_source, round) %>%
+  summarise(boxes_opened = n_distinct(cells)) %>%
+  ungroup() %>%
+  group_by(player, gempresent, data_source) %>%
+  summarise(mean_boxes_opened = mean(boxes_opened))%>%
+  pivot_wider(names_from = data_source, values_from = mean_boxes_opened)%>%
+  ggplot(aes(x = experiment, y =withing_round_norm,color=as.factor(gempresent))) +
   geom_point(alpha = .8) +
   geom_abline(intercept = 0,
               slope = 1,
