@@ -1,0 +1,299 @@
+---
+title: "analysis_behavioral_data"
+output: html_document
+date: "2022-10-25"
+---
+
+---
+title: "compare_simulations_to_behavioral_Data"
+author: "Andrea"
+date: "2022-11-01"
+output: html_document
+---
+
+
+```{r echo=FALSE, warning=FALSE}
+
+pacman::p_load(tidyverse, rjson, data.table, gghalves)
+
+
+```
+
+```{r load data, echo=FALSE, warning=FALSE, message=FALSE }
+
+explore_data <- read_csv(file = "../data/data_coord.csv")
+
+explore_data <- explore_data %>% 
+  filter(player != 188)
+#nogems <- subset(explore_data, gempresent == 0)
+
+
+simd_data <- NULL
+
+for (n in 1:length(unique(explore_data$player))) {
+  
+  # all gems
+  
+  one_player_free_prior <-  readRDS(file = paste0("../A_GeneratedFiles/simulations/all_envs/simulated_choices_free_prior", n))
+  one_player_old_bounds <-  readRDS(file = paste0("../A_GeneratedFiles/simulations/all_envs/simulated_choices_old_bounds", n))
+  one_player_new_bounds <-  readRDS(file = paste0("../A_GeneratedFiles/simulations/all_envs/simulated_choices_new_bounds", n))
+  one_player_new_bounds_round <-  readRDS(file = paste0("../A_GeneratedFiles/simulations/all_envs/simulated_choices_new_bounds_by_round", n))
+
+
+  
+  #one_player_free_prior$prior_mu
+  #one_player_old_bounds$prior_mu<-NA
+  #one_player_old_bounds$prior_var<-NA
+  #one_player_old_bounds$LL<-NA
+  #one_player_old_bounds$n_worse_than_chance<-NA
+  one_player_old_bounds$data_source="old_bounds"
+  one_player_free_prior$data_source="free_prior"
+  one_player_new_bounds$data_source="new_bounds"
+  one_player_new_bounds_round$data_source="within_round_norm"
+  # only no gems
+  # one_player <-  readRDS(file = paste0("A_GeneratedFiles/simulations/simulated_choices", n))
+  simd_data <- bind_rows(simd_data, one_player_old_bounds,one_player_new_bounds,one_player_free_prior,one_player_new_bounds_round)
+}
+
+simd_data <- simd_data%>% 
+  mutate(gem_label = ifelse(env_type == 1, "with gem", "no gem"))
+```
+# Which model is best
+
+```{r}
+simd_data%>%
+  ggplot(aes(x=data_source,y=LL))+
+  geom_boxplot()
+```
+
+```{r merge datasets, warning=FALSE, echo=FALSE, message=FALSE}
+
+
+simd_data <- simd_data %>% 
+  select(playerNr, choice_index, points_new_choice, z_new_choice, env_type, env_counter, trial,prior_mu, prior_var, learning_rate, temperature,data_source) %>% 
+  rename(player = playerNr,
+         z = z_new_choice,
+         cells = choice_index,
+         points = points_new_choice,
+         gempresent = env_type,
+         round = env_counter) %>% 
+  mutate(gem = ifelse(points > 180, 1, 0))
+
+
+par_data <- simd_data %>% 
+  select(learning_rate, temperature,prior_mu,prior_var)
+
+explore_data <- explore_data %>% 
+  mutate(mean_points = mean(points),
+         sd_points = sd(points) ,
+         z=(points-mean_points)/sd_points,
+         data_source = 'experiment') %>% 
+  select(player, points, cells, gempresent, gem, round, z, data_source) %>% 
+  group_by(player, round) %>% 
+  mutate(trial = 1:25)
+
+# different pars cant be added in columns anymore. maybe pivot wider but for plotting we have to live in long format... do we?
+#explore_data <- bind_cols(explore_data, par_data) 
+
+all_data <- bind_rows(simd_data, explore_data)
+
+
+
+```
+
+# Comparison of behavior of participants in the game and agents in the simulation
+
+## n of boxes open
+
+```{r warning=FALSE, echo=FALSE,  message=FALSE}
+
+all_data %>% 
+  group_by(round, player, gempresent, data_source) %>% 
+  summarise(boxes_opened = n_distinct(cells)) %>% 
+  ggplot(aes(x = factor(gempresent), y = boxes_opened)) +
+  geom_boxplot(aes(fill = factor(gempresent))) +
+  labs(x = "gem_present", y = 'n of different boxes') +
+  theme_bw(base_size = 20) +
+  facet_wrap(~ data_source) +
+  guides(fill = FALSE)
+
+```
+
+participants open more boxes on average in non-gems environment (x = 0), agents replicate the pattern but open more boxes in general.
+
+
+## individual level comparison boxes opened
+
+```{r warning=FALSE, echo=FALSE,  message=FALSE}
+###
+### Old parameter boundaries
+###
+all_data %>%
+  group_by(player, gempresent, data_source, round) %>%
+  summarise(boxes_opened = n_distinct(cells)) %>%
+  ungroup() %>%
+  group_by(player, gempresent, data_source) %>%
+  summarise(mean_boxes_opened = mean(boxes_opened))%>%
+  pivot_wider(names_from = data_source, values_from = mean_boxes_opened)%>%
+  ggplot(aes(x = experiment, y = old_bounds,color=as.factor(gempresent))) +
+  geom_point(alpha = .8) +
+  geom_abline(intercept = 0,
+              slope = 1,
+              color = "red")+theme_bw(14)
+###
+### New paramter boundaries
+###
+all_data %>%
+  group_by(player, gempresent, data_source, round) %>%
+  summarise(boxes_opened = n_distinct(cells)) %>%
+  ungroup() %>%
+  group_by(player, gempresent, data_source) %>%
+  summarise(mean_boxes_opened = mean(boxes_opened))%>%
+  pivot_wider(names_from = data_source, values_from = mean_boxes_opened)%>%
+  ggplot(aes(x = experiment, y = new_bounds,color=as.factor(gempresent))) +
+  geom_point(alpha = .8) +
+  geom_abline(intercept = 0,
+              slope = 1,
+              color = "red")+theme_bw(14)
+###
+### Free priors
+###
+all_data %>%
+  group_by(player, gempresent, data_source, round) %>%
+  summarise(boxes_opened = n_distinct(cells)) %>%
+  ungroup() %>%
+  group_by(player, gempresent, data_source) %>%
+  summarise(mean_boxes_opened = mean(boxes_opened))%>%
+  pivot_wider(names_from = data_source, values_from = mean_boxes_opened)%>%
+  ggplot(aes(x = experiment, y = free_prior,color=as.factor(gempresent))) +
+  geom_point(alpha = .8) +
+  geom_abline(intercept = 0,
+              slope = 1,
+              color = "red")+theme_bw(14)
+
+###
+### Within round normalization
+###
+all_data %>%
+  group_by(player, gempresent, data_source, round) %>%
+  summarise(boxes_opened = n_distinct(cells)) %>%
+  ungroup() %>%
+  group_by(player, gempresent, data_source) %>%
+  summarise(mean_boxes_opened = mean(boxes_opened))%>%
+  pivot_wider(names_from = data_source, values_from = mean_boxes_opened)%>%
+  ggplot(aes(x = experiment, y =withing_round_norm,color=as.factor(gempresent))) +
+  geom_point(alpha = .8) +
+  geom_abline(intercept = 0,
+              slope = 1,
+              color = "red")+theme_bw(14)
+
+```
+
+agents in the simulation systematically open more boxes than the participants from whom the learning rate was estimated. the trend is especially strong when gems are not present. is more similarity between participants and the respective agent too much to expect or we need to tweak the model more?
+
+## distribution of points scored
+
+```{r warning=FALSE, echo=FALSE,  message=FALSE}
+# absolute points
+
+all_data %>% 
+  group_by(player, gempresent, points, data_source) %>% 
+  distinct() %>% 
+  ggplot() +
+  geom_histogram(aes( x = points, y = stat(y = ..count.. / nrow(all_data))), binwidth = 10, fill = "black") +
+  geom_vline(xintercept = 0, lty = 1, size = 1.5, color = 'red') + 
+  #geom_half_point(aes(x = factor(gempresent), y = points), alpha = 0.02) +
+  facet_wrap(~ data_source) +
+  theme_bw(base_size = 20) +
+  labs(y = 'proportion')
+
+```
+
+overall, agents get more points than chance, with the highest proportion of points earned being > 0. However, human participants perform better, probably because they stick more consistently to positive options (see below)
+
+## points score over time
+
+```{r echo=FALSE, message=FALSE}
+
+all_data %>%
+  group_by(player, trial) %>%
+  ggplot(aes(x = trial, y = points, color = data_source)) +
+  stat_summary() +
+  theme_minimal(base_size = 15) +
+  facet_wrap( ~ gempresent) +
+  labs(title = 'avg points per round')
+
+```
+
+the pattern is replicated in the simulation, however it seems that participants are a bit better at sticking to higher value positive options
+
+## number of gems found
+
+```{r echo=FALSE, message=FALSE}
+all_data %>% 
+  filter(gempresent == 1) %>% 
+  group_by(player, round, data_source) %>% 
+  summarise(gem_found = ifelse(1 %in% gem, 1, 0)) %>% 
+  group_by(player, data_source) %>% 
+  summarise(n_gems = sum(gem_found)) %>% 
+  ggplot() +
+  geom_histogram(aes(x =  n_gems), binwidth = 1, fill = "black")+
+  facet_wrap(~ data_source) +
+  theme_bw(base_size = 20) +
+  labs(x = 'n of environments in which a gem was found')
+
+
+```
+
+most participants find gems in half of the environments that contain them (3 out 6), and rarely more than that. agents explore more and also find no gems more often, which was a bit surprising because exploration should be random in both?
+
+## explore exploit after gem or not
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# 
+all_data %>%
+  group_by(player) %>%
+  mutate(exploit = ifelse(lead(cells) == cells, 1, 0),
+         explore = ifelse(lead(cells) != cells, 1, 0)) %>%
+  mutate(out_cat = case_when(points > 150 ~ 1,
+                             points < 0 ~ 3,
+                             TRUE ~ 2)) %>% pivot_longer(cols = c(exploit, explore), names_to = "explore_exploit") %>%
+  ggplot(aes(
+    x = out_cat,
+    y = value,
+    color = explore_exploit,
+    shape = explore_exploit
+  )) +
+  stat_summary(size = 1) +
+  stat_summary(geom = "line") +
+  scale_y_continuous(name = "Proportion") +
+  scale_x_continuous(
+    name = "Category",
+    breaks = c(1, 2, 3),
+    labels = c("gem", "no gem", "loss")
+  ) +
+  theme_minimal(20) +
+  facet_wrap( ~ data_source)
+
+
+```
+
+agents in the simulation are more volatile, especially in the non gem non loss rounds. they also explore after a gem more often than humans
+
+## performance in experiment vs. simulation as function of learning rate
+
+```{r echo=FALSE, message=FALSE}
+
+
+all_data %>% 
+  group_by(player, learning_rate, data_source) %>% 
+  summarise(tot_point = sum(points)) %>% 
+  ggplot() +
+  geom_point(aes(x = learning_rate, y = tot_point), alpha = .5) +
+  theme_bw(base_size = 20) +
+  facet_wrap(~data_source)
+
+
+```
+
+This one was harder to interpret, but it seems than in the experiment there is no strong relationship between learning rate and points earned.
