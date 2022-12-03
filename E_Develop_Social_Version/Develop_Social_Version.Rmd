@@ -8,7 +8,7 @@ output: html_document
 
 ```{r}
 
-pacman::p_load(tidyverse, rjson, data.table, gghalves, plotly, gganimate, av, colorspace)
+pacman::p_load(tidyverse, rjson, data.table, gghalves, plotly, gganimate, av, colorspace, here)
 `%!in%` = Negate(`%in%`)
 
 ```
@@ -28,7 +28,7 @@ n of point searned vs. expected points (better than chance)
 
 
 
-explore_data <- read_csv(file = "..data/data_coord.csv")
+explore_data <- read_csv(file = paste0(here(), "/data/data_coord.csv"))
  
 explore_data <- explore_data %>% 
   filter(player != 188) %>% 
@@ -125,7 +125,7 @@ gems_coords <- explore_data %>%
 
 
 one_sequence <- late_gems %>%
-  filter(player == 42 & round == 2) %>%
+  filter(unique_rounds == 4) %>%
   ggplot() +
   #geom_bin_2d(aes(x = x, y = y, fill = gem), binwidth = c(1, 1)) +
     geom_rect(

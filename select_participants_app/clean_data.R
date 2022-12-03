@@ -4,12 +4,11 @@ pacman::p_load(tidyverse, rjson, data.table, gghalves, plotly, gganimate, av, co
 `%!in%` = Negate(`%in%`)
 
 explore_data <- explore_data %>% 
-  filter(player != 188) %>% 
+  filter(player != 188 & player > 50) %>% 
   group_by(player, round) %>% 
   mutate(trial = 1:25,
-         unique_rounds = cur_group_id())
-
-
+         unique_rounds = cur_group_id()) %>% 
+  mutate(round_id = as.numeric(unique_rounds))
 
 
 points_when_gem_found <- explore_data %>% 
@@ -19,7 +18,10 @@ points_when_gem_found <- explore_data %>%
   distinct() %>% 
   ungroup() %>% 
   group_by(env_number) %>% 
-  mutate(performance_group = ntile(tot_points, 3))
+  mutate(performance_group = ntile(tot_points, 3)) %>% 
+  mutate(performance_group_f = ifelse(performance_group == 1, "low",
+                                      ifelse(performance_group == 2, "medium", 
+                                             "high")))
 
 
 avg_rounds <- points_when_gem_found %>% 
@@ -42,8 +44,3 @@ how_may_late_gems <- late_gems%>%
   group_by(env_number) %>% 
   summarise(sum = n())
 
-gems_coords <- explore_data %>% 
-  filter( points >160) %>% 
-  select(x , y, env_number, round) %>% 
-  filter(player == 42 & round == 2) %>%
-  distinct()
