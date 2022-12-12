@@ -2,178 +2,290 @@ library(shiny)
 library(tidyverse)
 library(dplyr)
 library(here)
+library(reactlog)
+library(shinyWidgets)
+library(DT)
 
-explore_data <-
-  readRDS(paste0(here(),"/select_participants_app/explore_data.RDS"))
-
-explore_data <- explore_data %>%
-  filter(player != 188 & player > 50) %>%
-  group_by(player, round) %>%
-  mutate(trial = 1:25,
-         unique_rounds = cur_group_id()) %>%
-  mutate(round_id = as.numeric(unique_rounds))
+### Load ----------------------------------------------------------------------
+# Load dataset and functions
 
 
-source("../select_participants_app/clean_data.R")
+pacman::p_load(tidyverse,
+               rjson,
+               data.table,
+               gghalves,
+               plotly,
+               gganimate,
+               av,
+               colorspace)
+`%!in%` = Negate(`%in%`)
 
 
-players <- unique(late_gems$player)
+data_1 <-  as_tibble(read.csv('../Data/data_coord.csv'))
+#readRDS(paste0(here(),"/select_participants_app/explore_data.RDS"))
 
-# Define UI ----
+
+
+make_plot <- function(dat, gem_coords) {
+ 
+  data_round <- dat
+  gem_coords_round <- gem_coords
+  
+  ggplot() +
+    geom_rect(
+      data = gem_coords_round,
+      size = 1,
+      colour = "red",
+      fill = "white",
+      
+      aes(
+        xmin = x - 1,
+        xmax = x  ,
+        ymin = y - 1,
+        ymax = y
+      )
+    ) +
+    geom_rect(
+      data = data_round,
+      aes(
+        xmin = x - 1,
+        xmax = x  ,
+        ymin = y - 1,
+        ymax = y,
+        fill = points,
+        frame = trial
+      ),
+      color = "black",
+      size = .2
+    ) +
+    scale_x_continuous(limits = c(-1, 7), breaks = -1:7) +
+    scale_y_continuous(limits = c(-1, 7), breaks = -1:7) +
+    scale_fill_continuous_divergingx(palette = "RdBu", mid = 0) 
+  
+  
+  
+}
+
+# User Interface
 ui <- fluidPage(
   titlePanel("visualize participants decisions"),
   
   sidebarLayout(
     sidebarPanel(
-      helpText("values to find a player"),
+      helpText("parameters to find a good run"),
       
-      selectInput("env_number", label = "choose an environment", c(1:6)),
       
-      selectInput("performance", label = "what level of performance (1 = low, 3 = high)", choices = c(1:3)),
+      pickerInput(
+        inputId = 'filter_env',
+        'Select environment(s)',
+        choices = NULL,
+        multiple = TRUE,
+        #width = "1250px",
+        options = list(`actions-box` = TRUE),
+        selected = NULL
+      )
+      ,
+      
+      
+      pickerInput(
+        inputId = 'filter_performance',
+        'Select level of performance',
+        choices = NULL,
+        multiple = TRUE,
+        #width = "1250px",
+        options = list(`actions-box` = TRUE),
+        selected = NULL
+      )
+      ,
+      
       
       sliderInput(
-        "gem_when",
-        label = "Gem found before round: ",
+        inputId = 'filter_gem',
+        'Gem found after round:',
         min = 1,
         max = 25,
         value = 10
       ),
-
-        uiOutput("unique_round")
-    )
-    ,
-      mainPanel(plotOutput("plot"),
-              textOutput("min_max"))
+      
+      # selectInput(inputId = 'filter_gem', 'Gem found before round:',
+      #               choices = NULL,
+      #               #multiple = TRUE,
+      #               #width = "1250px"
+      #               #options = list("max-options" = 4, `actions-box` = TRUE)
+      #             )
+      
+      
+      
+      selectInput(
+        inputId = 'filter_round',
+        'select run to visualize:',
+        choices = NULL,
+      )
+    ),
+    
+    mainPanel(plotlyOutput("plot"))
+    
   )
+  
 )
 
+### Server Logic---------------------------------------------------------------
 
-# Define server logic ----
+
 server <- function(input, output, session) {
   
-  #data <- reactiveValues(a = NULL)
+
+# First level: complete dataset
+  
+  filterPpts <- reactive({
+    filterPpt <- data_1
+    return(filterPpt)
+  })
   
   
-  output$unique_round <- renderUI({
-    ### is there a player?
+  # first filter: which environments we want
+  
+  filterEnv <- reactive({
+    unique(filterPpts()$env_number)
+  })
+  
+  # dynamically update filter options when input is changed
+  observeEvent(filterEnv(), {
+    updatePickerInput(session,
+                      "filter_env",
+                      choices = filterEnv(),
+                      selected = sort(filterEnv()))
+  })
+  
+  # Subset dynamically the previous reactive filter (evironment number)
+  datasub1 <- reactive({
+    data_1[data_1$env_number %in% input$filter_env, ]
+  })
+  
+  # second filter: how many points were scored
+  filterPerformance <- reactive({
+    unique(as.character(datasub1()$performance_group_f))
+  })
+  
+  # dynamically update filter options when input is changed
+  observeEvent(filterPerformance(), {
+    updatePickerInput(
+      session,
+      "filter_performance",
+      choices = sort(filterPerformance()),
+      selected = sort(filterPerformance())
+    )
+  })
+  
+  # Subset dynamically the previous reactive filter (performance)
+  datasub2 <- reactive({
+    # browser()
+    data_1[data_1$performance_group_f %in% input$filter_performance, ]
+  })
+  
+  # third filter: how late was a gem found
+  filterGem <- reactive({
+    datasub2() %>%
+      ungroup %>%
+      filter(!is.na(round_gem_found)) %>%
+      select(round_gem_found) %>%
+      distinct() %>%
+      pull(round_gem_found)
     
-    # select based on environment
-    environment_selected <- points_when_gem_found %>%
-      filter(env_number == input$env_number)
-    
-    # select based on performance
-    performance_selected <- environment_selected %>%
-      filter(performance_group == input$performance)
-    
-    # select based on when gem is found
-    
-    early_gems_idx <-
-      which(explore_data$gem & explore_data$trial <= input$gem_when)
-    round_to_exclude <-
-      unique(explore_data$unique_rounds[early_gems_idx])
-    
-    gem_when_selected <- performance_selected %>%
-      filter(unique_rounds %!in% round_to_exclude)
-    
-   selectInput(
-      inputId = "selected_round",
-      label = "Choose a round to examine",
-      choices = gem_when_selected$unique_rounds
-      
+  })
+  
+  # dynamically update filter options when input is changed
+  observeEvent(filterGem(), {
+    updateSliderInput(
+      session,
+      "filter_gem",
+      value = min(filterGem()),
+      min = 1,
+      max = max(filterGem())
+    )
+  })
+  
+  # Subset dynamically according to all thre filters above, to output which
+  # rounds satisfy the conditions
+  
+  datasub3 <- reactive({
+    # browser()
+    Filter1 <- data_1
+    filter(
+      Filter1,
+      Filter1$env_number %in% input$filter_env,
+      Filter1$performance_group_f %in% input$filter_performance,
+      Filter1$round_gem_found >= input$filter_gem
     )
   })
   
   
-plotData <- eventReactive(  input$selected_round, {   
-    # Make sure that input$slider2 is ready to be used
-       # Will be executed as soon as above requirement is fulfilled
-      explore_data %>%
-      dplyr::filter(unique_rounds == as.numeric(input$selected_round))
-})
-    
-
+  # reactive dataset: show the rounds that satisfy the filters
   
-  
-    # output$plot <- renderPlot({
-    #   req(input$selected_round)
-    #   
-    #   # ggplot() +
-    #   #   geom_histogram(data = data$a, aes(x = points ))
-    #   
-    #     ### make this into a function!
-    #   one_sequence <-
-    #     ggplot(data$a) +
-    #       #geom_bin_2d(aes(x = x, y = y, fill = gem), binwidth = c(1, 1)) +
-    #       # geom_rect(
-    #       #   data = gemCoords(),
-    #       #   size = 1,
-    #       #   colour = "red",
-    #       #   fill = "white",
-    #       # 
-    #       #   aes(
-    #       #     xmin = x - 1,
-    #       #     xmax = x  ,
-    #       #     ymin = y - 1,
-    #       #     ymax = y
-    #       #   )
-    #       # ) +
-    #       geom_rect(
-    #         aes(
-    #           xmin = x - 1,
-    #           xmax = x  ,
-    #           ymin = y - 1,
-    #           ymax = y,
-    #           fill = points,
-    #           frame = trial
-    #         ),
-    #         color = "black",
-    #         size = .2
-    #       ) +
-    # 
-    #       scale_x_continuous(limits = c(-1, 7), breaks = -1:7) +
-    #       scale_y_continuous(limits = c(-1, 7), breaks = -1:7) +
-    #       scale_fill_continuous_divergingx(palette = "RdBu", mid = 0)
-    # 
-    #     ggplotly(one_sequence) %>%
-    #       animation_opts(transition = 0)
-    #     
-    # })  
+  filterRound <- reactive({
+    datasub3() %>%
+      ungroup %>%
+      select(unique_rounds) %>%
+      distinct() %>%
+      pull(unique_rounds)
     
-    
-    
-    
-    
-  
-  # gemCoords <- eventReactive(input$selected_round, {
-  #     
-  #     # Make sure that input$slider2 is ready to be used
-  #     req(input$selected_round)
-  #     
-  #     explore_data %>% 
-  #       filter( points >160) %>%
-  #       select(x , y, env_number, round, unique_rounds, trial) %>%
-  #       dplyr::filter(unique_rounds == as.numeric(input$selected_round)) %>% 
-  #       distinct()
-  #     
-  #   })
-  # 
-
-  output$min_max <- renderText({
-
-    req(input$selected_round)
-a <- plotData()
-    paste(a$points)
-
   })
-
-  # 
-  # 
- 
-
-
-} 
+  
+  # update the input picker with the rounds that work
+  observeEvent(filterRound(), {
+    updateSelectInput(session,
+                      "filter_round",
+                      choices = sort(filterRound()))
+  })
   
 
+  # find coordinates of the gems for current environment
+  gemCoords <- eventReactive(input$filter_round, {
+    
+    # which environment number is the selected round?
+    current_env <- data_1 %>%
+      filter(unique_rounds == input$filter_round) %>%
+      select(env_number) %>%
+      distinct() %>%
+      pull()
+    
+    # find coordinates of gems
+    data_1 %>%
+      filter(points > 160) %>%
+      select(x , y, env_number) %>%
+      dplyr::filter(env_number == current_env) %>%
+      distinct()
+    
+  })
+  
+  # Make the plot and save into output$plot
+  
+  output$plot <- renderPlot({
+    # require that a round is selected
+    req(input$filter_round)
+    
+    # final subset of the data according to all the filters
+    data_plot <- data_1
+    data_plot <- filter(data_plot,
+                        data_plot$unique_rounds == input$filter_round)
+    
+    # make plot with function
+    one_sequence <- make_plot(data_plot, gemCoords())
+    
+    # make animation
+    ggplotly(one_sequence) %>%
+      layout(title = list(text = paste("Round nr", data_plot$unique_rounds[1],
+                          "<br>",
+                          "<sup>",
+                          "environment nr:", data_plot$env_number[1],
+                          "performance = ", data_plot$performance_group_f[1],
+                          "gem found in trial", data_plot$round_gem_found[1])))  %>% 
+      animation_opts(transition = 0)
+    
+  })
+}
 
-# Run the app ----
-shinyApp(ui = ui, server = server)
+### RUN APP --------------------------------------------------------------------
+
+
+shinyApp(ui, server)

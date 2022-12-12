@@ -60,12 +60,18 @@ for (n in 1:length(unique(data$playerNr))){
     data_long <- rbind(data_long, playerMat)
 }
 
+
+unique(data_long$tot_points)
+
 # save raw decisions dataset
 write.csv(data, 'D_CleanExperimentalData/raw_data/raw_data_decisions.csv', row.names = FALSE)
 
 
 data_long <- data_long %>% 
-  mutate(gem = ifelse(points > 200, 1, 0))
+  mutate(gem = ifelse(points > 200, 1, 0)) %>% 
+  group_by(player, round) %>%
+  mutate(trial = 1:25,
+         unique_rounds = cur_group_id()) 
 
 
 # save clean dataset

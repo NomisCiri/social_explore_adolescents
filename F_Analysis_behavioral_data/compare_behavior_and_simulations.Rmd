@@ -21,7 +21,7 @@ pacman::p_load(tidyverse, rjson, data.table, gghalves)
 
 ```{r load data, echo=FALSE, warning=FALSE, message=FALSE }
 
-explore_data <- read_csv(file = "../data/data_coord.csv")
+explore_data <- read_csv(file = "data/data_coord.csv")
  
 explore_data <- explore_data %>% 
   filter(player != 188)
@@ -34,7 +34,7 @@ for (n in 1:length(unique(explore_data$player))) {
   
   # all gems
   
-  one_player <-  readRDS(file = paste0("../A_GeneratedFiles/simulations/all_envs/simulated_choices", n))
+  one_player <-  readRDS(file = paste0("A_GeneratedFiles/simulations/all_envs/simulated_choices", n))
   
   one_player <- one_player%>% 
     mutate(gem_label = ifelse(env_type == 1, "with gem", "no gem"))
@@ -235,6 +235,15 @@ This one was harder to interpret, but it seems than in the experiment there is n
 # which gems were open
 
 ```{r}
+
+
+gem_coords <- 
+explore_data %>% 
+        filter(points >160) %>%
+        select(x , y, env_number, round, unique_rounds, trial) %>%
+        dplyr::filter(unique_rounds == as.numeric(input$selected_round)) %>%
+        distinct()
+
 
 all_data %>%
   filter(gempresent == 1) %>%
