@@ -96,14 +96,13 @@ avg_rounds <- points_when_gem_found %>%
 
 avg_rounds <- avg_rounds$unique_rounds
 
-early_gems_idx <- which(explore_data$gem & explore_data$trial <= 5)
+early_gems_idx <- which(explore_data$gem & explore_data$trial <= 10)
 round_to_exclude <- unique(explore_data$unique_rounds[early_gems_idx])
 
 
 late_gems <- explore_data %>% 
   filter(unique_rounds %in% avg_rounds)%>% 
   filter(unique_rounds %!in% round_to_exclude)
-
 
 how_may_late_gems <- late_gems%>% 
   group_by(env_number) %>% 
@@ -120,12 +119,12 @@ make this into shiny app
 gems_coords <- explore_data %>% 
   filter( points >160) %>% 
   select(x , y, env_number, round) %>% 
-  filter(player == 42 & round == 2) %>%
+  filter(player == 81 & round == 9) %>%
   distinct()
 
 
 one_sequence <- late_gems %>%
-  filter(unique_rounds == 4) %>%
+  filter(unique_rounds == 369) %>%
   ggplot() +
   #geom_bin_2d(aes(x = x, y = y, fill = gem), binwidth = c(1, 1)) +
     geom_rect(
