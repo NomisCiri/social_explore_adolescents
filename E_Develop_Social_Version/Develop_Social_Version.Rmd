@@ -7,10 +7,8 @@ output: html_document
 
 
 ```{r}
-
 pacman::p_load(tidyverse, rjson, data.table, gghalves, plotly, gganimate, av, colorspace, here)
 `%!in%` = Negate(`%in%`)
-
 ```
 
 
@@ -25,8 +23,6 @@ pacman::p_load(tidyverse, rjson, data.table, gghalves, plotly, gganimate, av, co
 n of point searned vs. expected points (better than chance)
 
 ```{r load data, echo=FALSE, warning=FALSE, message=FALSE }
-
-
 
 explore_data <- read_csv(file = paste0(here(), "/data/data_coord.csv"))
  
@@ -75,7 +71,7 @@ points_when_gem_found %>%
   #geom_vline(aes(xintercept = mean(tot_points)), lty = 2, size = 1, color = 'black') + 
   #geom_half_point(aes(x = factor(gempresent), y = points), alpha = 0.02) +
   #theme_bw(base_size = 20) +
-  facet_wrap(~env_number)
+  facet_wrap(~gempresent+gem_found)
   guides(fill = "none")
 
 
@@ -115,52 +111,3 @@ how_may_late_gems <- late_gems%>%
 make this into shiny app
 
 ```{r}
-
-gems_coords <- explore_data %>% 
-  filter( points >160) %>% 
-  select(x , y, env_number, round) %>% 
-  filter(player == 81 & round == 9) %>%
-  distinct()
-
-
-one_sequence <- late_gems %>%
-  filter(unique_rounds == 369) %>%
-  ggplot() +
-  #geom_bin_2d(aes(x = x, y = y, fill = gem), binwidth = c(1, 1)) +
-    geom_rect(
-    data = gems_coords,
-    size = 1,
-    colour = "red",
-    fill = "white",
-  
-    aes(
-      xmin = x - 1,
-      xmax = x  ,
-      ymin = y - 1,
-      ymax = y
-    )
-  ) +
-    geom_rect(aes(
-    xmin = x - 1,
-    xmax = x  ,
-    ymin = y - 1,
-    ymax = y,
-    fill = points,
-    frame = trial
-  ),
-  color = "black",
-  size = .2) +
-  
-  scale_x_continuous(limits = c(-1, 7), breaks = -1:7) +
-  scale_y_continuous(limits = c(-1, 7), breaks = -1:7) +
-  scale_fill_continuous_divergingx(palette = "RdBu", mid = 0)
-
-  ggplotly(one_sequence) %>% 
-          animation_opts( transition = 0)
-
-
-    ```
-
-
-
-  

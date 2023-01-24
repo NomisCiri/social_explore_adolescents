@@ -1,0 +1,14 @@
+name: select_participants_app
+title: select_participants_app
+username:
+account: andgrad
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 7875183
+bundleId: 6627703
+url: https://andgrad.shinyapps.io/select_participants_app/
+when: 1670861377.87574
+lastSyncTime: 1670861377.87575
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: extra/backup_ver.R|extra/clean_data.R|extra/find_player.R|extra/try_app.R
