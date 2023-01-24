@@ -21,7 +21,8 @@ pacman::p_load(tidyverse,
 `%!in%` = Negate(`%in%`)
 
 
-data_1 <-  as_tibble(read.csv('../Data/data_coord.csv'))
+data_1 <-  as_tibble(read.csv('data_coord.csv')) %>% 
+  filter(player > 10)
 #readRDS(paste0(here(),"/select_participants_app/explore_data.RDS"))
 
 
@@ -60,7 +61,8 @@ make_plot <- function(dat, gem_coords) {
     ) +
     scale_x_continuous(limits = c(-1, 7), breaks = -1:7) +
     scale_y_continuous(limits = c(-1, 7), breaks = -1:7) +
-    scale_fill_continuous_divergingx(palette = "RdBu", mid = 0) 
+    scale_fill_continuous_divergingx(palette = "RdBu", mid = 0) +
+    labs(title = "")
   
   
   
@@ -72,7 +74,14 @@ ui <- fluidPage(
   
   sidebarLayout(
     sidebarPanel(
-      helpText("parameters to find a good run"),
+      helpText(" You can use the filters below to choose a round to vizualise.
+               In each round participants have 25 clicks to find a gem or at least earn the maximum amount of points. 
+               By clicking play, you can visualize how participants clicked through the grid.
+               The moving box with the black frame represent the cliked tile for that specific round, 
+               and the color represents the amount of points that they got (blue means positive, blue means negative,
+               darker shades indicate a higher absolute number of points).
+               The white boxes with a red frame represent the gems present in that specific environment.
+                            "),
       
       
       pickerInput(
@@ -123,7 +132,8 @@ ui <- fluidPage(
       )
     ),
     
-    mainPanel(plotlyOutput("plot"))
+    mainPanel(plotlyOutput("plot", width =  800,
+                           height = 600))
     
   )
   
@@ -191,9 +201,9 @@ server <- function(input, output, session) {
       select(round_gem_found) %>%
       distinct() %>%
       pull(round_gem_found)
-    
+
   })
-  
+  # 
   # dynamically update filter options when input is changed
   observeEvent(filterGem(), {
     updateSliderInput(
@@ -204,7 +214,7 @@ server <- function(input, output, session) {
       max = max(filterGem())
     )
   })
-  
+  # 
   # Subset dynamically according to all thre filters above, to output which
   # rounds satisfy the conditions
   
@@ -260,7 +270,7 @@ server <- function(input, output, session) {
   
   # Make the plot and save into output$plot
   
-  output$plot <- renderPlot({
+  output$plot <- renderPlotly({
     # require that a round is selected
     req(input$filter_round)
     

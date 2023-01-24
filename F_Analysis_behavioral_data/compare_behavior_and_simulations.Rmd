@@ -14,14 +14,13 @@ output: html_document
 
 ```{r echo=FALSE, warning=FALSE}
 
-pacman::p_load(tidyverse, rjson, data.table, gghalves)
-
+pacman::p_load(tidyverse, rjson, data.table, gghalves, here)
 
 ```
 
 ```{r load data, echo=FALSE, warning=FALSE, message=FALSE }
 
-explore_data <- read_csv(file = "data/data_coord.csv")
+explore_data <- read_csv(file = paste0(here(), "/data/data_coord.csv"))
  
 explore_data <- explore_data %>% 
   filter(player != 188)
