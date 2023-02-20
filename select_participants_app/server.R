@@ -181,7 +181,7 @@ server <- function(input, output, session) {
       distinct() %>%
       pull()
     
-    # gem_coords <- NA
+    gem_coords <- NA
     
     if (input$gem_present == 'yes'){
       
@@ -209,6 +209,7 @@ server <- function(input, output, session) {
                         data_plot$unique_rounds == input$filter_round)
     
     gem <- input$gem_present
+    
     # make plot with function
     one_sequence <- make_plot(data_plot, gem, gemCoords())
     
