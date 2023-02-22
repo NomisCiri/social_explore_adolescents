@@ -1,0 +1,113 @@
+---
+title: "Explore_data_for_social information"
+author: "Andrea"
+date: "2022-11-03"
+output: html_document
+---
+
+
+```{r}
+pacman::p_load(tidyverse, rjson, data.table, gghalves, plotly, gganimate, av, colorspace, here)
+`%!in%` = Negate(`%in%`)
+```
+
+
+# Identify participants that can provide different types of social information
+
+## relevant variables
+
+- n of switches
+- n of consecutive clicks
+- n of gems founds
+
+n of point searned vs. expected points (better than chance)
+
+```{r load data, echo=FALSE, warning=FALSE, message=FALSE }
+
+explore_data <- read_csv(file = paste0(here(), "/data/data_coord.csv"))
+ 
+explore_data <- explore_data %>% 
+  filter(player != 188) %>% 
+  group_by(player, round) %>% 
+    mutate(trial = 1:25,
+           unique_rounds = cur_group_id())
+  
+  
+#nogems <- subset(explore_data, gempresent == 0)
+
+
+
+```
+
+
+# finding social info:
+
+criteria:
+- points are representative to average
+- gem not found before round 10
+- exploration is conistent
+
+
+
+## find average points when a gem is found
+```{r}
+
+points_when_gem_found <- explore_data %>% 
+  group_by(player, gempresent, tot_points, env_number) %>% 
+  filter(gempresent == 1 & sum(gem) > 1) %>% 
+  select(player, gempresent, tot_points, unique_rounds, env_number) %>% 
+  distinct() %>% 
+  ungroup() %>% 
+  group_by(env_number) %>% 
+  mutate(performance_group = ntile(tot_points, 3))
+
+
+# distribution of point when gem is found
+
+points_when_gem_found %>% 
+  ggplot() +
+  geom_histogram(aes( x = tot_points, fill = factor(performance_group)), binwidth = 40)+
+ #, color = "white") +
+  #geom_vline(aes(xintercept = mean(tot_points)), lty = 2, size = 1, color = 'black') + 
+  #geom_half_point(aes(x = factor(gempresent), y = points), alpha = 0.02) +
+  #theme_bw(base_size = 20) +
+  facet_wrap(~gempresent+gem_found)
+  guides(fill = "none")
+
+
+
+```
+
+## timing
+
+now filter for gem not found before round 10
+
+```{r}
+# list of players 
+
+avg_rounds <- points_when_gem_found %>% 
+  filter(performance_group == 2 | performance_group == 1) %>% 
+  ungroup() %>% 
+  select(unique_rounds)
+
+avg_rounds <- avg_rounds$unique_rounds
+
+early_gems_idx <- which(explore_data$gem & explore_data$trial <= 10)
+round_to_exclude <- unique(explore_data$unique_rounds[early_gems_idx])
+
+
+late_gems <- explore_data %>% 
+  filter(unique_rounds %in% avg_rounds)%>% 
+  filter(unique_rounds %!in% round_to_exclude)
+
+how_may_late_gems <- late_gems%>% 
+  group_by(env_number) %>% 
+  summarise(sum = n())
+
+```
+
+# visualize social info
+
+make this into shiny app
+
+```{r}
