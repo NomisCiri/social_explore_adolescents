@@ -2,8 +2,7 @@
 
 pacman::p_load(tidyverse, rjson, here, jsonlite)
 
-# load data
-
+# load data from the experiment
 explore_data <- read_csv(file = paste0(here(), "/data/data_coord.csv"))
 
 explore_data <- explore_data %>% 
@@ -14,38 +13,44 @@ explore_data <- explore_data %>%
 
 # load text files with info on which rounds we want to use
 
+# this is now just for gem present, high performance @phil, extend this to the other conditions
 gem_yes_high <- read.table('E_Develop_Social_Version/rounds_social_info/gem_present_found_high.txt', header = TRUE ) 
 
+# extracting the 6th round as an example
 this_round  <- as.numeric(unlist(strsplit(gem_yes_high$rounds, ",")))[6]
 
 
-# subset rounds in which social info is nice
-
 ### @andrea: and env number
 
+# extract the choices in that round
 social_info <- explore_data %>% 
   filter(unique_rounds == this_round) %>% 
   ungroup() %>% 
   select(cells) %>% 
   pull
 
+# print to check we have a vector with 25 decisions
 social_info
 
-# format according to Lioness functions
+# format according to Lioness functions:
+# we need 64 [0,0,0,0] arrays, where each element is a corner of a tile where social info is displayed
 empty_cells <- rep(list(c(0,0,0,0)), 64)
+
+# then we repeat 25 times (for 25 clicks)
 social_info_mat <- rep(list(empty_cells), 25)
 
-
+# now we fill the empty matrix with social info from the vector
 for (n in 1:length(social_info)) {
   social_info_mat[[n]][[social_info[n]]][1] <- 1
 }
 
+
+### from here on, some ugly code to format everything into a json file so it can be read by the experiment
+# eventually (andrea/simon/phil) find a way to make this prettier
 json_trial <- list()
 
 for (n in 1:length(social_info)) {
-  
 json_trial[n] <- gem_json1<-social_info_mat[[n]]%>%toJSON(dataframe = 'columns')
-
   }
 
 #gems
@@ -85,11 +90,7 @@ gem_json <- cat('{"1":', unlist(json_trial[1]),
 # write(social_infoJSON, 'E_Develop_Social_Version/rounds_social_info/social_info_gem_yes_found_high.json')
 # expor(social_infoJSON, 'E_Develop_Social_Version/rounds_social_info/social_info_gem_yes_found_high.json')
 
-js
 
 write.table(social_info_mat, 'E_Develop_Social_Version/rounds_social_info/social_info_gem_yes_found_high.txt')
-
-
-
 
 # save output according to each treatment 
