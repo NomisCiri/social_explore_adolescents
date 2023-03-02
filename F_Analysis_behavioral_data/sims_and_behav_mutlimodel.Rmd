@@ -193,18 +193,21 @@ agents in the simulation systematically open more boxes than the participants fr
 
 ## distribution of points scored
 
-```{r warning=FALSE, echo=FALSE,  message=FALSE}
+```{r warning=FALSE, echo=FALSE,  message=FALSE, fig.width=8,fig.height=8}
 # absolute points
+datasources=unique(all_data$data_source)
 
 all_data %>% 
   group_by(player, gempresent, points, data_source) %>% 
   distinct() %>% 
-  ggplot() +
+  ggplot(aes(color=data_source)) +
   geom_histogram(aes( x = points, y = stat(y = ..count.. / nrow(all_data))), binwidth = 10, fill = "black") +
   geom_vline(xintercept = 0, lty = 1, size = 1.5, color = 'red') + 
   #geom_half_point(aes(x = factor(gempresent), y = points), alpha = 0.02) +
+  scale_color_manual(breaks=datasources,values=c("black","black","black","magenta","deepskyblue"))+
   facet_wrap(~ data_source) +
   theme_bw(base_size = 20) +
+  guides(color=F)+
   labs(y = 'proportion')
 
 ```
@@ -217,10 +220,12 @@ overall, agents get more points than chance, with the highest proportion of poin
 
 all_data %>%
   group_by(player, trial) %>%
-  ggplot(aes(x = trial, y = points, color = data_source)) +
+  ggplot(aes(x = trial, y = points, color = data_source,alpha = data_source)) +
   stat_summary() +
   theme_minimal(base_size = 15) +
   facet_wrap( ~ gempresent) +
+  scale_color_manual(breaks=datasources,values=c("black","black","black","magenta","deepskyblue"))+
+  scale_alpha_identity(breaks=datasources,values=c(0.1,0.1,0.1,1,1))+
   labs(title = 'avg points per round')
 
 ```
