@@ -105,17 +105,17 @@ all_data <- bind_rows(simd_data, explore_data)
 
 ## n of boxes open
 
-```{r warning=FALSE, echo=FALSE,  message=FALSE}
+```{r warning=FALSE, echo=FALSE,  message=FALSE,fig.height=8}
 
-all_data %>% 
+all_data %>% filter(data_source == "experiment" | data_source=="withing_round_norm") %>%
   group_by(round, player, gempresent, data_source) %>% 
   summarise(boxes_opened = n_distinct(cells)) %>% 
   ggplot(aes(x = factor(gempresent), y = boxes_opened)) +
-  geom_boxplot(aes(fill = factor(gempresent))) +
+  geom_boxplot(aes(fill = factor(data_source))) +
   labs(x = "gem_present", y = 'n of different boxes') +
-  theme_bw(base_size = 20) +
-  facet_wrap(~ data_source) +
-  guides(fill = FALSE)
+  scale_fill_manual(breaks=datasources,values=c("black","black","black","magenta","deepskyblue"),labels=c("","","","Normalized\nKalman Filter","Human\nParticipants"))+
+  theme_bw(base_size = 20)
+  #guides(fill = FALSE)
 
 ```
 
@@ -182,7 +182,9 @@ all_data %>%
   summarise(mean_boxes_opened = mean(boxes_opened))%>%
   pivot_wider(names_from = data_source, values_from = mean_boxes_opened)%>%
   ggplot(aes(x = experiment, y =withing_round_norm,color=as.factor(gempresent))) +
-  geom_point(alpha = .8) +
+  geom_point(alpha = .1) +
+  stat_summary()+
+  stat_smooth(method="lm")+
   geom_abline(intercept = 0,
               slope = 1,
               color = "red")+theme_bw(14)
@@ -225,7 +227,7 @@ all_data %>%
   theme_minimal(base_size = 15) +
   facet_wrap( ~ gempresent) +
   scale_color_manual(breaks=datasources,values=c("black","black","black","magenta","deepskyblue"))+
-  scale_alpha_identity(breaks=datasources,values=c(0.1,0.1,0.1,1,1))+
+  scale_alpha_manual(breaks=datasources,values=c(0.1,0.1,0.1,1,1))+
   labs(title = 'avg points per round')
 
 ```
@@ -266,12 +268,14 @@ all_data %>%
   ggplot(aes(
     x = out_cat,
     y = value,
-    color = explore_exploit,
-    shape = explore_exploit
+    linetype = explore_exploit,
+    shape = explore_exploit,
+    color=data_source
   )) +
   stat_summary(size = 1) +
   stat_summary(geom = "line") +
   scale_y_continuous(name = "Proportion") +
+  scale_color_manual(breaks=datasources,values=c("black","black","black","magenta","deepskyblue"))+
   scale_x_continuous(
     name = "Category",
     breaks = c(1, 2, 3),
