@@ -13,7 +13,7 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-pacman::p_load(tidyverse,cowplot,matrixcalc,gganimate,ggformula,pracma,doParallel,viridis)
+pacman::p_load(tidyverse,cowplot,matrixcalc,gganimate,ggformula,pracma,doParallel,viridis,adespatial)
 ```
 
 # Project
@@ -504,6 +504,28 @@ cat('{"1":', no_gem_json1,
     sep = ' ',
     file = "environments_no_gem_var25max.json"
 )
+ah<-matrix(1:64,nrow = 8,ncol = 8)#%>%as.array()
+rotate <- function(x) t(apply(x, 2, rev))
+rotate(ah)
+
+order=ah%>%rotate()%>%as.numeric()
+no_gem_envs[[1]][order,]
+
+no_rot<-ggplot(no_gem_envs[[1]],aes(x=x,y=y,fill=Mean))+geom_tile()+
+  scale_fill_continuous_divergingx(palette = 'Spectral', mid = 0)
+
+no_gem_envs[[2]]$rot_x=no_gem_envs[[2]]$x[order]
+no_gem_envs[[2]]$rot_y=no_gem_envs[[2]]$y[order]
+
+no_rot<-ggplot(no_gem_envs[[2]],aes(x=x,y=y,fill=Mean))+geom_tile()+
+  scale_fill_continuous_divergingx(palette = 'Spectral', mid = 0)
+
+rot<-ggplot(no_gem_envs[[2]],aes(x=rot_x,y=rot_y,fill=Mean))+geom_tile()+
+  scale_fill_continuous_divergingx(palette = 'Spectral', mid = 0)
+
+no_rot
+rot
+#rotation(ah,angle=90)
 ```
 
 
