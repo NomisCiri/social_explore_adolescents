@@ -108,7 +108,7 @@ socialB=seq(from=0,to=2,length.out=20)
 
 #otherLoc=0
 ntrialss=200
-loadfromdisk=T
+loadfromdisk=F
 if (loadfromdisk==F){
   registerDoParallel(detectCores()-5)
   
@@ -153,13 +153,11 @@ if (loadfromdisk==F){
     }
     explorations
   }
-  saveRDS(file="../A_GeneratedFiles/Plot_dat_social_All_04_4_22.rds",object=Plot_dat_social_All)
+  saveRDS(file="../A_GeneratedFiles/simulations/Plot_dat_social_All_04_26_23",object=Plot_dat_social_All)
   # stopCluster(cl)
   
 } else{
-  Plot_dat_social_All<-readRDS(file="../A_GeneratedFiles/Plot_dat_social_All.rds")
-  Plot_dat_social_AllNew<-readRDS(file="../A_GeneratedFiles/Plot_dat_social_All_04_4_22.rds")
-  
+  Plot_dat_social_AllNew<-readRDS(file="../A_GeneratedFiles/Plot_dat_social_All_04_26_23")
 }
 ```
 
@@ -220,7 +218,6 @@ Here i replace some reward distributions with much higher ones.
 I generate 11 envirionments that contain increasing number of high reward distributions options, from 0 to 10.
 
 ```{r}
-loadfromdisk=F
 envirionmentMeanAdol=seq(-50,50,length.out=8)
 envirionmentVarianceAdol=rep(c(2,10,15,25),length.out=8)
 dat_social=expand.grid(x1=1:8,x2=1:8)
@@ -247,24 +244,6 @@ for (i in 1:6){
   no_gem_envs[[i]]=EnvirionemntAdol%>%mutate(env_idx=i)%>%mutate(x=dat_social$x1,y=dat_social$x2)
 }# to be nested for SI - no SI
 
-
-library(colorspace)
-environments_with_gems<-gem_envs%>%do.call(rbind,.)%>%dplyr::rowwise()%>%mutate(value=rnorm(1,mean = Mean,sd=Variance))%>%
-  ggplot(aes(x=x,y=y,fill=value))+geom_tile()+
-  scale_fill_continuous_divergingx(palette = 'Spectral', mid = 0)+
-  ggtitle("Environ with Gems")+
-  facet_wrap(~env_idx,scales="free")+
-  theme_minimal(14)+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),aspect.ratio = 1)
-ggsave(environments_with_gems,filename = "environments_with_gem.png")
-
-environments_without_gems<-no_gem_envs%>%do.call(rbind,.)%>%dplyr::rowwise()%>%mutate(value=rnorm(1,mean = Mean,sd=Variance))%>%
-  ggplot(aes(x=x,y=y,fill=value))+geom_tile()+
-  scale_fill_continuous_divergingx(palette = 'Spectral', mid = 0)+
-  ggtitle("Environ without Gems")+
-  facet_wrap(~env_idx,scales="free")+
-  theme_minimal(14)+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),aspect.ratio = 1)
-
-ggsave(environments_without_gems,filename = "environments_without_gem.png")
 
 ```
 
@@ -324,11 +303,10 @@ if (loadfromdisk==F){
     }
     explorations
   }
-  saveRDS(file="../A_GeneratedFiles/Plot_dat_social_AllProb_07_6_22.rds",object=Plot_dat_social_AllProb)
+  saveRDS(file="../A_GeneratedFiles/Plot_dat_social_AllProb_04_26_23.rds",object=Plot_dat_social_AllProb)
   # stopCluster(cl)
 } else{
-  Plot_dat_social_All<-readRDS(file="../A_GeneratedFiles/Plot_dat_social_All.rds")
-  Plot_dat_social_AllNew<-readRDS(file="../A_GeneratedFiles/Plot_dat_social_AllProb_07_6_22.rds")
+  Plot_dat_social_AllNew<-readRDS(file="../A_GeneratedFiles/Plot_dat_social_AllProb_04_26_23.rds")
   
 }
 ```
