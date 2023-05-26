@@ -1,0 +1,86 @@
+// participants have to go through 12 rounds. each round is a different treatment. for a breakdown of treatment, see:
+
+// preselectedRounds = getValue('preselectedRounds')
+
+// for each treatment, there are 2 social_info options.
+
+preselectedRounds = [
+				   [[1,2],[3,4],[5,6],[10]],
+				   [[4],[5],[6],[11],[12]],
+				   [[7],[8],[9]]
+								]
+				
+				
+// select one of the 2 options at random for each participant
+
+//
+
+// shuffle them			
+roundsThisPpt = 
+
+
+function randomizeCells(cells) {
+  var output = [];
+
+  for (var i = 0; i < cells.length; i++) {
+    var randomIndex = Math.floor(Math.random() * 2); // Generate a random index: 0 or 1
+    output.push(cells[i][randomIndex]); // Select the value at the randomly generated index
+  }
+
+  return output;
+}
+
+function shuffleArray(array) {
+  var currentIndex = array.length;
+  var temporaryValue, randomIndex;
+
+  // While there remain elements to shuffle
+  while (currentIndex !== 0) {
+    // Pick a remaining element
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex -= 1;
+
+    // Swap it with the current element
+    temporaryValue = array[currentIndex];
+    array[currentIndex] = array[randomIndex];
+    array[randomIndex] = temporaryValue;
+  }
+
+  return array;
+}
+
+// Example usage:
+var cells = [
+  ["A", "B"],
+  ["C", "D"],
+  ["E", "F"],
+  ["G", "H"],
+  ["I", "J"],
+  ["K", "L"],
+  ["M", "N"],
+  ["O", "P"],
+  ["Q", "R"],
+  ["S", "T"],
+  ["U", "V"],
+  ["W", "X"]
+];
+
+var randomizedArray = randomizeCells(cells);
+console.log(randomizedArray);
+
+var shuffledArray = shuffleArray(randomizedArray);
+console.log(shuffledArray);
+
+
+
+//loop that reads json and records social info into table
+
+// read 
+decisions[n] = readjson(roundthisppt[n]
+
+
+
+// end loop
+
+// record everything in advance
+record('social_info1', decisions[1]) 
