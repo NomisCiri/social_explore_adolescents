@@ -142,9 +142,22 @@ if (!dir.exists('E_Develop_Social_Version/rounds_social_info/social_info_json') 
 ### takes a bit of time
 for (n in 1:length(social_info_mat_list)) {
   for (m in 1:length(social_info_mat_list[[n]])) {
-    social_infoJSON=toJSON(social_info_mat_list[[n]][[m]],pretty=TRUE,auto_unbox=TRUE)
-    json_name <- paste('json',names(social_info_mat_list[n]),names(social_info_mat_list[[n]][m]), sep = "_")
-    write(social_infoJSON, paste0('E_Develop_Social_Version/rounds_social_info/social_info_json/',json_name,'.json'))
+    social_infoJSON = toJSON(social_info_mat_list[[n]][[m]],
+                             pretty = TRUE,
+                             auto_unbox = TRUE)
+    json_name <-
+      paste('json',
+            names(social_info_mat_list[n]),
+            names(social_info_mat_list[[n]][m]),
+            sep = "_")
+    write(
+      social_infoJSON,
+      paste0(
+        'E_Develop_Social_Version/rounds_social_info/social_info_json/',
+        json_name,
+        '.json'
+      )
+    )
   }
 }
 
