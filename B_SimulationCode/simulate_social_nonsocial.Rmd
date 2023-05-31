@@ -100,9 +100,11 @@ envs%>%
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),aspect.ratio = 1)
 
 ```
+
 # get the data
 Here i load data and retrieve demonstrators for the specific environments. 
 ```{r}
+SI_path="../E_Develop_Social_Version/r"
 ```
 
 # Simulation
