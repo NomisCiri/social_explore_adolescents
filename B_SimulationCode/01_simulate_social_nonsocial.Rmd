@@ -1,0 +1,48 @@
+---
+title: "Sims for Cherrypicked Social Info"
+author: "Simon"
+date: '2023-05-31'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+pacman::p_load(tidyverse,cowplot,matrixcalc,gganimate,ggformula,pracma,doParallel,viridis,adespatial)
+source("Models.R")# load simualtion code
+```
+
+# here
+With this script, we are simulating exploration behavior. 
+We will first simulate solo exploration and then social exploration based on our handpicked demonstrators
+
+# Load environments 
+Before simualting, we need to load the environments that our previous participants saw.
+```{r}
+
+# load the experimental data
+explore_data <- read_csv(file = "../data/data_coord.csv")
+
+# load the generated environments
+envs_no_gems_list <-
+  rjson::fromJSON(file = "../A_GeneratedFiles/environments_no_gem_var25max.json") # max gem value: 250; variance: 25
+
+envs_gems_list <-
+  rjson::fromJSON(file = "../A_GeneratedFiles/environments_gem_250_var25max.json") # max gem value: 250; variance: 25
+
+# merge environments together and add identifier
+
+envs_no_gems <- map(envs_no_gems_list, as.data.table)
+envs_no_gems <- rbindlist(envs_no_gems) %>% 
+  mutate(gems = 1)
+
+envs_gems <- map(envs_gems_list, as.data.table)
+envs_gems <- rbindlist(envs_gems) %>% 
+  mutate(gems = 0)
+
+#dataframe with environments
+envs <- rbind(envs_gems, envs_no_gems)
+
+```
+
+
+```{r}
+```
