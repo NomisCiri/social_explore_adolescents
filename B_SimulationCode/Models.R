@@ -197,13 +197,13 @@ exploreEnv <- function(explore_func, choiceRule, env2, env1, cntrl, iter) {
 #########
 ######### Exploration Environmental change
 #########
-exploreEnv <- function(explore_func, choiceRule, env2, env1, cntrl, iter) {
+explore_env_social <- function(explore_func, choiceRule, env, cntrl, iter) {
   # for (rep in 1:ntrialss){
   # unpack
-  lambda <- cntrl$lambda
-  # get beta
+  lambda <- cntrl$lambda# generalization for rbf kernel
   beta <- cntrl$beta # this scales risk attitude.
-  # get tau
+  zeta<-cntrl$social_weight # scales social info use
+  
   tau <- cntrl$tau
   mu0 <- cntrl$mu0 # exploration bonus
   var0 <- cntrl$var0
@@ -218,6 +218,7 @@ exploreEnv <- function(explore_func, choiceRule, env2, env1, cntrl, iter) {
   AllChoices <- cntrl$AllChoices
   dummy <- cntrl$dummy
   overallCnt <- cntrl$overallCnt
+  social_choices<-cntrl$social_choices
   dat <- cntrl$dat
   mu <- list()
   sig <- list()
@@ -229,21 +230,23 @@ exploreEnv <- function(explore_func, choiceRule, env2, env1, cntrl, iter) {
       lowestx <- 4
       highestx <- 9
       sampleVec <- as.numeric(rownames(dat[dat$x1 >= lowestx & dat$x1 <= highestx & dat$x2 < 7, ])) # here you define where a child should sample from
+      # make first decision randomly (not true anymore, we could also compute utilities and add SI already in the first choice)
       ind <- sample(sampleVec, 1)
-      nTrials <- 400
+      # as many trails as social info
+      nTrials <- length(social_choices)
     } else {
       ind <- sample(1:64, 1)
-      nTrials <- 400
+      nTrials <- length(social_choices)
     }
     # random initialization as observation t=0
     # y matrix
     if (nround == 1 & overallCnt == 1) {
       X <- as.matrix(dat[ind, 1:2]) # generate a new vector of Xs
-      y <- as.matrix(rnorm(1, mean = EnvirionemntAdol[ind, ]$Mean, sd = EnvirionemntAdol[ind, ]$Variance))
+      y <- as.matrix(rnorm(1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))
     } else if (overallCnt == 1) {
       print("Youre an adolescent now")
       X <- as.matrix(dat[ind, 1:2]) # generate a new vector of Xs
-      y <- as.matrix(rnorm(1, mean = EnvirionemntAdol[ind, ]$Mean, sd = EnvirionemntAdol[ind, ]$Variance))
+      y <- as.matrix(rnorm(1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))
     }
     # X-start, i.e. all possible observations
     Xstar <- as.matrix(dat[, 1:2])
@@ -263,6 +266,7 @@ exploreEnv <- function(explore_func, choiceRule, env2, env1, cntrl, iter) {
       #
       # browser()
       utilityVec <- ucb(out, beta)
+      utilityVec[social_choices[trial]]<-utilityVec[social_choices[trial]]^zeta# social update of utility
       utilities <- utilityVec - max(utilityVec)
       # softmaximization
       p <- exp(utilities / tau)
@@ -281,7 +285,7 @@ exploreEnv <- function(explore_func, choiceRule, env2, env1, cntrl, iter) {
       }
       X <- rbind(X, as.matrix(dat[ind, 1:2]))
       # bind y-observations
-      y <- rbind(y, as.matrix(rnorm(n = 1, mean = EnvirionemntAdol[ind, ]$Mean, sd = EnvirionemntAdol[ind, ]$Variance))) # change this into a sample.
+      y <- rbind(y, as.matrix(rnorm(n = 1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))) # change this into a sample.
       # if(y[overallCnt]<0){
       #  y[overallCnt]=-1*y[overallCnt]^2# make losses more severe.
       # }
