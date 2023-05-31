@@ -84,7 +84,8 @@ envs_no_gems <- rbindlist(envs_no_gems) %>%
   mutate(gems = 0)
 
 envs_gems <- map(envs_gems_list, as.data.table)
-envs_gems <- rbindlist(envs_gems) %>% 
+envs_gems <- rbindlist(envs_gems) %>%
+  mutate(env_idx=env_idx+6)%>%
   mutate(gems = 1)
 
 #dataframe with environments
@@ -95,8 +96,8 @@ envs%>%
   ggplot(aes(x=x,y=y,fill=Mean))+geom_tile()+
   scale_fill_continuous_divergingx(palette = 'Spectral', mid = 0)+
   #scale_fill_distiller(name="Outcome",palette = "Spectral",trans = "reverse")+
-  facet_grid(gems~env_idx,scales="free",labeller = labeller(.rows = label_both, .cols = label_both))+
-  theme_minimal(14)+
+  facet_wrap(~env_idx,scales="free")+#labeller = labeller(.rows = label_both, .cols = label_both))+
+  theme_minimal()+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),aspect.ratio = 1)
 
 ```
@@ -108,6 +109,7 @@ SI_path="../E_Develop_Social_Version/rounds_social_info/1_peer/social_info_json/
 
 # load jsons with the selected social information and concat them in dataframe.
 # doublechek if the sequence is correct (how?)
+# figure out which are supposed to be rotaded. makes no difference for the simulation
 demonstrators<-list.files(SI_path)%>%
   purrr::map_dfr(.,~{
     tibble(
@@ -120,6 +122,7 @@ demonstrators<-list.files(SI_path)%>%
 )
 
 
+
 ```
 
 # Simulation
@@ -128,20 +131,25 @@ The simulation varies the amount of other agents as well as the weight each agen
 ```{r}
 #HowManyOthers=c(2,3,4,5)
 # socialB means social weight
-socialB=seq(from=0,to=2,length.out=20)
+social_weights=seq(from=0,to=2,length.out=20)
 #otherLoc=0
 others<-unique(demonstrators$player)
 loadfromdisk=F
+repetitions=100
 if (loadfromdisk==F){
   registerDoParallel(detectCores()-5)
   
-  Plot_dat_social_All<-foreach(trials=1:ntrialss, .combine='rbind') %dopar%{
+  Plot_dat_social_All<-foreach(rep=1:repetitions, .combine='rbind') %dopar%{
     library(dplyr)
     explorations=NULL
     for(oth in others){
       for (soc_w in social_weights){
         #for (k in HowManyOthers){
+        indx=demonstrators%>%filter(player==oth)%>%pull(env)%>%unique()# find environment of demonstrator
+        demonst_indx=demonstrators%>%filter(player==oth)%>%pull(choices)#%>%unique()
+        environment=envs%>%filter(env_idx==indx)#subset for the environment seen by the demonstrator
         #update cntrl.
+        # list of stuff that is unpacked in the simulation function
         cntrl_social<-list(
           beta=0,# this scales risk attitude.
           #get tau
@@ -152,34 +160,33 @@ if (loadfromdisk==F){
           parVec <- c(0.8, 0.8, 1, .0001) ,
           #loop through trials
           out=NULL,
-          AllChoices_social=NULL,
+          social_choices=demonst_indx,
           dummy=NULL,
           overallCnt=1,
-          dat_social=expand.grid(x1=1:8,x2=1:8)
+          dat_social=expand.grid(x1=1:8,x2=1:8),
          # HowManyOthers=k,
           social_weight=soc_w
           # info about the agents
         )
         #trials=1
-        environment=demonstrators%>%filter(player==oth)%>%pull(env)%>%unique()#subset for the environment seen by the demonstrator
+
         explorations=rbind(explorations,
-                           exploreEnv_Social(explore_func=bayesianMeanTracker,
+                           explore_env_social(explore_func=bayesianMeanTracker,
                                              choiceRule=ucb,
-                                             env=EnvirionemntAdol,
+                                             env=environment,
                                              cntrl=cntrl_social,
-                                             trials)%>%
-                             mutate(gems=i,socWeight=soc,howMany=k)
+                                             rep)%>%
+                             mutate(soc_w=soc_w,demonstrator=oth,repetition=rep,env=indx)
         )
-      }
     }
   }
   explorations
 }
-saveRDS(file="../A_GeneratedFiles/simulations/Plot_dat_social_All_04_26_23",object=Plot_dat_social_All)
+saveRDS(file="../A_GeneratedFiles/simulations/soc_sims_selected_demonstrator",object=Plot_dat_social_All)
 # stopCluster(cl)
 
 } else{
-  Plot_dat_social_AllNew<-readRDS(file="../A_GeneratedFiles/Plot_dat_social_All_04_26_23")
+  Plot_dat_social_AllNew<-readRDS(file="../A_GeneratedFiles/soc_sims_selected_demonstrator")
 }
 ```
 
