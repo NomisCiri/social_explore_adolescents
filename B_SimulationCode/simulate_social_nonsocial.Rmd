@@ -124,7 +124,7 @@ if (loadfromdisk==F){
     explorations=NULL
     for(i in c(1,4,8,11)){
       for (soc in socialB){
-        for (k in HowManyOthers){
+        #for (k in HowManyOthers){
           #update cntrl.
           cntrl_social<-list(
             beta=0,# this scales risk attitude.
