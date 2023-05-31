@@ -63,47 +63,54 @@ cntrl_social<-list(
 
 ```
 
-# randomly hide gems
-Here i replace some reward distributions with much higher ones. 
-I generate 11 envirionments that contain increasing number of high reward distributions options, from 0 to 10.
-
+# load environments that participants saw
+and plot them
 ```{r}
-#envirionmentMeanAdol=seq(-100,100,length.out=8)
-#envirionmentVarianceAdol=seq(1,80,length.out=8)
-#EnvirionemntAdol1=expand.grid(Mean=envirionmentMeanAdol,Variance=envirionmentVarianceAdol)
 
-envirionmentMeanAdol=seq(-100,100,length.out=10)
-envirionmentVarianceAdol=seq(1,80,length.out=10)
-dat_social=expand.grid(x1=1:10,x2=1:10)
-# number of hidden gems
-gems=1:10
-GemEnvs=list()
-for (i in gems){
-  EnvirionemntAdol=expand.grid(Mean=envirionmentMeanAdol,Variance=envirionmentVarianceAdol)
-  index=sample(x=1:length(EnvirionemntAdol[,1]),size=i)
-  Gem=rnorm(i,mean=150,sd=10)
-  EnvirionemntAdol[index,1]=Gem
-  GemEnvs[[i]]=EnvirionemntAdol%>%mutate(HowManyGems=i)%>%mutate(x=dat_social$x1,y=dat_social$x2)
-}
-EnvirionemntAdol=expand.grid(Mean=envirionmentMeanAdol,Variance=envirionmentVarianceAdol)
-GemEnvs[[i+1]]=EnvirionemntAdol%>%mutate(HowManyGems=0)%>%mutate(x=dat_social$x1,y=dat_social$x2)# note: 0 gems is always last!!!
+# load the experimental data
+explore_data <- read_csv(file = "../data/data_coord.csv")
+
+# load the generated environments
+envs_no_gems_list <-
+  rjson::fromJSON(file = "../A_GeneratedFiles/environments_no_gem_var25max.json") # max gem value: 250; variance: 25
+
+envs_gems_list <-
+  rjson::fromJSON(file = "../A_GeneratedFiles/environments_gem_250_var25max.json") # max gem value: 250; variance: 25
+
+# merge environments together and add identifier
+
+envs_no_gems <- map(envs_no_gems_list, as.data.table)
+envs_no_gems <- rbindlist(envs_no_gems) %>% 
+  mutate(gems = 0)
+
+envs_gems <- map(envs_gems_list, as.data.table)
+envs_gems <- rbindlist(envs_gems) %>% 
+  mutate(gems = 1)
+
+#dataframe with environments
+envs <- rbind(envs_gems, envs_no_gems)
 
 library(colorspace)
-GemEnvs%>%do.call(rbind,.)%>%dplyr::rowwise()%>%mutate(value=rnorm(1,mean = Mean,sd=Variance))%>%
-  ggplot(aes(x=x,y=y,fill=value))+geom_tile()+
+envs%>%
+  ggplot(aes(x=x,y=y,fill=Mean))+geom_tile()+
   scale_fill_continuous_divergingx(palette = 'Spectral', mid = 0)+
   #scale_fill_distiller(name="Outcome",palette = "Spectral",trans = "reverse")+
-  facet_wrap(~HowManyGems,scales="free")+
-  theme_minimal(14)+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),aspect.ratio = 1)
+  facet_grid(gems~env_idx,scales="free",labeller = labeller(.rows = label_both, .cols = label_both))+
+  theme_minimal(14)+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),aspect.ratio = 1)
 
 ```
--> where is the sweet spot? 
+# get the data
+Here i load data and retrieve demonstrators for the specific environments. 
+```{r}
+```
 
 # Simulation
 The simulation varies the amount of other agents as well as the weight each agent puts on social information and loops through all of the above generated environments.
 
 ```{r}
-HowManyOthers=c(2,3,4,5)
+#HowManyOthers=c(2,3,4,5)
+# socialB means social weight
 socialB=seq(from=0,to=2,length.out=20)
 
 #otherLoc=0
@@ -140,14 +147,16 @@ if (loadfromdisk==F){
           )
           #trials=1
           EnvirionemntAdol=GemEnvs[[i]][,c(1,2)]#subset for one environment
-          explorations=rbind(explorations,exploreEnv_Social(explore_func=bayesianMeanTracker,
-                                                            choiceRule=ucb,
-                                                            socialfunc=WhereIsEverybody,
-                                                            env2=EnvirionemntAdol,
-                                                            env1=EnvirionemntKids,
-                                                            cntrl=cntrl_social,
-                                                            trials)%>%
-                               mutate(gems=i,socWeight=soc,howMany=k))
+          explorations=rbind(explorations,
+                             exploreEnv_Social(explore_func=bayesianMeanTracker,
+                                               choiceRule=ucb,
+                                               socialfunc=WhereIsEverybody,
+                                               env2=EnvirionemntAdol,
+                                               env1=EnvirionemntKids,
+                                               cntrl=cntrl_social,
+                                               trials)%>%
+                               mutate(gems=i,socWeight=soc,howMany=k)
+                             )
         }
       }
     }
