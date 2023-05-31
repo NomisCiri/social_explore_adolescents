@@ -6,8 +6,8 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-pacman::p_load(tidyverse,cowplot,matrixcalc,gganimate,ggformula,pracma,doParallel,viridis,adespatial)
-source("Models.R")# load simualtion code
+pacman::p_load(tidyverse, cowplot, matrixcalc, gganimate, ggformula, pracma, doParallel, viridis, adespatial)
+source("Models.R") # load simualtion code
 ```
 
 # here
@@ -17,7 +17,6 @@ We will first simulate solo exploration and then social exploration based on our
 # Load environments 
 Before simualting, we need to load the environments that our previous participants saw.
 ```{r}
-
 # load the experimental data
 explore_data <- read_csv(file = "../data/data_coord.csv")
 
@@ -31,16 +30,15 @@ envs_gems_list <-
 # merge environments together and add identifier
 
 envs_no_gems <- map(envs_no_gems_list, as.data.table)
-envs_no_gems <- rbindlist(envs_no_gems) %>% 
+envs_no_gems <- rbindlist(envs_no_gems) %>%
   mutate(gems = 1)
 
 envs_gems <- map(envs_gems_list, as.data.table)
-envs_gems <- rbindlist(envs_gems) %>% 
+envs_gems <- rbindlist(envs_gems) %>%
   mutate(gems = 0)
 
-#dataframe with environments
+# dataframe with environments
 envs <- rbind(envs_gems, envs_no_gems)
-
 ```
 
 

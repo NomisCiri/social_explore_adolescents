@@ -9,27 +9,22 @@ nplayers <- 187
 fitted_data <- NULL
 
 for (n in 1:nplayers) {
-  
-one_player <-  as.data.frame(readRDS(file = paste0("A_GeneratedFiles/modelfits/all_envs/GM_fit_",n,".rds")))
-one_player$player <- n
+  one_player <- as.data.frame(readRDS(file = paste0("A_GeneratedFiles/modelfits/all_envs/GM_fit_", n, ".rds")))
+  one_player$player <- n
 
-fitted_data <- bind_rows(fitted_data, one_player)
-
+  fitted_data <- bind_rows(fitted_data, one_player)
 }
 ```
 
 
 
 ```{r}
-
 # exclude parameters that are wose than random
 
-randomModelLL <- -log(1/64)*25
+randomModelLL <- -log(1 / 64) * 25
 
-fitted_data <- fitted_data %>% 
-  filter(V2 < randomModelLL )
-
-
+fitted_data <- fitted_data %>%
+  filter(V2 < randomModelLL)
 ```
 
 
@@ -37,23 +32,25 @@ fitted_data <- fitted_data %>%
 # Check parameters
 
 # plot lr distribution
-fitted_data %>% 
-  group_by(player) %>% 
-  summarise(rl = mean(exp(par1)),
-            tau = mean(par2)) %>% 
-ggplot(aes(x = rl))+
+fitted_data %>%
+  group_by(player) %>%
+  summarise(
+    rl = mean(exp(par1)),
+    tau = mean(par2)
+  ) %>%
+  ggplot(aes(x = rl)) +
   geom_boxplot(y = 0) +
   geom_point(aes(y = 0), alpha = .1)
 
 
 # correlation of lr and tau
-fitted_data %>% 
-  group_by(player) %>% 
-  summarise(rl = mean(exp(par1)),
-            tau = mean(par2)) %>% 
-  ggplot(aes(x = rl, y = tau))+
-  geom_point(alpha = 1) 
-
-
+fitted_data %>%
+  group_by(player) %>%
+  summarise(
+    rl = mean(exp(par1)),
+    tau = mean(par2)
+  ) %>%
+  ggplot(aes(x = rl, y = tau)) +
+  geom_point(alpha = 1)
 ```
 
