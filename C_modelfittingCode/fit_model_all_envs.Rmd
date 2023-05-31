@@ -226,20 +226,22 @@ cvfun <- function(data,
   if (inherits(kernelFun, 'GP') |
       inherits(kernelFun, 'KalmanFilter')) {
     nParams <- nParams + 1 #add lambda or error variance
+    lbound <- c(-10, -10)
+    ubound <- c(6.5,0)
   } else if (inherits(kernelFun,'bmt_free_priors')){
     nParams <- nParams + 3# add error variance and priors
   }
   #Set upper and lower bounds based on nParams this is logspace!
-  lbound <- rep(-4, nParams)
-  ubound <- rep(5, nParams)
+  #lbound <- rep(-4, nParams)
+  #ubound <- rep(5, nParams)
   #new bounds=
   #lbound <- rep(-10, nParams)
-  #ubound <- rep(4, nParams)
+  #ubound <- rep(2, nParams)
   
   if (inherits(kernelFun,'bmt_free_priors')){
     #no logspace on the boundaries of the prior mu.
-    lbound[1]<- -100
-    ubound[1]<- 10
+    lbound<-c(-100,-10,-10,-10)
+    ubound<-c(100, 8, 8, 0)
   }
   
   if (nParams >= 2) {
@@ -256,7 +258,7 @@ cvfun <- function(data,
         k = kernelFun,
         rounds = trainingSet,
         acquisition = acquisition,
-        DEoptim.control(itermax = 200)
+        DEoptim.control(itermax = 100)
       )
     
     paramEstimates <-
@@ -415,7 +417,7 @@ foreach(
   playerNr= unique(explore_data$player),
   .packages = c("DEoptim","dplyr")
   
-)%do%{
+)%dopar%{
   
   #browser()
   Xnew<-as.matrix(expand.grid(0:7,0:7)) #do this outside the loop for better speed
@@ -424,15 +426,15 @@ foreach(
   #preallocate round selection because we subset by gems and we cant simply count from 1 to n anymore...
   # andrea: maybe we can now do this inside the function since we don't split anymore?
   
-  d1_round <- subset(explore_data, player == playerNr) %>% #group_by(round) %>%
-    mutate(z=(points-mean(points))/sd(points))
+  d1_round <- subset(explore_data, player == playerNr) %>% group_by(round) %>%
+    mutate(z=(points-mean(points))/sd(points))%>%ungroup()
   
-  print(d1)
+ # print(d1_round)
   
-  rounds<-unique(d1$round)
+  rounds<-unique(d1_round$round)
 
   for (r in rounds){ #loop through rounds in roundList
-    cv <- cvfun(data=d1, kernelFun = bayesianMeanTracker, acquisition = greedyMean, leaveoutindex=r)# only try one sub
+    cv <- cvfun(data=d1_round, kernelFun = bayesianMeanTracker, acquisition = greedyMean, leaveoutindex=r)# only try one sub
     output <- rbind(output, cv)
   }
   
