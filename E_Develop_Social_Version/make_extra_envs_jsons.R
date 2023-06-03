@@ -73,5 +73,5 @@ gem_json <- cat('{"7":', env7_json,
                 ',"9":', env9_json,
                 '}',
                 sep = ' ',
-                file = "extra_envs.json"
+                file = "environments/extra_envs.json"
 )
