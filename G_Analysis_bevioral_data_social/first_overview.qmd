@@ -1,0 +1,151 @@
+```{r echo=FALSE, warning=FALSE}
+
+pacman::p_load(tidyverse, rjson, data.table, gghalves, here)
+
+```
+
+```{r load data, echo=FALSE, warning=FALSE, message=FALSE }
+
+explore_data <- read_csv(file = paste0(here(), "/data/social/data_social_coord.csv"))
+
+```
+
+```{r merge datasets, warning=FALSE, echo=FALSE, message=FALSE}
+
+
+all_data <- explore_data %>% 
+  group_by(unique_rounds) %>% 
+  mutate(mean_points = mean(points),
+           sd_points = sd(points) ,
+           z=(points-mean_points)/sd_points,
+          data_source = 'experiment') %>% 
+  select(player, points, cells, gempresent, gem, round, z, social_info, social_info_use,tot_points)  %>% 
+  group_by(player, round) %>% 
+  mutate(trial = 1:25)
+
+
+
+```
+
+# Comparison of behavior of participants in the game and agents in the simulation
+
+## n of boxes open
+
+```{r warning=FALSE, echo=FALSE,  message=FALSE}
+
+all_data %>% 
+  group_by(round, player, gempresent) %>% 
+  summarise(boxes_opened = n_distinct(cells)) %>% 
+  ggplot(aes(x = factor(gempresent), y = boxes_opened)) +
+  geom_boxplot(aes(fill = factor(gempresent))) +
+  labs(x = "gem_present", y = 'n of different boxes') +
+  theme_bw(base_size = 20) +
+  guides(fill = FALSE)
+
+```
+
+participants open more boxes on average in non-gems environment (x = 0)
+
+## distribution of points scored
+
+```{r warning=FALSE, echo=FALSE,  message=FALSE}
+# absolute points
+
+all_data %>% 
+  group_by(player, gempresent, points) %>% 
+  distinct() %>% 
+  ggplot() +
+  geom_histogram(aes( x = points, y = stat(y = ..count.. / nrow(all_data))), binwidth = 10, fill = "black") +
+  geom_vline(xintercept = 0, lty = 1, size = 1.5, color = 'red') + 
+  #geom_half_point(aes(x = factor(gempresent), y = points), alpha = 0.02) +
+  theme_bw(base_size = 20) +
+  labs(y = 'proportion')
+
+```
+
+overall, agents get more points than chance, with the highest proportion of points earned being \> 0. However, human participants perform better, probably because they stick more consistently to positive options (see below)
+
+## points score over time
+
+```{r echo=FALSE, message=FALSE}
+
+all_data %>%
+  group_by(player, trial) %>%
+  ggplot(aes(x = trial, y = points)) +
+  stat_summary() +
+  theme_minimal(base_size = 15) +
+  facet_wrap( ~ gempresent) +
+  labs(title = 'avg points per round')
+
+```
+
+the pattern is replicated in the simulation, however it seems that participants are a bit better at sticking to higher value positive options
+
+## number of gems found
+
+```{r echo=FALSE, message=FALSE}
+
+all_data %>% 
+  filter(gempresent == 1) %>% 
+  group_by(player, round) %>% 
+  summarise(gem_found = ifelse(1 %in% gem, 1, 0)) %>% 
+  group_by(player) %>% 
+  summarise(n_gems = sum(gem_found)) %>% 
+  ggplot() +
+  geom_histogram(aes(x =  n_gems), binwidth = 1, fill = "black")+
+  theme_bw(base_size = 20) +
+  labs(x = 'n of environments in which a gem was found')
+
+
+```
+
+most participants find gems in half of the environments that contain them (3 out 6), and rarely more than that. agents explore more and also find no gems more often, which was a bit surprising because exploration should be random in both?
+
+## explore exploit after gem or not
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# 
+all_data %>%
+  group_by(player) %>%
+  mutate(exploit = ifelse(lead(cells) == cells, 1, 0),
+         explore = ifelse(lead(cells) != cells, 1, 0)) %>%
+  mutate(out_cat = case_when(points > 150 ~ 1,
+                             points < 0 ~ 3,
+                             TRUE ~ 2)) %>% pivot_longer(cols = c(exploit, explore), names_to = "explore_exploit") %>%
+  ggplot(aes(
+    x = out_cat,
+    y = value,
+    color = explore_exploit,
+    shape = explore_exploit
+  )) +
+  stat_summary(size = 1) +
+  stat_summary(geom = "line") +
+  scale_y_continuous(name = "Proportion") +
+  scale_x_continuous(
+    name = "Category",
+    breaks = c(1, 2, 3),
+    labels = c("gem", "no gem", "loss")
+  ) +
+  theme_minimal(20) +
+  facet_wrap(~gempresent)
+
+```
+
+agents in the simulation are more volatile, especially in the non gem non loss rounds. they also explore after a gem more often than humans
+
+# how often did people copy
+
+```{r}
+
+all_data %>% 
+  mutate(social_info_use_num = ifelse(social_info_use=="ignore", 0, 1)) %>% 
+  group_by(player, round) %>% 
+  mutate(n = sum(social_info_use_num)) %>% 
+  ggplot()+
+  stat_summary(aes (x = n, y = tot_points)) +
+  facet_wrap(~gempresent)+  theme_bw(base_size = 20) +
+  labs(x = 'n of copying social information', title = 'total points by frequency of social info use')
+
+
+
+```

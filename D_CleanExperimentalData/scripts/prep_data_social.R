@@ -27,7 +27,8 @@ when_gem_found <-  data %>%
 data <- left_join(data, when_gem_found) %>% 
   group_by(unique_rounds) %>% 
   fill(round_gem_found, .direction = "updown") %>% 
-  mutate(gem_found = ifelse(round_gem_found > 0, 1, 0))
+  mutate(gem_found = ifelse(round_gem_found > 0, 1, 0),
+         social_info_use = ifelse(cell == social_info, "copy", "ignore"))
 
 data$gem_found[is.na(data$gem_found)] <- 0
 
@@ -41,4 +42,6 @@ data <- data %>%
            "high")))
 
 write.csv(data, "data/social/data_social_coord.csv", row.names = FALSE)
+
+
 
