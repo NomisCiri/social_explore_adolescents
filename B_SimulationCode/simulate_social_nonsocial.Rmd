@@ -13,7 +13,7 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-pacman::p_load(tidyverse,cowplot,matrixcalc,gganimate,ggformula,pracma,doParallel,viridis,adespatial)
+pacman::p_load(tidyverse,cowplot,matrixcalc,gganimate,ggformula,pracma,doParallel,viridis,adespatial,data.table,jsonlite)
 ```
 
 # Project
@@ -67,7 +67,7 @@ and plot them
 ```{r}
 
 # load the experimental data
-explore_data <- read_csv(file = "../data/data_coord.csv")
+explore_data <- read_csv(file = "../data/solo/data_coord.csv")
 
 # load the generated environments
 envs_no_gems_list <-

@@ -136,7 +136,7 @@ explore_env_social <- function(explore_func, choiceRule, env, cntrl, iter) {
       z = as.numeric(y[trial])
     )
     
-    all_choices <- rbind(all_choices, one_trial_choices)
+    AllChoices <- rbind(AllChoices, one_trial_choices)
     mu[[trial]] <- out$mu
     sig[[trial]] <- out$sig
   }
