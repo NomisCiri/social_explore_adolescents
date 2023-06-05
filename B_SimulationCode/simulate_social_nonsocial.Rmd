@@ -17,14 +17,15 @@ pacman::p_load(tidyverse,cowplot,matrixcalc,gganimate,ggformula,pracma,doParalle
 ```
 
 # Project
+
 Adolescent social sentivity adaptive?
+
 Premise: younger individuals are easier influenced by SI. see Molleman et al 2022 or Ciranka & van den Bos 2022 (hopefully).
 So let us explore the kind of envirionment in which higher SI leads to better reward.
-I had the idea that if we hide "Rare events" in our task, using social information would make it easier to detect those if individuals have a limited search horizon. As if one sees someone sampling one option often, one believes that the other must´ve found sth worthwile.
 
-# Social
+With these simulation we show that if we hide "rare events" in our task, using social information would make it easier to detect those if individuals have a limited search horizon. 
+But social influence is a double edged sword, so we also show, here by using simulations, that using too much social info is not beneficial if demonstrators only show "bad" information. 
 
-One particular feature about adolescents is that they are sensitive to social information. In order to invesitage how such a sensitivity impacts 1) exploration behavior and 2) encountered outcomes. For this i let _n_ agents perform the task in parallel and introduce a bonus to the choice utilites that depends on how many others have visited this option in the previous trial.
 
 ```{r setupsims}
 # get sd of whole environemt for normalizing model input
@@ -55,8 +56,6 @@ cntrl_social<-list(
   dummy=NULL,
   overallCnt=1,
   dat_social=expand.grid(x1=1:10,x2=1:10),
-  
-  HowManyOthers=19,
   diminishingSocial=0.8
   # info about the agents
 )
@@ -215,8 +214,13 @@ plot_df<-Plot_dat_social_All%>%group_by(trials,soc_w,repetition,demonstrator,env
 
 plot_df%>%
   ggplot(aes(x=soc_w,y=m_rew,color=type))+
-    stat_summary()+
-    facet_wrap(~ demonstrator,scales="free")
+    stat_summary(fun.data = "mean_cl_boot")+
+    scale_color_brewer(palette = "Dark2")+
+    ggtitle("Simulations")+
+    scale_y_continuous(name="Mean Reward")+
+    scale_x_continuous(name="Social Weight")+
+    theme_minimal()
+    #facet_wrap(~ demonstrator,scales="free")
 ```
 
 
