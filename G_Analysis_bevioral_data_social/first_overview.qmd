@@ -19,7 +19,7 @@ all_data <- explore_data %>%
            sd_points = sd(points) ,
            z=(points-mean_points)/sd_points,
           data_source = 'experiment') %>% 
-  select(player, points, cells, gempresent, gem, round, z, social_info, social_info_use,tot_points)  %>% 
+  select(player, points, cells, gempresent, gem, round, z, social_info, social_info_use,tot_points, gem_found)  %>% 
   group_by(player, round) %>% 
   mutate(trial = 1:25)
 
@@ -27,7 +27,7 @@ all_data <- explore_data %>%
 
 ```
 
-# Comparison of behavior of participants in the game and agents in the simulation
+# Quick overview of behavior
 
 ## n of boxes open
 
@@ -142,7 +142,7 @@ all_data %>%
   group_by(player, round) %>% 
   mutate(n = sum(social_info_use_num)) %>% 
   ggplot()+
-  stat_summary(aes (x = n, y = tot_points)) +
+  stat_summary(aes (x = n, y = tot_points, color = factor(gem_found))) +
   facet_wrap(~gempresent)+  theme_bw(base_size = 20) +
   labs(x = 'n of copying social information', title = 'total points by frequency of social info use')
 
