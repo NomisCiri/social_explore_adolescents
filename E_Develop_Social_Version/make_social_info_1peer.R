@@ -42,11 +42,19 @@ explore_data$env_number[explore_data$unique_rounds == 468 | explore_data$unique_
 
 
 # have a look of env that have been selected
+<<<<<<< HEAD
 info_social_rounds <- explore_data %>%
   ungroup() %>%
   filter(unique_rounds %in% preselected_rounds) %>%
   select(env_number, gempresent, gem_found, round_gem_found, performance_group_f, unique_rounds) %>%
+=======
+info_social_rounds <- explore_data %>% 
+  ungroup() %>% 
+  filter(unique_rounds %in% preselected_rounds) %>% 
+  select(env_number, gempresent, gem_found, round_gem_found, performance_group_f, unique_rounds, player, cells, cell) %>% 
+>>>>>>> bd0218473428c9a92ae4d9f8c33ec4004b59eb7c
   distinct()
+
 # when are the gem found in the social trials?
 ggplot(data = info_social_rounds) +
   geom_histogram(aes(x = round_gem_found))
@@ -76,16 +84,20 @@ order <- index_matrix %>%
 # subset the data to have info about round number, env number, and decisions in those rounds
 for (n in 1:length(preselected_rounds)) {
   current_round <- preselected_rounds[n]
-
-  df <- explore_data %>%
-    filter(unique_rounds == current_round) %>%
-    ungroup() %>%
-    select(gempresent, gem, unique_rounds, cells, env_number)
-
+  df <- explore_data %>% 
+  filter(unique_rounds == current_round) %>% 
+    ungroup() %>% 
+    select(gempresent, gem,unique_rounds, cells,cell, env_number) 
+  
+  df
+  
   ######## remove if it goes wrong
-  if (df$env_number[1] > 6) {
-    df <- df %>%
-      mutate(cells = order[cells])
+  if(df$env_number[1] >6){
+    
+    df <- df %>% 
+      mutate(cells = order[cells+1])
+    df$cells[is.na(df$cells)] <- 1
+    
   }
   ########
 
