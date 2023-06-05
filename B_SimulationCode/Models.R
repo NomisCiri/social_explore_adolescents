@@ -223,31 +223,31 @@ explore_env_social <- function(explore_func, choiceRule, env, cntrl, iter) {
   mu <- list()
   sig <- list()
 
-  for (nround in 1:3) {
+  #for (nround in 1:3) {
     # get parameters for participant on that round
-    if (nround == 1) {
+    #if (nround == 1) {
       # define vectors that are used by the kalman filter
-      lowestx <- 4
-      highestx <- 9
-      sampleVec <- as.numeric(rownames(dat[dat$x1 >= lowestx & dat$x1 <= highestx & dat$x2 < 7, ])) # here you define where a child should sample from
+     # lowestx <- 4
+    #  highestx <- 9
+    #  sampleVec <- as.numeric(rownames(dat[dat$x1 >= lowestx & dat$x1 <= highestx & dat$x2 < 7, ])) # here you define where a child should sample from
       # make first decision randomly (not true anymore, we could also compute utilities and add SI already in the first choice)
-      ind <- sample(sampleVec, 1)
+     # ind <- sample(sampleVec, 1)
       # as many trails as social info
-      nTrials <- length(social_choices)
-    } else {
+      #nTrials <- length(social_choices)
+    #} else {
       ind <- sample(1:64, 1)
       nTrials <- length(social_choices)
-    }
+    #}
     # random initialization as observation t=0
     # y matrix
-    if (nround == 1 & overallCnt == 1) {
+    #if (nround == 1 & overallCnt == 1) {
+    #  X <- as.matrix(dat[ind, 1:2]) # generate a new vector of Xs
+    #  y <- as.matrix(rnorm(1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))
+    #} else if (overallCnt == 1) {
+    #  print("Youre an adolescent now")
       X <- as.matrix(dat[ind, 1:2]) # generate a new vector of Xs
       y <- as.matrix(rnorm(1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))
-    } else if (overallCnt == 1) {
-      print("Youre an adolescent now")
-      X <- as.matrix(dat[ind, 1:2]) # generate a new vector of Xs
-      y <- as.matrix(rnorm(1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))
-    }
+    #}
     # X-start, i.e. all possible observations
     Xstar <- as.matrix(dat[, 1:2])
 
@@ -266,7 +266,7 @@ explore_env_social <- function(explore_func, choiceRule, env, cntrl, iter) {
       #
       # browser()
       utilityVec <- ucb(out, beta)
-      utilityVec[social_choices[trial]]<-utilityVec[social_choices[trial]]^zeta# social update of utility
+      utilityVec[social_choices[trial]]<-utilityVec[social_choices[trial]]+zeta# social update of utility
       utilities <- utilityVec - max(utilityVec)
       # softmaximization
       p <- exp(utilities / tau)
@@ -276,13 +276,13 @@ explore_env_social <- function(explore_func, choiceRule, env, cntrl, iter) {
       p <- (pmax(p, 0.00001))
       p <- (pmin(p, 0.99999))
       # index is sampled proprotionally to softmaxed utitily vector
-      if (nround == 1) { # subset the probability vector so that it corresponds to the right tiles.
+      #if (nround == 1) { # subset the probability vector so that it corresponds to the right tiles.
         ind <- sample(sampleVec, 1, prob = p[dat$x1 >= lowestx & dat$x1 <= highestx & dat$x2 < 7, ]) # sample from a childhood environemnt
         # this monster just scales exploration boni
-      } else {
+      #} else {
         ind <- sample(1:64, 1, prob = p) # sample from an adolescent environemnt
         # print(ind)
-      }
+      #}
       X <- rbind(X, as.matrix(dat[ind, 1:2]))
       # bind y-observations
       y <- rbind(y, as.matrix(rnorm(n = 1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))) # change this into a sample.
