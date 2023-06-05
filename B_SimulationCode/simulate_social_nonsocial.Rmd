@@ -130,7 +130,8 @@ demonstrators<-demonstrators%>%mutate(
                  player %in% gem_not_found ~ "gem_not_found",
                  player %in% gem_found ~ "gem_found",
                  player %in% never_exploit ~ "never_exploit")
-  )
+  )%>%filter(env<7)%>%
+  mutate(env=ifelse(gem,env+6,env))
 
 ```
 
@@ -156,9 +157,12 @@ if (loadfromdisk==F){
         #for (k in HowManyOthers){
         indx=demonstrators%>%filter(player==oth)%>%pull(env)%>%unique()# find environment of demonstrator
         demo_type=demonstrators%>%filter(player==oth)%>%pull(type)%>%unique()
+        
         demonst_indx=demonstrators%>%filter(player==oth)%>%pull(choices)#%>%unique()
         demonst_indx[demonst_indx == 64]<-63
+        
         demonst_indx=demonst_indx+1
+        
         environment=envs%>%filter(env_idx==indx)#subset for the environment seen by the demonstrator
         #update cntrl.
         # list of stuff that is unpacked in the simulation function
@@ -198,7 +202,7 @@ saveRDS(file="../A_GeneratedFiles/simulations/soc_sims_selected_demonstrator.rds
 # stopCluster(cl)
 
 } else{
-  Plot_dat_social_AllNew<-readRDS(file="../A_GeneratedFiles/soc_sims_selected_demonstrator.rds")
+  Plot_dat_social_All<-readRDS(file="../A_GeneratedFiles/soc_sims_selected_demonstrator.rds")
 }
 ```
 
@@ -206,7 +210,13 @@ saveRDS(file="../A_GeneratedFiles/simulations/soc_sims_selected_demonstrator.rds
 # visualize sims
 
 ```{r}
+plot_df<-Plot_dat_social_All%>%group_by(trials,soc_w,repetition,demonstrator,env,type)%>%
+  dplyr::summarise(m_rew=mean(out))
 
+plot_df%>%
+  ggplot(aes(x=soc_w,y=m_rew,color=type))+
+    stat_summary()+
+    facet_wrap(~ demonstrator,scales="free")
 ```
 
 
