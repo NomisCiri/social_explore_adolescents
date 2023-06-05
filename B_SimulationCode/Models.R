@@ -266,7 +266,7 @@ explore_env_social <- function(explore_func, choiceRule, env, cntrl, iter) {
       #
       # browser()
       utilityVec <- ucb(out, beta)
-      utilityVec[social_choices[trial]]<-utilityVec[social_choices[trial]]+zeta# social update of utility
+      utilityVec[social_choices[trial]]<-utilityVec[social_choices[trial]]^zeta# social update of utility
       utilities <- utilityVec - max(utilityVec)
       # softmaximization
       p <- exp(utilities / tau)
