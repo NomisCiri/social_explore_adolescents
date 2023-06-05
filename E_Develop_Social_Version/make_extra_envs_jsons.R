@@ -73,10 +73,10 @@ env8_json <- env8 %>% toJSON(dataframe = "columns")
 env9_json <- env9 %>% toJSON(dataframe = "columns")
 
 
-gem_json <- cat('{"7":', env7_json,
-  ',"8":', env8_json,
-  ',"9":', env9_json,
-  "}",
-  sep = " ",
-  file = "extra_envs.json"
+gem_json <- cat('{"7":', env7_json, 
+                ',"8":', env8_json, 
+                ',"9":', env9_json,
+                '}',
+                sep = ' ',
+                file = "environments/extra_envs.json"
 )
