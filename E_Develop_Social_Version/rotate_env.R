@@ -49,12 +49,12 @@ no_gem_envs[[2]]$rot_x <- no_gem_envs[[2]]$x[order]
 no_gem_envs[[2]]$rot_y <- no_gem_envs[[2]]$y[order]
 
 no_rot <- ggplot(no_gem_envs[[2]], aes(x = x, y = y, fill = Mean)) +
-  geom_tile() +
-  scale_fill_continuous_divergingx(palette = "Spectral", mid = 0)
+  geom_tile() #+
+  #scale_fill_continuous_divergingx(palette = "Spectral", mid = 0)
 
 rot <- ggplot(no_gem_envs[[2]], aes(x = rot_x, y = rot_y, fill = Mean)) +
-  geom_tile() +
-  scale_fill_continuous_divergingx(palette = "Spectral", mid = 0)
+  geom_tile() #+
+  #scale_fill_continuous_divergingx(palette = "Spectral", mid = 0)
 
 no_rot
 rot

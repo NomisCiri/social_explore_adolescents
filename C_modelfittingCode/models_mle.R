@@ -18,8 +18,8 @@ bayesianMeanTracker <- function(x, y, theta, prevPost = NULL, mu0Par, var0Par) {
     predictions <- prevPost
   }
   # Which of the 121 options were chosen at time?
-  alloptrials <- expand.grid(1:8, 1:8)
-  chosen <- which(alloptrials$Var1 == x[1] & alloptrials$Var2 == x[2])
+  alloptrials <- expand.grid(0:7, 0:7)
+  chosen <- which(alloptrials$Var1 == x[2] & alloptrials$Var2 == x[1])
   # Kalman gain
   kGain <- predictions$sig[chosen] / (predictions$sig[chosen] + vare) # feed the uncertainty in here.
   # update mean
@@ -35,22 +35,22 @@ bayesianMeanTracker <- function(x, y, theta, prevPost = NULL, mu0Par, var0Par) {
 ########
 # RW-Q learning
 #######
-RW_Q <- function(x, y, theta, prevPost = NULL, mu0Par, var0Par) {
+RW_Q <- function(x, y, theta, prevPost = NULL, mu0Par) {
   # Updates the previous posterior based on a single observation
   # parameters
   mu0 <- mu0Par # prior mean
   lr=theta[1]
   if (is.null(prevPost)) { # if no posterior prior, assume it is the first observation
-    predictions <- data.frame(mu = rep(mu0, 64))
+    predictions <- rep(mu0, 64)
   } else { # if previous posterior is provided, update
     predictions <- prevPost
   }
-  # Which of the 121 options were chosen at time?
-  alloptrials <- expand.grid(1:8, 1:8)
-  chosen <- which(alloptrials$Var1 == x[1] & alloptrials$Var2 == x[2])
-  # Kalman gain
-  predictions$mu[chosen] <- predictions$mu[chosen] + (lr * (y - predictions$mu[chosen]))
-  #  browser()
+  # Which of the 64 options were chosen at time?
+  alloptrials <- expand.grid(x1=0:7, x2=0:7)
+  chosen <- which(alloptrials$x1 == x[1] & alloptrials$x2 == x[2])
+  # value update
+  predictions[chosen] <- predictions[chosen] + (lr * (y - predictions[chosen]))
+    #browser()
   
   return(predictions)
 }
@@ -61,7 +61,7 @@ RW_Q <- function(x, y, theta, prevPost = NULL, mu0Par, var0Par) {
 ucb <- function(out, pars, refactor = F) {
   beta <- pars[1]
   # calulate all the upper confidence bounds
-  outtotal <- out$mu #+ (beta * sqrt(out$sig))
+  outtotal <- out #+ (beta * sqrt(out$sig))
   # turn into matrix
   outtotal <- matrix(outtotal, ncol = 1, byrow = TRUE)
   # return them
@@ -75,7 +75,7 @@ ucb <- function(out, pars, refactor = F) {
 soc_utility_model <- function(par, learning_model_fun, acquisition_fun, dat) {
   # for (rep in 1:ntrialss){
   # unpack
-#  par<-exp(par)#parameters are defined in logspace, we exponentiate them here
+  #par<-exp(par)#parameters are defined in logspace, we exponentiate them here
   theta <- par[1]# "learningrate"
   tau <- par[2] #  "random" exploration
   zeta<-par[3] # scales social info use
@@ -104,21 +104,22 @@ soc_utility_model <- function(par, learning_model_fun, acquisition_fun, dat) {
     #Xnew <- as.matrix(Xnew)# unsure whatrials the use of this
     # Utilties of each choice
     utilities <- NULL
-    prevPost <- NULL # set the previous posterior computation to NULL for the kalman filter
+    prevPost <- NULL # set the previous posterior computation to NULL for qlearning
     pMat <- NULL
     #here, too
     for (t in 1:(trials-1)) {
       #learn
       if (t > 1) {
-        out <- RW_Q(X[t, 1:2], y[t], theta = theta, prevPost = out, mu0Par = mu0, var0Par = var0)
+        out <- RW_Q(X[t, 1:2], y[t], theta = theta, prevPost = out, mu0Par = mu0)
       } else {
         # first t of each round, start new
-        out <- RW_Q(X[t, 1:2], y[t], theta = theta, prevPost = NULL, mu0Par = mu0, var0Par = var0)
+        out <- RW_Q(X[t, 1:2], y[t], theta = theta, prevPost = NULL, mu0Par = mu0)
       }
-      
       utilityVec <- ucb(out, 0)
       #next choice getrials a social utility
+      utilityVec=utilityVec-max(utilityVec)
       utilityVec[social_choices[t]]<-utilityVec[social_choices[t]]+zeta
+      #browser()
       # build horizon_length x options matrix, where each row holds the utilities of each choice at each decision time in the search horizon
       utilities <- rbind(utilities, t(utilityVec)) 
     }
@@ -129,11 +130,19 @@ soc_utility_model <- function(par, learning_model_fun, acquisition_fun, dat) {
     # numerical overflow
     p <- (pmax(p, 0.00001))
     p <- (pmin(p, 0.99999))
-    # add loglik
+    # add loglik nasty way of checking the predicted choice probability a the item that was chosen
     nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials-1)), chosen)]))
   }
-  #browser()
-  return(sum(nLL)) # Return negative log likelihoods of all observations
+  
+  #avoid nan in objective function
+  if(any(is.nan(nLL)))
+  { 
+    return(10 ^ 30)
+    
+  }else
+  {
+    return(sum(nLL))
+  }
 }
 
 
@@ -145,16 +154,15 @@ soc_utility_model <- function(par, learning_model_fun, acquisition_fun, dat) {
 # learning_model_fun, only bayesan meantracker works
 # acquisition_fun, function, can be "ucb"
 
-
-fit_fun <- function(learning_model_fun, acquisition_fun,d1) {
+fit_fun <- function(d1) {
   # subselect participant, horizon and rounds not left out
   #which rounds to use
   rounds <- 1:12
   nParams<-3
   # Set upper and lower bounds based on nParams
-  lbound <- c(0,0,-10)
-  ubound <- c(10,10,10)
-
+  lbound <- c(0.01,0.1,-4)
+  ubound <- c(4,2,4)
+  
   
   #####
   # Begin cross validation routine
@@ -163,19 +171,15 @@ fit_fun <- function(learning_model_fun, acquisition_fun,d1) {
     soc_utility_model, 
     lower = lbound, 
     upper = ubound, 
-    dat = d1, 
-    learning_model_fun = learning_model_fun, 
-    acquisition_fun = acquisition_fun,
+    dat = d1,
     DEoptim.control(itermax = 100)
   )
   paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
   # TEST SET
-  #predict <- soc_utility_model(
-  #  par = paramEstimates, 
-  #  dat = d1,
-  #  acquisition_fun = acquisition_fun,
-  #  learning_model_fun = learning_model_fun
-  #)
+  predict <- soc_utility_model(
+    par = paramEstimates, 
+    dat = d1
+  )
   output <- c(predict, fit$optim$bestmem) # leaveoutindex, nLL, parameters....
   return(output) # return optimized value
 }

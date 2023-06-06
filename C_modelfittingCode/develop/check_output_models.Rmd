@@ -9,7 +9,7 @@ nplayers <- 187
 fitted_data <- NULL
 
 for (n in 1:nplayers) {
-  one_player <- as.data.frame(readRDS(file = paste0("A_GeneratedFiles/modelfits/all_envs/GM_fit_", n, ".rds")))
+  one_player <- as.data.frame(readRDS(file = paste0("../A_GeneratedFiles/modelfits/all_envs/GM_fit_", n, ".rds")))
   one_player$player <- n
 
   fitted_data <- bind_rows(fitted_data, one_player)
