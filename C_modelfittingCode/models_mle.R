@@ -19,7 +19,7 @@ bayesianMeanTracker <- function(x, y, theta, prevPost = NULL, mu0Par, var0Par) {
   }
   # Which of the 121 options were chosen at time?
   alloptrials <- expand.grid(0:7, 0:7)
-  chosen <- which(alloptrials$Var1 == x[2] & alloptrials$Var2 == x[1])
+  chosen <- which(alloptrials$Var1 == x[1] & alloptrials$Var2 == x[2])
   # Kalman gain
   kGain <- predictions$sig[chosen] / (predictions$sig[chosen] + vare) # feed the uncertainty in here.
   # update mean
@@ -50,7 +50,7 @@ RW_Q <- function(x, y, theta, prevPost = NULL, mu0Par) {
   chosen <- which(alloptrials$x1 == x[1] & alloptrials$x2 == x[2])
   # value update
   predictions[chosen] <- predictions[chosen] + (lr * (y - predictions[chosen]))
-    #browser()
+  # browser()
   
   return(predictions)
 }
@@ -90,7 +90,7 @@ soc_utility_model <- function(par, learning_model_fun, acquisition_fun, dat) {
     round_df <- subset(dat, round == r)
     trials <- nrow(round_df)
     # Observations of subject choice behavior
-    chosen <- round_df$cell
+    chosen <- round_df$choices
     # trim first observation, since it wasn't a choice but a randomly revealed tile (not informative for log likelihood).
     chosen <- chosen[2:length(chosen)] 
     y <- round_df$z[0:(trials - 1)] # trim off the last observation, because it was not used to inform a choice (round already over)
@@ -117,21 +117,23 @@ soc_utility_model <- function(par, learning_model_fun, acquisition_fun, dat) {
       }
       utilityVec <- ucb(out, 0)
       #next choice getrials a social utility
-      utilityVec=utilityVec-max(utilityVec)
+      #utilityVec=utilityVec-max(utilityVec)
       utilityVec[social_choices[t]]<-utilityVec[social_choices[t]]+zeta
       #browser()
       # build horizon_length x options matrix, where each row holds the utilities of each choice at each decision time in the search horizon
       utilities <- rbind(utilities, t(utilityVec)) 
+      #browser()
     }
     # softmaximization
     p <- exp(utilities / tau)
     # probabilities
-    p <- p / colSums(p)
+    p <- p / rowSums(p)
     # numerical overflow
     p <- (pmax(p, 0.00001))
     p <- (pmin(p, 0.99999))
     # add loglik nasty way of checking the predicted choice probability a the item that was chosen
     nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials-1)), chosen)]))
+    #browser()
   }
   
   #avoid nan in objective function
@@ -160,8 +162,8 @@ fit_fun <- function(d1) {
   rounds <- 1:12
   nParams<-3
   # Set upper and lower bounds based on nParams
-  lbound <- c(0.01,0.1,-4)
-  ubound <- c(4,2,4)
+  lbound <- c(0.000001,0.00001,-4)
+  ubound <- c(4,2,5)
   
   
   #####

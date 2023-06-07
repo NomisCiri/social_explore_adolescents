@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-pacman::p_load(tidyverse, rjson, DEoptim, doParallel, here)
+pacman::p_load(tidyverse, rjson, DEoptim, doParallel, here,data.table)
 knitr::opts_knit$set(root.dir = here()) # set root fot the whole file
 ```
 
@@ -18,6 +18,7 @@ source("./C_modelfittingCode/models.R") # modelcode for fitting
 source("./B_SimulationCode/load_environments.R") # environments
 source("./B_SimulationCode/sim_models.R") # modelcode for simulation
 
+
 # load behavioral data
 #explore_data <- read_csv(file = paste0("./Data/data_coord.csv"))
 social_data<-read_csv(file = paste0("./data/social/data_social_coord.csv"))
@@ -25,45 +26,44 @@ social_data<-read_csv(file = paste0("./data/social/data_social_coord.csv"))
 
 # Fit model to social data
 This function fits the model specified in models mle and stores the parameter estimates as well as the fit index (lower is better)
-alongside the pariticipant data in long format
+alongside the participant data in long format. In the future we want to modify this to fit different models
+
 
 ```{r}
 cl <- parallel::makeCluster(15)
 doParallel::registerDoParallel(cl)
 
 source("./C_modelfittingCode/models_mle.R")
- social_fits<-foreach(
-   player_nr = unique(social_data$player),
-   .packages = c("DEoptim", "dplyr"),
-   .combine="rbind"
- ) %dopar% {
+social_fits<-foreach(
+  player_nr = unique(social_data$player),
+  .packages = c("DEoptim", "dplyr"),
+  .combine="rbind"
+) %dopar% {
   
- # for(player_nr in unique(social_data$player)){
-  # browser()
+#for(player_nr in unique(social_data$player)){
   Xnew <- as.matrix(expand.grid(0:7, 0:7)) # do this outside the loop for better speed
-  output <- c()
-  
+
   # social data TODO: concatenate nonsocial data.
-  d1 <- subset(social_data, player == player_nr) %>%
+  d1 <- social_data%>%filter(player == player_nr) %>%
     group_by(round) %>%
     mutate(z = (points - 0) /100,
            social_info=social_info+1,
            choices=cells) %>%rowwise()%>%
     mutate(social_info=ifelse(social_info==65,64,social_info))%>%
     ungroup()
-#  d1$z=d1$points
-  # print(d1_round)
+  
   
   rounds <- unique(d1$round)
   print(player_nr)
   #for (r in rounds) { # loop through rounds in roundList
   cv <- fit_fun(d1 = d1) # only try one sub
+  # collect fit indices
   d1$fit<-unlist(cv[1])
   d1$lr<-unlist(cv[2])
   d1$tau<-unlist(cv[3])
   d1$soc_w<-unlist(cv[4])
   
- #saveRDS(output, file = paste0("A_GeneratedFiles/modelfits/social_models/Q_fit", player_nr, ".rds"))
+  #saveRDS(output, file = paste0("A_GeneratedFiles/modelfits/social_models/Q_fit", player_nr, ".rds"))
   return(d1)
 }
 ```
@@ -73,11 +73,11 @@ source("./C_modelfittingCode/models_mle.R")
 
 
 # simulate
-Here i take the dataframe from the previous modelfitting and simulate new data.
+Here i take the dataframe from the previous modelfitting and simulate new responses
 ```{r}
 #environment files are in generated files
 environments<-load_envs(path="./A_GeneratedFiles/")
-
+# ENVIRONMENTINDEXING FOR SIMS is 1:8
 
 social_sims_plot_d<-foreach(
   player_nr = unique(social_fits$player),
@@ -111,7 +111,7 @@ social_sims_plot_d<-foreach(
     acquisition_fun=ucb,
     data = d1,
     envs=environments
-    ) # only try one sub
+  ) # only try one sub
   #collect fitted parameters and fit index and return
   #social_data$modelfit=cv
   #output <- rbind(output, cv)
