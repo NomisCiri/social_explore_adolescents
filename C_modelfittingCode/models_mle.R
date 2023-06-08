@@ -125,6 +125,7 @@ soc_utility_model <- function(par, learning_model_fun, acquisition_fun, dat) {
       #browser()
     }
     # softmaximization
+    
     p <- exp(utilities / tau)
     # probabilities
     p <- p / rowSums(p)
@@ -135,7 +136,7 @@ soc_utility_model <- function(par, learning_model_fun, acquisition_fun, dat) {
     nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials-1)), chosen)]))
     #browser()
   }
-  browser()
+  #browser()
   #avoid nan in objective function
   if(any(is.nan(sum(nLL))))
   { 

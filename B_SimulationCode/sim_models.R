@@ -11,8 +11,7 @@ explore_env_social_fitted_pars <- function(par, learning_model_fun, acquisition_
   lr <- par[1]# "learningrate"
   tau <- par[2] #  "random" exploration
   zeta<-par[3] # scales social info use
-  
-  mu0 <- par[4] # exploration bonus
+  mu0=0
   mu=list()
   all_choices <- NULL
   dummy <- NULL
@@ -21,14 +20,15 @@ explore_env_social_fitted_pars <- function(par, learning_model_fun, acquisition_
   plot_dat=list()
   chosen=NULL
   
-  for (r in 1:12){
+  for (r in unique(data$round)){
     
     # collect choices for current round
     #print(r)
     round_df <- data%>%filter(round == r)
     #get environment as seen by participant
-    browser()
+   # browser()
     # get the right environment to sample from
+    #browser()
     env=envs%>%filter(env_idx==unique(round_df$env_number))#[[unique(round_df$env_number)]]
     #browser()
     trials <- nrow(round_df)
@@ -54,14 +54,14 @@ explore_env_social_fitted_pars <- function(par, learning_model_fun, acquisition_
       social_info=NA,
       round=r,
       util_list=NA,# there are no utilities yet
-      p_list=I(list(p=rep(1/64,64)))
+      p_list=I(list(rep(1/64,64)))
     )
     
     # loop over trials
     for (t in 1:(trials-1)) {
       # output by GP with particular parameter settings
       # don't forget mean centering and standardization.... mean is already 0 :)
-      browser()
+     # browser()
       if (t > 1) {
         out <- RW_Q(X[t, 1:2], y[t], theta = lr, prevPost = out, mu0Par = mu0)
       } else {
@@ -100,7 +100,7 @@ explore_env_social_fitted_pars <- function(par, learning_model_fun, acquisition_
       )
       
       all_choices <- rbind(all_choices, one_trial_choices)
-      browser()
+     # browser()
     }
     # # collect the data so you can plot it later
     # plot_dat[[r]] <- expand.grid(x = 1:8, y = 1:8, trials = 0:max(all_choices$trial))
@@ -120,6 +120,7 @@ explore_env_social_fitted_pars <- function(par, learning_model_fun, acquisition_
     # # browser()
     # all_choices<-NULL
   }# end rounds
+  #browser()
   return(all_choices)
 }
 
