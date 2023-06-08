@@ -6,101 +6,121 @@
 explore_env_social_fitted_pars <- function(par, learning_model_fun, acquisition_fun,data,envs) {
   # for (rep in 1:ntrialss){
   # unpack
-  par<-exp(par)#parameters are defined in logspace, we exponentiate them here
+  #browser()
+  #par<-exp(par)#parameters are defined in logspace, we exponentiate them here
   lr <- par[1]# "learningrate"
   tau <- par[2] #  "random" exploration
   zeta<-par[3] # scales social info use
-
-  mu0 <- 0 # exploration bonus
+  
+  mu0 <- par[4] # exploration bonus
   mu=list()
   all_choices <- NULL
   dummy <- NULL
   #look up samples
   dat=expand.grid(x1=0:7,x2=0:7)
   plot_dat=list()
-
+  chosen=NULL
+  
   for (r in 1:12){
     
     # collect choices for current round
     #print(r)
     round_df <- data%>%filter(round == r)
     #get environment as seen by participant
-    #browser()
-    
+    browser()
+    # get the right environment to sample from
     env=envs%>%filter(env_idx==unique(round_df$env_number))#[[unique(round_df$env_number)]]
     #browser()
     trials <- nrow(round_df)
     # social information
     social_choices<-round_df$social_info
-    # create observation matrix
     # Utilties of each choice
     utilities <- NULL
     prevPost <- NULL # set the previous posterior computation to NULL for qlearning
     pMat <- NULL
     #here, too
-    ind <- round_df$choices
+    ind <- round_df$choices[1]
     nTrials <- length(social_choices)
     X <- as.matrix(dat[ind, 1:2]) # generate a new vector of Xs
     y <- as.matrix(rnorm(1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance)/100)
+    
+    # store first choice of round
+    all_choices<-data.frame(
+      trial = 1, 
+      x = as.numeric(X[1, 1]), 
+      y = as.numeric(X[1, 2]),
+      z = as.numeric(y[1]),
+      index=ind,
+      social_info=NA,
+      round=r,
+      util_list=NA,# there are no utilities yet
+      p_list=I(list(p=rep(1/64,64)))
+    )
+    
     # loop over trials
-    for (trial in 1:nTrials) {
+    for (t in 1:(trials-1)) {
       # output by GP with particular parameter settings
       # don't forget mean centering and standardization.... mean is already 0 :)
-      if (trial > 1) {
-          out <- bayesianMeanTracker(X[trial, 1:2], y[trial], theta = lr, prevPost = out, mu0Par = mu0,var0=40)
+      browser()
+      if (t > 1) {
+        out <- RW_Q(X[t, 1:2], y[t], theta = lr, prevPost = out, mu0Par = mu0)
       } else {
-        out <- bayesianMeanTracker(X[trial, 1:2], y[trial], theta = lr, prevPost = NULL, mu0Par = mu0,var0=40)
+        out <- RW_Q(X[t, 1:2], y[t], theta = lr, prevPost = NULL, mu0Par = mu0)
       }
-      # browser()
+      #browser()
       #utilities
       utilityVec <- ucb(out, 0)
-      utilityVec[social_choices[trial]]<-utilityVec[social_choices[trial]]+zeta# social update of utility
+      utilityVec[social_choices[t]]<-utilityVec[social_choices[t]]+zeta# social update of utility
       # softmaximization
-      utilities=utilityVec-max(utilityVec)# get no NAs
-      p <- exp(utilities / tau)
+      #utilities=utilityVec-max(utilityVec)# get no NAs
+      p <- exp(utilityVec / tau)
       # probabilities
       p <- p / colSums(p)
       # numerical overflow
       p <- (pmax(p, 0.00001))
       p <- (pmin(p, 0.99999))
-     # browser()
-      ind <- sample(1:64, 1, prob = p) # sample from an adolescent environemnt
+      # browser()
+      ind <- sample(1:64, 1, prob = p) # choice index
       
-      # collect new chouice
+      # collect x y coordinate of choice
       X <- rbind(X, as.matrix(dat[ind, 1:2]))
-      # bind y-observations
-      y <- rbind(y, as.matrix(rnorm(n = 1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance)/100)) # change this into a sample.
-      
+      # sample from environment
+      y <- rbind(y, as.matrix(rnorm(n = 1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance)/100)) 
+      # write it to the next trial index because choice has already been made, learning will happen in next round
       one_trial_choices <- data.frame(
-        trial = trial, 
-        x = as.numeric(X[trial, 1]), 
-        y = as.numeric(X[trial, 2]),
-        z = as.numeric(y[trial])
+        trial = t+1, 
+        x = as.numeric(X[t+1, 1]), 
+        y = as.numeric(X[t+1, 2]),
+        z = as.numeric(y[t+1]),
+        index=ind,
+        social_info=social_choices[t+1],
+        round=r,
+        util_list=I(list(utilityVec)),
+        p_list=I(list(p))
       )
       
       all_choices <- rbind(all_choices, one_trial_choices)
-
-      mu[[trial]] <- out$mu
+      browser()
     }
-    # collect the data so you can plot it later
-    plot_dat[[r]] <- expand.grid(x = 0:7, y = 0:7, trials = 0:max(all_choices$trial))
-    plot_dat[[r]]$sample <- 0
-    plot_dat[[r]]$out <- 0
-    plot_dat[[r]]$mu <- 0
-
-    for (i in 1:length(all_choices$x)) {
-      all_choices$y[i]#
-      all_choices$x[i]
-      #was the item chosen?
-      plot_dat[[r]][plot_dat[[r]]$x == all_choices$x[i] & plot_dat[[r]]$y == all_choices$y[i] & plot_dat[[r]]$trials == all_choices$trial[i], ]$sample <- 1
-      #outcomes
-      plot_dat[[r]][plot_dat[[r]]$trials == all_choices$trial[i], ]$out <- all_choices$z[i]
-      plot_dat[[r]][plot_dat[[r]]$trials == all_choices$trial[i], ]$mu <- mu[[i]]
-    }
-    # browser()
-    all_choices<-NULL
+    # # collect the data so you can plot it later
+    # plot_dat[[r]] <- expand.grid(x = 1:8, y = 1:8, trials = 0:max(all_choices$trial))
+    # plot_dat[[r]]$sample <- 0
+    # plot_dat[[r]]$out <- 0
+    # plot_dat[[r]]$mu <- 0
+    # 
+    # for (i in 1:length(all_choices$x)) {
+    #   all_choices$y[i]#
+    #   all_choices$x[i]
+    #   #was the item chosen?
+    #   plot_dat[[r]][plot_dat[[r]]$x == all_choices$x[i] & plot_dat[[r]]$y == all_choices$y[i] & plot_dat[[r]]$trials == all_choices$trial[i], ]$sample <- 1
+    #   #outcomes
+    #   plot_dat[[r]][plot_dat[[r]]$trials == all_choices$trial[i], ]$out <- all_choices$z[i]
+    #   plot_dat[[r]][plot_dat[[r]]$trials == all_choices$trial[i], ]$mu <- mu[[i]]
+    # }
+    # # browser()
+    # all_choices<-NULL
   }# end rounds
-  return(plot_dat)
+  return(all_choices)
 }
 
 
@@ -122,8 +142,18 @@ explore_env_social_fitted_pars <- function(par, learning_model_fun, acquisition_
 
 
 
+
+
+
+
+
+
+
+
+
+
 #########
-######### for plain simulations without participant data
+######### deprecated
 #########
 explore_env_social_agents <- function(explore_func, choiceRule, env, cntrl, iter) {
   # for (rep in 1:ntrialss){

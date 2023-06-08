@@ -21,7 +21,15 @@ source("./B_SimulationCode/sim_models.R") # modelcode for simulation
 
 # load behavioral data
 #explore_data <- read_csv(file = paste0("./Data/data_coord.csv"))
-social_data<-read_csv(file = paste0("./data/social/data_social_coord.csv"))
+social_data<-read_csv(file = paste0("./data/social/data_social_coord_schoolbactch_1.csv"))
+social_data<-social_data%>%mutate(group=ifelse(player<16,"adults","kids"))%>%
+  filter(tot_points>0)%>%filter(player<41)
+# get na players and throw them out
+filtered_players<-social_data%>%group_by(player)%>%
+  dplyr::summarize(count_na = sum(is.na(cell)))%>%
+  filter(count_na>0)%>%pull(player)
+
+social_data<-social_data%>%filter(!(player %in% filtered_players))
 ```
 
 # Fit model to social data
@@ -30,7 +38,7 @@ alongside the participant data in long format. In the future we want to modify t
 
 
 ```{r}
-cl <- parallel::makeCluster(15)
+cl <- parallel::makeCluster(40)
 doParallel::registerDoParallel(cl)
 
 source("./C_modelfittingCode/models_mle.R")
@@ -62,9 +70,10 @@ social_fits<-foreach(
   d1$lr<-unlist(cv[2])
   d1$tau<-unlist(cv[3])
   d1$soc_w<-unlist(cv[4])
+  #d1$prior<-unlist(cv[5])
   
   #saveRDS(output, file = paste0("A_GeneratedFiles/modelfits/social_models/Q_fit", player_nr, ".rds"))
-  return(d1)
+  #return(d1)
 }
 ```
 
@@ -75,6 +84,7 @@ social_fits<-foreach(
 # simulate
 Here i take the dataframe from the previous modelfitting and simulate new responses
 ```{r}
+random_G2s=-1*(log((1/64))*24*12)
 #environment files are in generated files
 environments<-load_envs(path="./A_GeneratedFiles/")
 # ENVIRONMENTINDEXING FOR SIMS is 1:8

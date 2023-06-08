@@ -80,12 +80,12 @@ soc_utility_model <- function(par, learning_model_fun, acquisition_fun, dat) {
   tau <- par[2] #  "random" exploration
   zeta<-par[3] # scales social info use
   
-  mu0 <- 0 # exploration bonus
+  mu0 <-0# par[4] # exploration bonus
   # create a parameter vector
   # preallocate negative log likelihood
   nLL <- rep(0, 12)
   
-  for (r in 1:12){
+  for (r in unique(dat$round)){
     # collect choices for current round
     round_df <- subset(dat, round == r)
     trials <- nrow(round_df)
@@ -135,9 +135,9 @@ soc_utility_model <- function(par, learning_model_fun, acquisition_fun, dat) {
     nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials-1)), chosen)]))
     #browser()
   }
-  
+  browser()
   #avoid nan in objective function
-  if(any(is.nan(nLL)))
+  if(any(is.nan(sum(nLL))))
   { 
     return(10 ^ 30)
     
@@ -162,8 +162,8 @@ fit_fun <- function(d1) {
   rounds <- 1:12
   nParams<-3
   # Set upper and lower bounds based on nParams
-  lbound <- c(0.000001,0.00001,-4)
-  ubound <- c(4,2,5)
+  lbound <- c(0.00000001,0.00000001,-4)
+  ubound <- c(1,10,4)
   
   
   #####
