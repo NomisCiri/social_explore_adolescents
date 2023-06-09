@@ -64,6 +64,7 @@ cntrl_social<-list(
 
 # load environments that participants saw
 and plot them
+
 ```{r}
 
 # load the experimental data

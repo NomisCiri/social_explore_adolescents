@@ -69,7 +69,6 @@ ucb <- function(out, pars, refactor = F) {
 #########
 explore_env_social <- function(explore_func, choiceRule, env, cntrl, iter) {
   # for (rep in 1:ntrialss){
-  # unpack
   lambda <- cntrl$lambda# generalization for rbf kernel
   beta <- cntrl$beta # this scales risk attitude.
   zeta<-cntrl$social_weight # scales social info use
