@@ -12,6 +12,7 @@ explore_env_social_fitted_pars <- function(par, learning_model_fun, acquisition_
   tau <- par[2] #  "random" exploration
   zeta<-par[3] # scales social info use
   mu0=0
+  
   mu=list()
   all_choices <- NULL
   dummy <- NULL
@@ -79,13 +80,14 @@ explore_env_social_fitted_pars <- function(par, learning_model_fun, acquisition_
       # numerical overflow
       p <- (pmax(p, 0.00001))
       p <- (pmin(p, 0.99999))
-      # browser()
+    #  browser()
       ind <- sample(1:64, 1, prob = p) # choice index
       
       # collect x y coordinate of choice
       X <- rbind(X, as.matrix(dat[ind, 1:2]))
       # sample from environment
       y <- rbind(y, as.matrix(rnorm(n = 1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance)/100)) 
+     # y_real=rbind
       # write it to the next trial index because choice has already been made, learning will happen in next round
       one_trial_choices <- data.frame(
         trial = t+1, 
