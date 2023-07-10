@@ -37,20 +37,22 @@ group_by(unique_rounds) %>%
 
 
 problem_data <- data_phil %>% 
-  filter(remain_gem != 1) %>% 
+  #filter(remain_gem != 1) %>% 
+  filter(gem_found==1 & trial > round_gem_found ) %>% 
   ungroup() %>% 
   group_by(player, round) %>% 
   mutate(n_explore_after_gem = length(unique(cell)),
-         remaining_trials = 25-gem_found,
-         proportion_explore = n_explore_after_gem/remaining_trials) 
+         remaining_trials = 25 - round_gem_found,
+         n_clicks=  n_explore_after_gem/remaining_trials) 
 
 problem_data%>% 
-  select(unique_rounds,proportion_explore) %>% 
+  select(unique_rounds,n_clicks, round_gem_found, soc_info_round, social_info_factor) %>% 
   distinct() %>% 
   ggplot()+
-  geom_histogram(aes(x = proportion_explore),binwidth = .02 ) +
+  geom_histogram(aes(x = n_clicks, fill =factor(social_info_factor)),binwidth = .02 ) +
+  geom_vline(aes(xintercept = mean(n_clicks)))+
   theme_bw(base_size = 20) +
-  labs(title = "behavior after gem was found")
+  labs(x = 'n of explore clicks after gem',  title = "behavior after gem was found")
 
   
 
@@ -84,16 +86,32 @@ all_data %>%
   theme_bw(base_size = 20) 
 
 
+# people open less boxes when gem is found early
+# also people open fewer boxes when demonstrator finds gem
 
 all_data %>% 
-  filter(gempresent == 1) %>% 
-  group_by(round, player, gem_found) %>% 
-  summarise(boxes_opened = n_distinct(cells)) %>% 
-  ggplot(aes(x = factor(gem_found), y = boxes_opened)) +
-  geom_boxplot(aes(fill = factor(gem_found))) +
-  scale_fill_brewer()+
-  labs(x = "gem_present", y = 'n of different boxes') +
+  filter(gem_found==1) %>% 
+  group_by(round, player, gempresent, gem_found) %>% 
+  summarise(boxes_opened = n_distinct(cells),
+            round_gem_found=round_gem_found, 
+            social_info_factor = social_info_factor) %>% 
+  ggplot(aes(x = factor(round_gem_found), y = boxes_opened, fill = social_info_factor)) +
+  geom_boxplot(aes()) +
+  #scale_fill_brewer(name = "gem found", label = c("no", "yes"))+
+ # scale_x_discrete(label = c("no", "yes")) +
+  labs(x = "trial gem found", y = 'n of different boxes') +
   theme_bw(base_size = 20) 
+
+
+# all_data %>% 
+#   filter(gempresent == 1) %>% 
+#   group_by(round, player, gem_found) %>% 
+#   summarise(boxes_opened = n_distinct(cells)) %>% 
+#   ggplot(aes(x = factor(gem_found), y = boxes_opened)) +
+#   geom_boxplot(aes(fill = factor(gem_found))) +
+#   scale_fill_brewer()+
+#   labs(x = "gem_present", y = 'n of different boxes') +
+#   theme_bw(base_size = 20) 
 
 ```
 
@@ -201,9 +219,9 @@ all_data %>%
     
 ```
 
-agents in the simulation are more volatile, especially in the non gem non loss rounds. they also explore after a gem more often than humans
 
 # how often did people copy
+also add age here
 
 ```{r}
 
@@ -235,15 +253,18 @@ points_by_treat <- all_data %>%
   mutate(n = sum(social_info_use_num)) %>% 
   ggplot()+
   stat_summary(aes (x = n, y = tot_points, color = factor(gem_found, levels = c(1,0)))) +
-  facet_wrap(~social_info_factor)+  
+  geom_smooth(aes (x = n, y = tot_points),method = "lm")+
+  facet_wrap(~social_info_factor, scales = 'free')+  
   theme_bw(base_size = 20) +
   scale_color_brewer(type = "qual",palette = 2, name = "gem found", label = c("yes", "no"))+
   labs(x = 'n of rounds copying social information', y='total points', title = 'total points by frequency of social info use') +
     theme_bw(30)+
   theme(axis.text=element_text(size=20))
 
+points_by_treat
+  
 
-  ggsave(filename = 'points_by_treat.png', points_by_treat, width = 14,height=6  )
+ggsave(filename = 'points_by_treat.png', points_by_treat, width = 14,height=6  )
 
 
 
@@ -287,10 +308,5 @@ gem_found  <-
   
 
   ggsave(filename = 'gem_found.png', gem_found, width = 8,height=6  )
-
-all_data %>% 
-  filter(gempresent==1) %>% 
-  ggplot() +
-  geom_boxplot(aes(x = social_info_factor, y = round_gem_found)) 
   
 ```
