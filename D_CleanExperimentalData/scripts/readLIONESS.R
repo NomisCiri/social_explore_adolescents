@@ -10,39 +10,41 @@ library(readxl)
 
 readLIONESS <- function(folder, writinglocation, periods) {
   merged_data <- data.frame()
-  
+
   # how many raw files are in the folder?
   num_files <- length(list.files(folder))
-  
+
   # loop through them and merge them into 1 file
   for (n in 1:num_files) {
-    
-    filename <- paste(folder ,list.files(folder)[n], sep = '')
-    
+    filename <- paste(folder, list.files(folder)[n], sep = "")
+
     # read the core sheet
-    core <-  read_excel(path = filename,
-                        sheet = "core") %>%
+    core <- read_excel(
+      path = filename,
+      sheet = "core"
+    ) %>%
       write_csv(paste(writinglocation, n, "-core-raw.csv"))
-    
-    decisions <-  read_excel(path = filename,
-                             sheet = "decisions") %>%
+
+    decisions <- read_excel(
+      path = filename,
+      sheet = "decisions"
+    ) %>%
       write_csv(paste(writinglocation, n, "-decisions-raw.csv"))
     
     session <-  read_excel(path = filename,
                            sheet = "session") %>%
       write_csv(paste0(writinglocation, n, "-session-raw.csv"))
     
-    
     # which players completed the experiment
     player_finished <- core %>%
-      filter(period == periods & onPage == 'end') %>%
+      filter(period == periods & onPage == "end") %>%
       select(playerNr)
-    
+
     # exclude incomplete participants
     decisions <- decisions %>%
       filter(playerNr %in% player_finished$playerNr)
-    
- 
+
+
     # append to other batches (if existing)
     merged_data <-
       bind_rows(merged_data, decisions)

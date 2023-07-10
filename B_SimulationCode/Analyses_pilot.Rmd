@@ -7,7 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-pacman::p_load(here,tidyverse,brms)
+pacman::p_load(here, tidyverse, brms)
 ```
 
 ## Social Bandits Explore
@@ -15,10 +15,9 @@ pacman::p_load(here,tidyverse,brms)
 Here we will have a first look at the pilot data
 
 ```{r load}
-pilot_data<-read_csv(file = "./Behav_Data/Pilot1/clean_data_1.csv")
-env_gem="environments_gem_250_var25max.json"
-env_no_gem="environments_no_gem_var25max.json"
-
+pilot_data <- read_csv(file = "./Behav_Data/Pilot1/clean_data_1.csv")
+env_gem <- "environments_gem_250_var25max.json"
+env_no_gem <- "environments_no_gem_var25max.json"
 ```
 
 ## Test
@@ -28,22 +27,26 @@ average exploration given gemenot notgemenv
 
 
 ```{r pressure, echo=FALSE}
-pilot_data%>%group_by(player)%>%
-  mutate(exploit=ifelse(lead(cells)==cells,1,0),
-         explore=ifelse(lead(cells)!=cells,1,0))%>%
-  pivot_longer(cols=c(exploit,explore),names_to = "explore_exploit")%>%
-  ggplot(aes(x=points,y=value,color=explore_exploit))+
-  stat_summary()+
+pilot_data %>%
+  group_by(player) %>%
+  mutate(
+    exploit = ifelse(lead(cells) == cells, 1, 0),
+    explore = ifelse(lead(cells) != cells, 1, 0)
+  ) %>%
+  pivot_longer(cols = c(exploit, explore), names_to = "explore_exploit") %>%
+  ggplot(aes(x = points, y = value, color = explore_exploit)) +
+  stat_summary() +
   theme_minimal(20)
 ```
 ```{r}
-pilot_data%>%
-  group_by(player)%>%
-  mutate(exploit=ifelse(lead(cells)==cells,1,0),
-         explore=ifelse(lead(cells)!=cells,1,0))%>%
-  mutate(gem=ifelse(points>150,1,0))%>%
-  brm(data=.,explore~gem+(1|player),cores=4,family = bernoulli)
-
+pilot_data %>%
+  group_by(player) %>%
+  mutate(
+    exploit = ifelse(lead(cells) == cells, 1, 0),
+    explore = ifelse(lead(cells) != cells, 1, 0)
+  ) %>%
+  mutate(gem = ifelse(points > 150, 1, 0)) %>%
+  brm(data = ., explore ~ gem + (1 | player), cores = 4, family = bernoulli)
 ``` 
 
 # Exploration changes depending on outcomes
@@ -51,60 +54,66 @@ pilot_data%>%
 Gems make ppl exploit. losses explore but also after gains, they explore more. 
 backed up by regressions. 
 ```{r}
-pilot_data%>%
-  group_by(player)%>%
-  mutate(exploit=ifelse(lead(cells)==cells,1,0),
-         explore=ifelse(lead(cells)!=cells,1,0))%>%
-  mutate(out_cat=case_when(points>150~1,
-                           points<0~3,
-                           TRUE~2
-  )
-  )%>%pivot_longer(cols=c(exploit,explore),names_to = "explore_exploit")%>%
-  ggplot(aes(x=out_cat,y=value,color=explore_exploit,shape=explore_exploit))+
-  stat_summary(size=1)+
-  stat_summary(geom="line")+
-  scale_y_continuous(name="Proportion")+
-  scale_x_continuous(name="Category",breaks=c(1,2,3),labels=c("gem","no gem","loss"))+
+pilot_data %>%
+  group_by(player) %>%
+  mutate(
+    exploit = ifelse(lead(cells) == cells, 1, 0),
+    explore = ifelse(lead(cells) != cells, 1, 0)
+  ) %>%
+  mutate(out_cat = case_when(
+    points > 150 ~ 1,
+    points < 0 ~ 3,
+    TRUE ~ 2
+  )) %>%
+  pivot_longer(cols = c(exploit, explore), names_to = "explore_exploit") %>%
+  ggplot(aes(x = out_cat, y = value, color = explore_exploit, shape = explore_exploit)) +
+  stat_summary(size = 1) +
+  stat_summary(geom = "line") +
+  scale_y_continuous(name = "Proportion") +
+  scale_x_continuous(name = "Category", breaks = c(1, 2, 3), labels = c("gem", "no gem", "loss")) +
   theme_minimal(20)
 
 
 
 
 
-pilot_data%>%
-  group_by(player)%>%
-  mutate(exploit=ifelse(lead(cells)==cells,1,0),
-         explore=ifelse(lead(cells)!=cells,1,0))%>%
-  mutate(out_cat=case_when(points>150~1,
-                           points<0~3,
-                           TRUE~2
-    )
-  )%>%
-  brm(data=.,explore~as.factor(out_cat)+(1|player),cores=4,family = bernoulli)
+pilot_data %>%
+  group_by(player) %>%
+  mutate(
+    exploit = ifelse(lead(cells) == cells, 1, 0),
+    explore = ifelse(lead(cells) != cells, 1, 0)
+  ) %>%
+  mutate(out_cat = case_when(
+    points > 150 ~ 1,
+    points < 0 ~ 3,
+    TRUE ~ 2
+  )) %>%
+  brm(data = ., explore ~ as.factor(out_cat) + (1 | player), cores = 4, family = bernoulli)
 ```
 
 # average trial number with gem found
 Could figure out how to do this on the fly
 
 ```{r eval=FALSE}
-#max(pilot_data$player)
+# max(pilot_data$player)
 
-pilot_data%>%
-  group_by(player)%>%
-  mutate(exploit=ifelse(lead(cells)==cells,1,0),
-         explore=ifelse(lead(cells)!=cells,1,0))%>%
-  group_by(player,round)%>%
-  mutate(trial=1:n())%>%
-  filter(gem==1) 
-  
-  
-  
-  mutate(out_cat=case_when(points>150~1,
-                           points<0~3,
-                           TRUE~2
-    )
-  )
+pilot_data %>%
+  group_by(player) %>%
+  mutate(
+    exploit = ifelse(lead(cells) == cells, 1, 0),
+    explore = ifelse(lead(cells) != cells, 1, 0)
+  ) %>%
+  group_by(player, round) %>%
+  mutate(trial = 1:n()) %>%
+  filter(gem == 1)
 
+
+
+mutate(out_cat = case_when(
+  points > 150 ~ 1,
+  points < 0 ~ 3,
+  TRUE ~ 2
+))
 ```
 
 # exploration environments
@@ -112,36 +121,38 @@ Average exploration in different environments
 Exploration is greater in nongem envs.
 
 ```{r}
-pilot_data%>%
-  group_by(player)%>%
-  mutate(exploit=ifelse(lead(cells)==cells,1,0),
-         explore=ifelse(lead(cells)!=cells,1,0))%>%
-  ggplot(aes(x=as.factor(gempresent),y=explore))+
-  stat_summary()+
-  scale_x_discrete(name="gem present",breaks=c(0,1),labels=c("No","Yes"))+
-  scale_y_continuous(name="proportion exploration")+
+pilot_data %>%
+  group_by(player) %>%
+  mutate(
+    exploit = ifelse(lead(cells) == cells, 1, 0),
+    explore = ifelse(lead(cells) != cells, 1, 0)
+  ) %>%
+  ggplot(aes(x = as.factor(gempresent), y = explore)) +
+  stat_summary() +
+  scale_x_discrete(name = "gem present", breaks = c(0, 1), labels = c("No", "Yes")) +
+  scale_y_continuous(name = "proportion exploration") +
   theme_minimal(20)
-
-
 ```
 
 # reward environments
 When there is no gem present, people encounter more losses
 
 ```{r}
-pilot_data%>%
-  group_by(player)%>%
-  mutate(exploit=ifelse(lead(cells)==cells,1,0),
-         explore=ifelse(lead(cells)!=cells,1,0))%>%
-  mutate(out_cat=case_when(points>0~"reward",
-                           points<=0~"loss",
-                           #TRUE>2
-    )
-  )%>%
-  ggplot(aes(x=out_cat,fill=as.factor(gempresent)))+
-  geom_bar(stat="count",position="dodge")+
-  scale_fill_discrete(name="Gem Present")+
+pilot_data %>%
+  group_by(player) %>%
+  mutate(
+    exploit = ifelse(lead(cells) == cells, 1, 0),
+    explore = ifelse(lead(cells) != cells, 1, 0)
+  ) %>%
+  mutate(out_cat = case_when(
+    points > 0 ~ "reward",
+    points <= 0 ~ "loss",
+    # TRUE>2
+  )) %>%
+  ggplot(aes(x = out_cat, fill = as.factor(gempresent))) +
+  geom_bar(stat = "count", position = "dodge") +
+  scale_fill_discrete(name = "Gem Present") +
   theme_minimal(20)
 
-  #facet_wrap(~gempresent)
+# facet_wrap(~gempresent)
 ```
