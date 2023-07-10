@@ -28,6 +28,10 @@ readLIONESS <- function(folder, writinglocation, periods) {
                              sheet = "decisions") %>%
       write_csv(paste(writinglocation, n, "-decisions-raw.csv"))
     
+    session <-  read_excel(path = filename,
+                           sheet = "session") %>%
+      write_csv(paste0(writinglocation, n, "-session-raw.csv"))
+    
     
     # which players completed the experiment
     player_finished <- core %>%
