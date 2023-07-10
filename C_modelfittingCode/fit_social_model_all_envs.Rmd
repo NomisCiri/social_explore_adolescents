@@ -200,26 +200,28 @@ social_sims_plot_d<-foreach(
 ```
 
 
-# dataframe
+# plot simulations
 
 ```{r}
 #plot_df<-data.table::rbindlist(social_sims_plot_d, idcol = "index")
 social_sims_plot_d%>%dplyr::group_by(trial,player,group)%>%filter(trial>0)%>%
   dplyr::summarise(m_rew=mean(z*100))%>%
   ggplot(aes(x=trial,y=m_rew,color=group))+
-  #geom_line(aes(group=index))+
+  ggtitle("Simulations")+
   stat_summary()+
-  stat_smooth(method="lm")
+  stat_smooth(method="lm")+
+  theme_bw()->sims
 
 
 social_fits%>%dplyr::group_by(trial,player,group)%>%filter(trial>0)%>%
   dplyr::summarise(m_rew=mean(points))%>%
   ggplot(aes(x=trial,y=m_rew,color=group))+
-  #geom_line(aes(group=index))+
+  ggtitle("Participants")+
   stat_summary()+
-  stat_smooth(method="lm")
+  stat_smooth(method="lm")+
+  theme_bw()->ppts
 
-
+cowplot::plot_grid(sims,ppts)
 ```
 
 ```{r}
