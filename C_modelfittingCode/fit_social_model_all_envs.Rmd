@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-pacman::p_load(tidyverse, rjson, DEoptim, doParallel, here,data.table)
+pacman::p_load(tidyverse, rjson, DEoptim, doParallel, here,data.table,jsonlite)
 knitr::opts_knit$set(root.dir = here()) # set root fot the whole file
 ```
 
@@ -23,11 +23,11 @@ source("./B_SimulationCode/sim_models.R") # modelcode for simulation
 #explore_data <- read_csv(file = paste0("./Data/data_coord.csv"))
 social_data<-read_csv(file = paste0("./data/social/data_social_coord_schoolbactch_1.csv"))
 social_data<-social_data%>%mutate(group=ifelse(player<16,"adults","kids"))%>%
-  filter(tot_points>0)%>%filter(player<41)
+  filter(tot_points>0)%>%filter(player<41)# change to all participants
 # get na players and throw them out
 filtered_players<-social_data%>%group_by(player)%>%
   dplyr::summarize(count_na = sum(is.na(cell)))%>%
-  filter(count_na>0)%>%pull(player)
+  filter(count_na>0)%>%pull(player)# figure out whats happens here
 
 filtered_players<-c(filtered_players,social_data%>%group_by(player)%>%
                       dplyr::summarize(count_na = sum(is.na(env_number)))%>%
@@ -66,7 +66,7 @@ demonstrators<-demonstrators%>%mutate(
                    player %in% gem_not_found ~ "gem_not_found",
                    player %in% gem_found ~ "gem_found",
                    player %in% never_exploit ~ "never_exploit")
-)%>%filter(env<7)%>%
+)%>%filter(env<7)%>%#adjust to include rotated environments
   mutate(env=ifelse(gem,env+6,env))
 ####
 ####
