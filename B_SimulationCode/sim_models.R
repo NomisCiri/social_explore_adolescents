@@ -64,9 +64,9 @@ explore_env_social_fitted_pars <- function(par, learning_model_fun, acquisition_
       # don't forget mean centering and standardization.... mean is already 0 :)
      # browser()
       if (t > 1) {
-        out <- RW_Q(X[t, 1:2], y[t], theta = lr, prevPost = out, mu0Par = mu0)
+        out <- RW_Q(ind, y[t], theta = lr, prevPost = out, mu0Par = mu0)
       } else {
-        out <- RW_Q(X[t, 1:2], y[t], theta = lr, prevPost = NULL, mu0Par = mu0)
+        out <- RW_Q(ind, y[t], theta = lr, prevPost = NULL, mu0Par = mu0)
       }
       #browser()
       #utilities
@@ -86,7 +86,8 @@ explore_env_social_fitted_pars <- function(par, learning_model_fun, acquisition_
       # collect x y coordinate of choice
       X <- rbind(X, as.matrix(dat[ind, 1:2]))
       # sample from environment
-      y <- rbind(y, as.matrix(rnorm(n = 1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance)/100)) 
+      y <- rbind(y, as.matrix(rnorm(n = 1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))) 
+      browser()
      # y_real=rbind
       # write it to the next trial index because choice has already been made, learning will happen in next round
       one_trial_choices <- data.frame(

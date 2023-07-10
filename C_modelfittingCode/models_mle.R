@@ -46,8 +46,8 @@ RW_Q <- function(x, y, theta, prevPost = NULL, mu0Par) {
     predictions <- prevPost
   }
   # Which of the 64 options were chosen at time?
-  alloptrials <- expand.grid(x1=0:7, x2=0:7)
-  chosen <- which(alloptrials$x1 == x[1] & alloptrials$x2 == x[2])
+  #alloptrials <- expand.grid(x1=0:7, x2=0:7)
+  chosen <- x#which(alloptrials$x1 == x[1] & alloptrials$x2 == x[2])
   # value update
   predictions[chosen] <- predictions[chosen] + (lr * (y - predictions[chosen]))
   # browser()
@@ -91,17 +91,10 @@ soc_utility_model <- function(par, learning_model_fun, acquisition_fun, dat) {
     trials <- nrow(round_df)
     # Observations of subject choice behavior
     chosen <- round_df$choices
-    # trim first observation, since it wasn't a choice but a randomly revealed tile (not informative for log likelihood).
-    chosen <- chosen[2:length(chosen)] 
     y <- round_df$z[0:(trials - 1)] # trim off the last observation, because it was not used to inform a choice (round already over)
-    x1 <- round_df$x[0:(trials - 1)]
-    x2 <- round_df$y[0:(trials - 1)]
-    
     # social information
     social_choices<-round_df$social_info
     # create observation matrix
-    X <- as.matrix(cbind(x1, x2))
-    #Xnew <- as.matrix(Xnew)# unsure whatrials the use of this
     # Utilties of each choice
     utilities <- NULL
     prevPost <- NULL # set the previous posterior computation to NULL for qlearning
@@ -109,23 +102,23 @@ soc_utility_model <- function(par, learning_model_fun, acquisition_fun, dat) {
     #here, too
     for (t in 1:(trials-1)) {
       #learn
+     # browser()
       if (t > 1) {
-        out <- RW_Q(X[t, 1:2], y[t], theta = theta, prevPost = out, mu0Par = mu0)
+        out <- RW_Q(chosen[t], y[t], theta = theta, prevPost = out, mu0Par = mu0)
       } else {
         # first t of each round, start new
-        out <- RW_Q(X[t, 1:2], y[t], theta = theta, prevPost = NULL, mu0Par = mu0)
+        out <- RW_Q(chosen[t], y[t], theta = theta, prevPost = NULL, mu0Par = mu0)
       }
       utilityVec <- ucb(out, 0)
       #next choice getrials a social utility
       #utilityVec=utilityVec-max(utilityVec)
       utilityVec[social_choices[t]]<-utilityVec[social_choices[t]]+zeta
-      #browser()
       # build horizon_length x options matrix, where each row holds the utilities of each choice at each decision time in the search horizon
       utilities <- rbind(utilities, t(utilityVec)) 
       #browser()
     }
     # softmaximization
-    
+   # browser()
     p <- exp(utilities / tau)
     # probabilities
     p <- p / rowSums(p)
@@ -133,7 +126,7 @@ soc_utility_model <- function(par, learning_model_fun, acquisition_fun, dat) {
     p <- (pmax(p, 0.00001))
     p <- (pmin(p, 0.99999))
     # add loglik nasty way of checking the predicted choice probability a the item that was chosen
-    nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials-1)), chosen)]))
+    nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials-1)), chosen[2:length(chosen)] )]))
     #browser()
   }
   #browser()
@@ -163,8 +156,8 @@ fit_fun <- function(d1) {
   rounds <- 1:12
   nParams<-3
   # Set upper and lower bounds based on nParams
-  lbound <- c(0.00000001,0.00000001,-4)
-  ubound <- c(1,10,4)
+  lbound <- c(0.00000001,0.00000001,-40)
+  ubound <- c(1,10,40)
   
   
   #####
