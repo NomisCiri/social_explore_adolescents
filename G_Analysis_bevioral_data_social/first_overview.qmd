@@ -236,7 +236,7 @@ all_data %>%
   summarize(mean_copy = mean(n),
             social_info_factor = social_info_factor) %>% 
   ggplot()+
-  geom_histogram(aes(x=mean_copy, y = stat(density), group = social_info_factor), binwidth = 1) +
+  geom_histogram(aes(x=mean_copy, y = stat(density), group = social_info_factor, fill = social_info_factor), binwidth = 1) +
   facet_wrap(~social_info_factor) +
   labs(title = 'average copy per participant in each treatment')+
   theme_bw(20)
@@ -269,6 +269,10 @@ ggsave(filename = 'points_by_treat.png', points_by_treat, width = 14,height=6  )
 
 
 
+
+all_data %>% 
+  ggplot() +
+  geom_col(aes(x = factor(trial), y = social_info_use, fill = social_info_use))
 
 ```
 
