@@ -104,15 +104,15 @@ alongside the participant data in long format. In the future we want to modify t
 
 ```{r}
 # 
-# cl <- parallel::makeCluster(40)
-# doParallel::registerDoParallel(cl)
+ cl <- parallel::makeCluster(40)
+ doParallel::registerDoParallel(cl)
 
 source("./C_modelfittingCode/models_mle.R")
 social_fits<-foreach(
   player_nr = unique(social_data$player),
   .packages = c("DEoptim", "dplyr"),
   .combine="rbind"
-) %do% {
+) %dopar% {
   
   
   #for(player_nr in unique(social_data$player)){
@@ -121,7 +121,7 @@ social_fits<-foreach(
   # social data TODO: concatenate nonsocial data.
   d1 <- social_data%>%filter(player == player_nr) %>%
     group_by(round) %>%
-    mutate(z = points,#(points - 0) /100,
+    mutate(z = (points - mean(points)) /sd(points),
            social_info=social_info,
            choices=cells) %>%rowwise()%>%
     mutate(social_info=ifelse(social_info==64,1,social_info))%>%
@@ -176,7 +176,7 @@ for (i in 1:100){
     # social data TODO: concatenate nonsocial data.
     d1 <- social_fits%>%filter(player == player_nr) %>%
       group_by(round) %>%
-      mutate(z = points,#(points - 0) /100,
+      mutate(z = (points - mean(points)) /sd(points),
              social_info=social_info,
              choices=cells) %>%rowwise()%>%
       mutate(social_info=ifelse(social_info==64,1,social_info))%>%
@@ -354,7 +354,7 @@ social_fits%>%dplyr::group_by(trial,player,group,soc_w)%>%filter(trial>0)%>%
 social_fits%>%lm(data=.,lr~group)%>%anova()
 
 
-social_fits%>%dplyr::group_by(trial,player,group,lr,soc_w)%>%filter(trial>0)%>%
+social_fits%>%dplyr::group_by(trial,player,group,soc_w)%>%filter(trial>0)%>%
   dplyr::summarise(m_rew=mean(points))%>%
   ggplot(aes(x=group,y=soc_w,color=group))+
   #geom_line(aes(group=index))+
