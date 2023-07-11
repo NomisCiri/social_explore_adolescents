@@ -263,7 +263,7 @@ soc_utility_model_2_lr <- function(par, dat) {
 #########
 ######### no social utility 2 lr model
 #########
-soc_utility_model_2_lr <- function(par, dat) {
+utility_model_2_lr <- function(par, dat) {
   # for (rep in 1:ntrialss){
   # unpack
   #par<-exp(par)#parameters are defined in logspace, we exponentiate them here
@@ -357,7 +357,7 @@ fit_fun <- function(d1) {
   # Begin cross validation routine
   # TRAINING SET
   fit <- DEoptim(
-    soc_utility_model_2_lr, 
+    utility_model_2_lr, 
     lower = lbound, 
     upper = ubound, 
     dat = d1,
@@ -365,7 +365,7 @@ fit_fun <- function(d1) {
   )
   paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
   # TEST SET
-  predict <- soc_utility_model_2_lr(
+  predict <- utility_model_2_lr(
     par = paramEstimates, 
     dat = d1
   )
@@ -380,6 +380,40 @@ fit_fun <- function(d1) {
 
 
 
+##
+###
+### Fit function to fit the utility model
+###
+fit_fun_util_only <- function(d1) {
+  # subselect participant, horizon and rounds not left out
+  #which rounds to use
+  rounds <- 1:12
+  nParams<- 3
+  
+  # Set upper and lower bounds based on nParams
+  lbound <- c(0.00000001,0.00000001,0.00000001) # first 2 are lr (pos, neg), then temperature, and social weight
+  ubound <- c(1,1,10)                            # first 2 are lr (pos, neg), then temperature, and social weight
+  
+  
+  #####
+  # Begin cross validation routine
+  # TRAINING SET
+  fit <- DEoptim(
+    utility_model_2_lr, 
+    lower = lbound, 
+    upper = ubound, 
+    dat = d1,
+    DEoptim.control(itermax = 100)
+  )
+  paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
+  # TEST SET
+  predict <- utility_model_2_lr(
+    par = paramEstimates, 
+    dat = d1
+  )
+  output <- c(predict, fit$optim$bestmem) # leaveoutindex, nLL, parameters....
+  return(output) # return optimized value
+}
 
 
 
