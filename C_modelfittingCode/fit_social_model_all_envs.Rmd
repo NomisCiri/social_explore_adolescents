@@ -102,6 +102,7 @@ This function fits the model specified in models mle and stores the parameter es
 alongside the participant data in long format. In the future we want to modify this to fit different models
 
 ```{r}
+
 cl <- parallel::makeCluster(40)
 doParallel::registerDoParallel(cl)
 

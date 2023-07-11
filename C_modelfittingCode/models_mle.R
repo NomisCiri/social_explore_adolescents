@@ -55,6 +55,46 @@ RW_Q <- function(x, y, theta, prevPost = NULL, mu0Par) {
   return(predictions)
 }
 
+
+########
+# RW-Q 2 learning rates (positive and negative)
+
+#######
+RW_Q <- function(x, y, theta, prevPost = NULL, mu0Par) {
+  # Updates the previous posterior based on a single observation
+  # parameters
+  mu0 <- mu0Par # prior mean
+  lr_p =theta[1]
+  lr_n =theta[2]
+  
+  if (is.null(prevPost)) { # if no posterior prior, assume it is the first observation
+    predictions <- rep(mu0, 64)
+  } else { # if previous posterior is provided, update
+    predictions <- prevPost
+  }
+  # Which of the 64 options were chosen at time?
+  #alloptrials <- expand.grid(x1=0:7, x2=0:7)
+  chosen <- x#which(alloptrials$x1 == x[1] & alloptrials$x2 == x[2])
+  # value update
+  
+  # calculate preditction error
+  pe <- y - predictions[chosen]
+  
+  # evaluate if pe > 0 or < 0: negative pe will have higher lr
+  
+  if (pe  > 0) {
+    predictions[chosen] <- predictions[chosen] + (lr_p * pe)
+  }
+  
+  else if (pe <= 0) {
+    predictions[chosen] <- predictions[chosen] + (lr_n * pe)
+  }
+  # browser()
+  
+  return(predictions)
+}
+
+
 ########
 ## UCB sampling.... 
 ########
