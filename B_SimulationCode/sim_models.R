@@ -118,7 +118,7 @@ explore_env_social_fitted_pars <- function(par, learning_model_fun, acquisition_
 #########
 ######### Exploration Environmental change
 #########
-explore_env_social_fitted_pars <- function(par, learning_model_fun, acquisition_fun,data,envs) {
+explore_env_social_fitted_pars_2lr <- function(par, learning_model_fun, acquisition_fun,data,envs) {
   # for (rep in 1:ntrialss){
   # unpack
   #browser()
