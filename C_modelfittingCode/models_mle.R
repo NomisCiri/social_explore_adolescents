@@ -182,6 +182,83 @@ soc_utility_model <- function(par, learning_model_fun, acquisition_fun, dat) {
 }
 
 
+
+#########
+######### social exploration model
+#########
+soc_utility_model_2_lr <- function(par, learning_model_fun, acquisition_fun, dat) {
+  # for (rep in 1:ntrialss){
+  # unpack
+  #par<-exp(par)#parameters are defined in logspace, we exponentiate them here
+  theta <- par[1]# "learningrate"
+  tau <- par[2] #  "random" exploration
+  zeta<-par[3] # scales social info use
+  
+  mu0 <-0# par[4] # exploration bonus
+  # create a parameter vector
+  # preallocate negative log likelihood
+  nLL <- rep(0, 12)
+  
+  for (r in unique(dat$round)){
+    # collect choices for current round
+    round_df <- subset(dat, round == r)
+    trials <- nrow(round_df)
+    # Observations of subject choice behavior
+    chosen <- round_df$choices
+    y <- round_df$z[0:(trials - 1)] # trim off the last observation, because it was not used to inform a choice (round already over)
+    # social information
+    social_choices<-round_df$social_info
+    # create observation matrix
+    # Utilties of each choice
+    utilities <- NULL
+    prevPost <- NULL # set the previous posterior computation to NULL for qlearning
+    pMat <- NULL
+    #here, too
+    for (t in 1:(trials-1)) {
+      #learn
+      # browser()
+      if (t > 1) {
+        out <- RW_Q(chosen[t], y[t], theta = theta, prevPost = out, mu0Par = mu0)
+      } else {
+        # first t of each round, start new
+        out <- RW_Q(chosen[t], y[t], theta = theta, prevPost = NULL, mu0Par = mu0)
+      }
+      utilityVec <- ucb(out, 0)
+      #next choice getrials a social utility
+      #utilityVec=utilityVec-max(utilityVec)
+      utilityVec[social_choices[t]]<-utilityVec[social_choices[t]]+zeta
+      # build horizon_length x options matrix, where each row holds the utilities of each choice at each decision time in the search horizon
+      utilities <- rbind(utilities, t(utilityVec)) 
+      #browser()
+    }
+    # softmaximization
+    # browser()
+    p <- exp(utilities / tau)
+    # probabilities
+    p <- p / rowSums(p)
+    # numerical overflow
+    p <- (pmax(p, 0.00001))
+    p <- (pmin(p, 0.99999))
+    # add loglik nasty way of checking the predicted choice probability a the item that was chosen
+    nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials-1)), chosen[2:length(chosen)] )]))
+    #browser()
+  }
+  #browser()
+  #avoid nan in objective function
+  if(any(is.nan(sum(nLL))))
+  { 
+    return(10 ^ 30)
+    
+  }else
+  {
+    return(sum(nLL))
+  }
+}
+
+
+
+
+
 ##############################################################################################################
 # FITTING FUNCTION
 ##############################################################################################################
