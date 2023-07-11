@@ -14,7 +14,7 @@ In this document, we will fit a kalman filter to the "social bandit" task that A
 First, lets load some data.
 
 ```{r}
-source("./C_modelfittingCode/models.R") # modelcode for fitting
+source("./C_modelfittingCode/models_mle.R") # modelcode for fitting
 source("./B_SimulationCode/load_environments.R") # environments
 source("./B_SimulationCode/sim_models.R") # modelcode for simulation
 
@@ -24,6 +24,7 @@ source("./B_SimulationCode/sim_models.R") # modelcode for simulation
 social_data<-read_csv(file = paste0("./data/social/data_social_coord_schoolbactch_1.csv"))
 social_data<-social_data%>%mutate(group=ifelse(player<16,"adults","kids"))%>%
   filter(tot_points>0)%>%filter(player<41)# change to all participants
+
 # get na players and throw them out
 filtered_players<-social_data%>%group_by(player)%>%
   dplyr::summarize(count_na = sum(is.na(cell)))%>%
@@ -102,16 +103,16 @@ This function fits the model specified in models mle and stores the parameter es
 alongside the participant data in long format. In the future we want to modify this to fit different models
 
 ```{r}
-
-cl <- parallel::makeCluster(40)
-doParallel::registerDoParallel(cl)
+# 
+# cl <- parallel::makeCluster(40)
+# doParallel::registerDoParallel(cl)
 
 source("./C_modelfittingCode/models_mle.R")
 social_fits<-foreach(
   player_nr = unique(social_data$player),
   .packages = c("DEoptim", "dplyr"),
   .combine="rbind"
-) %dopar% {
+) %do% {
   
   
   #for(player_nr in unique(social_data$player)){
@@ -133,9 +134,10 @@ social_fits<-foreach(
   cv <- fit_fun(d1 = d1) # only try one sub
   # collect fit indices
   d1$fit<-unlist(cv[1])
-  d1$lr<-unlist(cv[2])
-  d1$tau<-unlist(cv[3])
-  d1$soc_w<-unlist(cv[4])
+  d1$lr_p<-unlist(cv[2])
+  d1$lr_n<-unlist(cv[3])
+  d1$tau<-unlist(cv[4])
+  d1$soc_w<-unlist(cv[5])
   #d1$prior<-unlist(cv[5])
   
   #saveRDS(output, file = paste0("A_GeneratedFiles/modelfits/social_models/Q_fit", player_nr, ".rds"))

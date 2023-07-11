@@ -186,13 +186,13 @@ soc_utility_model <- function(par, learning_model_fun, acquisition_fun, dat) {
 #########
 ######### social exploration model
 #########
-soc_utility_model_2_lr <- function(par, learning_model_fun, acquisition_fun, dat) {
+soc_utility_model_2_lr <- function(par, dat) {
   # for (rep in 1:ntrialss){
   # unpack
   #par<-exp(par)#parameters are defined in logspace, we exponentiate them here
-  theta <- par[1]# "learningrate"
-  tau <- par[2] #  "random" exploration
-  zeta<-par[3] # scales social info use
+  theta <- c(par[1], par[2])# "learningrate" 1 is positive, 2 is negative
+  tau <- par[3] #  "random" exploration
+  zeta<-par[4] # scales social info use
   
   mu0 <-0# par[4] # exploration bonus
   # create a parameter vector
@@ -218,10 +218,10 @@ soc_utility_model_2_lr <- function(par, learning_model_fun, acquisition_fun, dat
       #learn
       # browser()
       if (t > 1) {
-        out <- RW_Q(chosen[t], y[t], theta = theta, prevPost = out, mu0Par = mu0)
+        out <- RW_Q_2(chosen[t], y[t], theta = theta, prevPost = out, mu0Par = mu0)
       } else {
         # first t of each round, start new
-        out <- RW_Q(chosen[t], y[t], theta = theta, prevPost = NULL, mu0Par = mu0)
+        out <- RW_Q_2(chosen[t], y[t], theta = theta, prevPost = NULL, mu0Par = mu0)
       }
       utilityVec <- ucb(out, 0)
       #next choice getrials a social utility
@@ -271,17 +271,18 @@ fit_fun <- function(d1) {
   # subselect participant, horizon and rounds not left out
   #which rounds to use
   rounds <- 1:12
-  nParams<-3
+  nParams<- 4
+  
   # Set upper and lower bounds based on nParams
-  lbound <- c(0.00000001,0.00000001,-40)
-  ubound <- c(1,10,40)
+  lbound <- c(0.00000001,0.00000001,0.00000001,-40) # first 2 are lr (pos, neg), then temperature, and social weight
+  ubound <- c(1,1,10,40)                            # first 2 are lr (pos, neg), then temperature, and social weight
   
   
   #####
   # Begin cross validation routine
   # TRAINING SET
   fit <- DEoptim(
-    soc_utility_model, 
+    soc_utility_model_2_lr, 
     lower = lbound, 
     upper = ubound, 
     dat = d1,
@@ -289,7 +290,7 @@ fit_fun <- function(d1) {
   )
   paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
   # TEST SET
-  predict <- soc_utility_model(
+  predict <- soc_utility_model_2_lr(
     par = paramEstimates, 
     dat = d1
   )
