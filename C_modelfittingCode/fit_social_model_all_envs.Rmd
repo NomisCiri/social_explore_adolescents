@@ -131,13 +131,13 @@ social_fits<-foreach(
   rounds <- unique(d1$round)
   print(player_nr)
   #for (r in rounds) { # loop through rounds in roundList
-  cv <- fit_fun_util_only(d1 = d1) # only try one sub
+  cv <- fit_fun(d1 = d1) # only try one sub
   # collect fit indices
   d1$fit<-unlist(cv[1])
   d1$lr_p<-unlist(cv[2])
   d1$lr_n<-unlist(cv[3])
   d1$tau<-unlist(cv[4])
- # d1$soc_w<-unlist(cv[5])
+  d1$soc_w<-unlist(cv[5])
   #d1$prior<-unlist(cv[5])
   
   #saveRDS(output, file = paste0("A_GeneratedFiles/modelfits/social_models/Q_fit", player_nr, ".rds"))
@@ -278,7 +278,7 @@ social_fits%>%dplyr::group_by(trial,player,group,soc_w)%>%filter(trial>0)%>%
 social_fits%>%lm(data=.,lr~group)%>%anova()
 
 
-social_fits%>%dplyr::group_by(trial,player,group,lr,soc_w)%>%filter(trial>0)%>%
+social_fits%>%dplyr::group_by(trial,player,group,soc_w)%>%filter(trial>0)%>%
   dplyr::summarise(m_rew=mean(points))%>%
   ggplot(aes(x=group,y=soc_w,color=group))+
   #geom_line(aes(group=index))+
