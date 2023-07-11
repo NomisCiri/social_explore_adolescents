@@ -20,9 +20,10 @@ explore_env_social_fitted_pars <- function(par, learning_model_fun, acquisition_
   dat=expand.grid(x1=0:7,x2=0:7)
   plot_dat=list()
   chosen=NULL
+ # browser()
+  all_choices<-NULL
   
   for (r in unique(data$round)){
-    
     # collect choices for current round
     #print(r)
     round_df <- data%>%filter(round == r)
@@ -43,10 +44,9 @@ explore_env_social_fitted_pars <- function(par, learning_model_fun, acquisition_
     ind <- round_df$choices[1]
     nTrials <- length(social_choices)
     X <- as.matrix(dat[ind, 1:2]) # generate a new vector of Xs
-    y <- as.matrix(rnorm(1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance)/100)
-    
+    y <- as.matrix(rnorm(1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))
     # store first choice of round
-    all_choices<-data.frame(
+    round_choices<-data.frame(
       trial = 1, 
       x = as.numeric(X[1, 1]), 
       y = as.numeric(X[1, 2]),
@@ -87,7 +87,7 @@ explore_env_social_fitted_pars <- function(par, learning_model_fun, acquisition_
       X <- rbind(X, as.matrix(dat[ind, 1:2]))
       # sample from environment
       y <- rbind(y, as.matrix(rnorm(n = 1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))) 
-      browser()
+    #  browser()
      # y_real=rbind
       # write it to the next trial index because choice has already been made, learning will happen in next round
       one_trial_choices <- data.frame(
@@ -102,26 +102,10 @@ explore_env_social_fitted_pars <- function(par, learning_model_fun, acquisition_
         p_list=I(list(p))
       )
       
-      all_choices <- rbind(all_choices, one_trial_choices)
+      round_choices <- rbind(round_choices, one_trial_choices)
      # browser()
     }
-    # # collect the data so you can plot it later
-    # plot_dat[[r]] <- expand.grid(x = 1:8, y = 1:8, trials = 0:max(all_choices$trial))
-    # plot_dat[[r]]$sample <- 0
-    # plot_dat[[r]]$out <- 0
-    # plot_dat[[r]]$mu <- 0
-    # 
-    # for (i in 1:length(all_choices$x)) {
-    #   all_choices$y[i]#
-    #   all_choices$x[i]
-    #   #was the item chosen?
-    #   plot_dat[[r]][plot_dat[[r]]$x == all_choices$x[i] & plot_dat[[r]]$y == all_choices$y[i] & plot_dat[[r]]$trials == all_choices$trial[i], ]$sample <- 1
-    #   #outcomes
-    #   plot_dat[[r]][plot_dat[[r]]$trials == all_choices$trial[i], ]$out <- all_choices$z[i]
-    #   plot_dat[[r]][plot_dat[[r]]$trials == all_choices$trial[i], ]$mu <- mu[[i]]
-    # }
-    # # browser()
-    # all_choices<-NULL
+    all_choices<-rbind(all_choices,round_choices)
   }# end rounds
   #browser()
   return(all_choices)
