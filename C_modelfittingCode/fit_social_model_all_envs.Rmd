@@ -237,8 +237,38 @@ cowplot::plot_grid(sims,ppts)
 
 ```{r}
 
+# check learning rates
 
-social_fits%>%dplyr::group_by(trial,player,group,lr,soc_w)%>%filter(trial>0)%>%
+social_fits%>%dplyr::select(player,group,lr_p, lr_n) %>% 
+    distinct() %>% 
+  #mutate(asymmetry_index = (lr_p-lr_n)/(lr_p + lr_n)) %>% 
+  pivot_longer(cols = c('lr_p', 'lr_n'), values_to = 'learning_rate', names_to = 'pos_neg') %>% 
+  ggplot(aes(x=group,y=learning_rate ,color=pos_neg))+
+  #geom_line(aes(group=index))+
+  stat_summary()+
+  theme_minimal()
+  
+  social_fits%>%dplyr::select(player,group, tau) %>% 
+    distinct() %>% 
+  #mutate(asymmetry_index = (lr_p-lr_n)/(lr_p + lr_n)) %>% 
+  ggplot(aes(x=tau,fill=group))+
+  #geom_line(aes(group=index))+
+  geom_histogram(position = 'dodge')+
+  facet_wrap(~group)+
+  theme_minimal()
+
+    social_fits%>%dplyr::select(player,group, soc_w) %>% 
+    distinct() %>% 
+  #mutate(asymmetry_index = (lr_p-lr_n)/(lr_p + lr_n)) %>% 
+  ggplot(aes(x=group,y=soc_w ,color=group))+
+  #geom_line(aes(group=index))+
+  stat_summary()+
+  theme_minimal()
+
+
+
+
+social_fits%>%dplyr::group_by(trial,player,group,soc_w)%>%filter(trial>0)%>%
   dplyr::summarise(m_rew=mean(points))%>%
   ggplot(aes(x=group,y=lr,color=group))+
   #geom_line(aes(group=index))+

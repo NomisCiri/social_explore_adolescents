@@ -112,7 +112,7 @@ explore_env_social_fitted_pars <- function(par, learning_model_fun, acquisition_
 }
 
 
-#### two learning rate 
+#### two learning rates
 
 
 #########
@@ -123,14 +123,15 @@ explore_env_social_fitted_pars <- function(par, learning_model_fun, acquisition_
   # unpack
   #browser()
   #par<-exp(par)#parameters are defined in logspace, we exponentiate them here
-  lr <- par[1]# "learningrate"
-  tau <- par[2] #  "random" exploration
-  zeta<-par[3] # scales social info use
+  lr <- c(par[1],par[2])# "learningrates, 1: pos, 2: neg"
+  tau <- par[3] #  "random" exploration
+  zeta<-par[4] # scales social info use
   mu0=0
   
-  mu=list()
+  mu <- list()
   all_choices <- NULL
   dummy <- NULL
+  
   #look up samples
   dat=expand.grid(x1=0:7,x2=0:7)
   plot_dat=list()
@@ -179,14 +180,15 @@ explore_env_social_fitted_pars <- function(par, learning_model_fun, acquisition_
       # don't forget mean centering and standardization.... mean is already 0 :)
       # browser()
       if (t > 1) {
-        out <- RW_Q(ind, y[t], theta = lr, prevPost = out, mu0Par = mu0)
+        out <- RW_Q_2(ind, y[t], theta = lr, prevPost = out, mu0Par = mu0)
+        
       } else {
-        out <- RW_Q(ind, y[t], theta = lr, prevPost = NULL, mu0Par = mu0)
+        out <- RW_Q_2(ind, y[t], theta = lr, prevPost = NULL, mu0Par = mu0)
       }
       #browser()
       #utilities
       utilityVec <- ucb(out, 0)
-      utilityVec[social_choices[t]]<-utilityVec[social_choices[t]]+zeta# social update of utility
+      utilityVec[social_choices[t]] <- utilityVec[social_choices[t]] + zeta# social update of utility
       # softmaximization
       #utilities=utilityVec-max(utilityVec)# get no NAs
       p <- exp(utilityVec / tau)
