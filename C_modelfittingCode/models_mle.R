@@ -60,7 +60,7 @@ RW_Q <- function(x, y, theta, prevPost = NULL, mu0Par) {
 # RW-Q 2 learning rates (positive and negative)
 
 #######
-RW_Q <- function(x, y, theta, prevPost = NULL, mu0Par) {
+RW_Q_2 <- function(x, y, theta, prevPost = NULL, mu0Par) {
   # Updates the previous posterior based on a single observation
   # parameters
   mu0 <- mu0Par # prior mean
