@@ -180,10 +180,11 @@ explore_env_social_fitted_pars_2lr <- function(par, learning_model_fun, acquisit
       # don't forget mean centering and standardization.... mean is already 0 :)
       # browser()
       if (t > 1) {
-        out <- RW_Q_2(ind, y[t], theta = lr, prevPost = out, mu0Par = mu0)
+        out <- RW_Q_2(ind, (y[t] - mean(y))/sd(y), theta = lr, prevPost = NULL, mu0Par = mu0)
+        
         
       } else {
-        out <- RW_Q_2(ind, y[t], theta = lr, prevPost = NULL, mu0Par = mu0)
+        out <- RW_Q_2(ind, rnorm(1), theta = lr, prevPost = out, mu0Par = mu0)
       }
       #browser()
       #utilities

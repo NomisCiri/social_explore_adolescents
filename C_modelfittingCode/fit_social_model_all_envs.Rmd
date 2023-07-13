@@ -23,7 +23,7 @@ source("./B_SimulationCode/sim_models.R") # modelcode for simulation
 #explore_data <- read_csv(file = paste0("./Data/data_coord.csv"))
 social_data<-read_csv(file = paste0("./data/social/data_social_coord_schoolbactch_1.csv"))
 social_data<-social_data%>%mutate(group=ifelse(player<16,"adults","kids"))%>%
-  filter(tot_points>0)%>%filter(player<41)# change to all participants
+  filter(tot_points>0)%>%filter(player<31)# change to all participants
 
 # get na players and throw them out
 filtered_players<-social_data%>%group_by(player)%>%
@@ -104,10 +104,11 @@ alongside the participant data in long format. In the future we want to modify t
 
 ```{r}
 # 
- cl <- parallel::makeCluster(40)
- doParallel::registerDoParallel(cl)
+cl <- makeCluster(detectCores(), type='PSOCK')
+registerDoParallel(cl)
 
 source("./C_modelfittingCode/models_mle.R")
+
 social_fits<-foreach(
   player_nr = unique(social_data$player),
   .packages = c("DEoptim", "dplyr"),
@@ -121,7 +122,7 @@ social_fits<-foreach(
   # social data TODO: concatenate nonsocial data.
   d1 <- social_data%>%filter(player == player_nr) %>%
     group_by(round) %>%
-    mutate(z = (points - mean(points)) /sd(points),
+    mutate(z = (points - mean(points))/sd(points), # eventually figure out what is the best outcome for this
            social_info=social_info,
            choices=cells) %>%rowwise()%>%
     mutate(social_info=ifelse(social_info==64,1,social_info))%>%
@@ -131,13 +132,13 @@ social_fits<-foreach(
   rounds <- unique(d1$round)
   print(player_nr)
   #for (r in rounds) { # loop through rounds in roundList
-  cv <- fit_fun(d1 = d1) # only try one sub
+  cv <- fit_fun_util_only(d1 = d1) # only try one sub
   # collect fit indices
   d1$fit<-unlist(cv[1])
   d1$lr_p<-unlist(cv[2])
   d1$lr_n<-unlist(cv[3])
   d1$tau<-unlist(cv[4])
-  d1$soc_w<-unlist(cv[5])
+  #d1$soc_w<-unlist(cv[5])
   #d1$prior<-unlist(cv[5])
   
   #saveRDS(output, file = paste0("A_GeneratedFiles/modelfits/social_models/Q_fit", player_nr, ".rds"))
@@ -147,71 +148,71 @@ social_fits<-foreach(
 
 
 
-# simulate
-Here i take the dataframe from the previous modelfitting and simulate new responses
-```{r}
-random_G2s=-1*(log((1/64))*24*12)
+<!-- # simulate -->
+<!-- Here i take the dataframe from the previous modelfitting and simulate new responses -->
+<!-- ```{r} -->
+<!-- random_G2s=-1*(log((1/64))*24*12) -->
 
-#why does this not work? @simon: this = the filtered players?
-social_fits<-social_fits%>%filter(!(player %in% filtered_players))
+<!-- #why does this not work? @simon: this = the filtered players? -->
+<!-- social_fits<-social_fits%>%filter(!(player %in% filtered_players)) -->
 
-#environment files are in generated files
-environments<-load_envs(path="./A_GeneratedFiles/")
-social_sims_plot_d<-list()
-social_sims_plot_one<-list()
-# ENVIRONMENTINDEXING FOR SIMS is 1:8
-for (i in 1:100){
-#  print(i)
-  # social_sims_plot_d[[i]]<-foreach(
-  #   player_nr = unique(social_fits$player),
-  #   rn=i,
-  #   .packages = c("DEoptim", "dplyr"),
-  #   .combine="rbind"
-  # ) %do% {
-  for(player_nr in unique(social_fits$player)){
-    
-    Xnew <- as.matrix(expand.grid(0:7, 0:7)) # do this outside the loop for better speed
-    output <- c()
-    print(player_nr)
-    # social data TODO: concatenate nonsocial data.
-    d1 <- social_fits%>%filter(player == player_nr) %>%
-      group_by(round) %>%
-      mutate(z = (points - mean(points)) /sd(points),
-             social_info=social_info,
-             choices=cells) %>%rowwise()%>%
-      mutate(social_info=ifelse(social_info==64,1,social_info))%>%
-      ungroup()
-    
-    #### unpack parameters
-    estimates<-c(
-      unique(d1$lr),
-      unique(d1$tau),
-      unique(d1$soc_w)
-    )
-    ####
-    #for (r in rounds) { # loop through rounds in roundList
-    cv <- explore_env_social_fitted_pars(
-      par = estimates, 
-      learning_model_fun=RW_Q, 
-      acquisition_fun=ucb,
-      data = d1,
-      envs=environments
-    ) # only try one sub
-    #collect fitted parameters and fit index and return
-    #social_data$modelfit=cv
-    #output <- rbind(output, cv)
-    #}
-    cv$player=player_nr
-    cv$group=unique(d1$group)
-    cv$run=rn
-   social_sims_plot_one[[player_nr]]<-cv
-  }
-  social_sims_plot_d[[i]]<-do.call("rbind",social_sims_plot_one)
-}
+<!-- #environment files are in generated files -->
+<!-- environments<-load_envs(path="./A_GeneratedFiles/") -->
+<!-- social_sims_plot_d<-list() -->
+<!-- social_sims_plot_one<-list() -->
+<!-- # ENVIRONMENTINDEXING FOR SIMS is 1:8 -->
+<!-- for (i in 1:100){ -->
+<!-- #  print(i) -->
+<!--   # social_sims_plot_d[[i]]<-foreach( -->
+<!--   #   player_nr = unique(social_fits$player), -->
+<!--   #   rn=i, -->
+<!--   #   .packages = c("DEoptim", "dplyr"), -->
+<!--   #   .combine="rbind" -->
+<!--   # ) %do% { -->
+<!--   for(player_nr in unique(social_fits$player)){ -->
+
+<!--     Xnew <- as.matrix(expand.grid(0:7, 0:7)) # do this outside the loop for better speed -->
+<!--     output <- c() -->
+<!--     print(player_nr) -->
+<!--     # social data TODO: concatenate nonsocial data. -->
+<!--     d1 <- social_fits%>%filter(player == player_nr) %>% -->
+<!--       group_by(round) %>% -->
+<!--       mutate(z = (points - mean(points)) /sd(points), -->
+<!--              social_info=social_info, -->
+<!--              choices=cells) %>%rowwise()%>% -->
+<!--       mutate(social_info=ifelse(social_info==64,1,social_info))%>% -->
+<!--       ungroup() -->
+
+<!--     #### unpack parameters -->
+<!--     estimates<-c( -->
+<!--       unique(d1$lr), -->
+<!--       unique(d1$tau), -->
+<!--       unique(d1$soc_w) -->
+<!--     ) -->
+<!--     #### -->
+<!--     #for (r in rounds) { # loop through rounds in roundList -->
+<!--     cv <- explore_env_social_fitted_pars( -->
+<!--       par = estimates,  -->
+<!--       learning_model_fun=RW_Q,  -->
+<!--       acquisition_fun=ucb, -->
+<!--       data = d1, -->
+<!--       envs=environments -->
+<!--     ) # only try one sub -->
+<!--     #collect fitted parameters and fit index and return -->
+<!--     #social_data$modelfit=cv -->
+<!--     #output <- rbind(output, cv) -->
+<!--     #} -->
+<!--     cv$player=player_nr -->
+<!--     cv$group=unique(d1$group) -->
+<!--     cv$run=rn -->
+<!--    social_sims_plot_one[[player_nr]]<-cv -->
+<!--   } -->
+<!--   social_sims_plot_d[[i]]<-do.call("rbind",social_sims_plot_one) -->
+<!-- } -->
 
 
-social_sims_plot_dhuge<-do.call("rbind",social_sims_plot_d)
-```
+<!-- social_sims_plot_dhuge<-do.call("rbind",social_sims_plot_d) -->
+<!-- ``` -->
 
 
 # simulate social

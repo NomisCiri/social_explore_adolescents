@@ -352,12 +352,11 @@ fit_fun <- function(d1) {
   lbound <- c(0.00000001,0.00000001,0.00000001,-40) # first 2 are lr (pos, neg), then temperature, and social weight
   ubound <- c(1,1,10,40)                            # first 2 are lr (pos, neg), then temperature, and social weight
   
-  
   #####
   # Begin cross validation routine
   # TRAINING SET
   fit <- DEoptim(
-    utility_model_2_lr, 
+    soc_utility_model_2_lr, 
     lower = lbound, 
     upper = ubound, 
     dat = d1,
@@ -365,7 +364,7 @@ fit_fun <- function(d1) {
   )
   paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
   # TEST SET
-  predict <- utility_model_2_lr(
+  predict <- soc_utility_model_2_lr(
     par = paramEstimates, 
     dat = d1
   )
@@ -414,8 +413,6 @@ fit_fun_util_only <- function(d1) {
   output <- c(predict, fit$optim$bestmem) # leaveoutindex, nLL, parameters....
   return(output) # return optimized value
 }
-
-
 
 
 
