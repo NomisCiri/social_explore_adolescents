@@ -122,7 +122,7 @@ utility_model <- function(par, learning_model_fun, acquisition_fun, dat) {
   mu0 <-0# par[4] # exploration bonus
   # create a parameter vector
   # preallocate negative log likelihood
-  nLL <- rep(0, 12)
+  nLL <- rep(0, length(dat$rounds))
   
   for (r in unique(dat$round)){
     # collect choices for current round
@@ -197,7 +197,7 @@ soc_utility_model <- function(par, learning_model_fun, acquisition_fun, dat) {
   mu0 <- 0# par[4] # exploration bonus
   # create a parameter vector
   # preallocate negative log likelihood
-  nLL <- rep(0, 12)
+  nLL <- rep(0, length(dat$rounds))
   
   for (r in unique(dat$round)) {
     # collect choices for current round
@@ -226,7 +226,7 @@ soc_utility_model <- function(par, learning_model_fun, acquisition_fun, dat) {
       utilityVec <- ucb(out, 0)
       #next choice getrials a social utility
       #utilityVec=utilityVec-max(utilityVec)
-      utilityVec[social_choices[t]]<-utilityVec[social_choices[t]]+zeta
+      utilityVec[social_choices[t]] <-  utilityVec[social_choices[t]] + zeta
       # build horizon_length x options matrix, where each row holds the utilities of each choice at each decision time in the search horizon
       utilities <- rbind(utilities, t(utilityVec)) 
       #browser()
@@ -240,16 +240,16 @@ soc_utility_model <- function(par, learning_model_fun, acquisition_fun, dat) {
     p <- (pmax(p, 0.00001))
     p <- (pmin(p, 0.99999))
     # add loglik nasty way of checking the predicted choice probability a the item that was chosen
-    nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials-1)), chosen[2:length(chosen)] )]))
+    nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials - 1)), chosen[2:length(chosen)])]))
     #browser()
   }
   #browser()
   #avoid nan in objective function
-  if(any(is.nan(sum(nLL))))
-  { 
+  if (any(is.nan(sum(nLL))))
+  {
     return(10 ^ 30)
     
-  }else
+  } else
   {
     return(sum(nLL))
   }
@@ -449,14 +449,14 @@ fit_fun <- function(d1) {
 
 ##
 ###
-### Fit function to fit the utility model 1lr no gems no social weight
+### Fit function to fit the utility model 1lr no gems with social weight
 ###
 fit_fun_1_lr_soc_w <- function(d1, rounds) {
   # subselect participant, horizon and rounds not left out
   
   #which rounds to use
   rounds <- rounds
-  nParams <- 2
+  nParams <- 3
   
   # Set upper and lower bounds based on nParams
   lbound <- c(0.00000001,0.00000001, -40) 
@@ -467,15 +467,16 @@ fit_fun_1_lr_soc_w <- function(d1, rounds) {
   # Begin cross validation routine
   # TRAINING SET
   fit <- DEoptim(
-    utility_model, 
+    soc_utility_model, 
     lower = lbound, 
     upper = ubound, 
     dat = d1,
     DEoptim.control(itermax = 100)
   )
+  
   paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
   # TEST SET
-  predict <- utility_model(
+  predict <- soc_utility_model(
     par = paramEstimates, 
     dat = d1
   )
