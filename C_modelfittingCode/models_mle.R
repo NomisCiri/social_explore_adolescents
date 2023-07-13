@@ -33,13 +33,13 @@ bayesianMeanTracker <- function(x, y, theta, prevPost = NULL, mu0Par, var0Par) {
 }
 
 ########
-# RW-Q learning
+# RW-Q learning no social info
 #######
 RW_Q <- function(x, y, theta, prevPost = NULL, mu0Par) {
   # Updates the previous posterior based on a single observation
   # parameters
   mu0 <- mu0Par # prior mean
-  lr=theta[1]
+  lr <- theta[1]
   if (is.null(prevPost)) { # if no posterior prior, assume it is the first observation
     predictions <- rep(mu0, 64)
   } else { # if previous posterior is provided, update
@@ -57,7 +57,7 @@ RW_Q <- function(x, y, theta, prevPost = NULL, mu0Par) {
 
 
 ########
-# RW-Q 2 learning rates (positive and negative)
+# RW-Q 2 learning rates (positive and negative); no social-info
 
 #######
 RW_Q_2 <- function(x, y, theta, prevPost = NULL, mu0Par) {
@@ -110,15 +110,14 @@ ucb <- function(out, pars, refactor = F) {
 
 
 #########
-######### social exploration model
+######### basic utlity exploration model
 #########
-soc_utility_model <- function(par, learning_model_fun, acquisition_fun, dat) {
+utility_model <- function(par, learning_model_fun, acquisition_fun, dat) {
   # for (rep in 1:ntrialss){
   # unpack
   #par<-exp(par)#parameters are defined in logspace, we exponentiate them here
   theta <- par[1]# "learningrate"
   tau <- par[2] #  "random" exploration
-  zeta<-par[3] # scales social info use
   
   mu0 <-0# par[4] # exploration bonus
   # create a parameter vector
@@ -139,8 +138,83 @@ soc_utility_model <- function(par, learning_model_fun, acquisition_fun, dat) {
     utilities <- NULL
     prevPost <- NULL # set the previous posterior computation to NULL for qlearning
     pMat <- NULL
-    #here, too
+  
+      #here, too
     for (t in 1:(trials-1)) {
+      #learn
+      # browser()
+      if (t > 1) {
+        out <- RW_Q(chosen[t], y[t], theta = theta, prevPost = out, mu0Par = mu0)
+      } else {
+        # first t of each round, start new
+        out <- RW_Q(chosen[t], y[t], theta = theta, prevPost = NULL, mu0Par = mu0)
+      }
+      utilityVec <- ucb(out, 0)
+      #next choice getrials a social utility
+      #utilityVec=utilityVec-max(utilityVec)
+      utilityVec[social_choices[t]]<-utilityVec[social_choices[t]]
+      # build horizon_length x options matrix, where each row holds the utilities of each choice at each decision time in the search horizon
+      utilities <- rbind(utilities, t(utilityVec)) 
+      #browser()
+    }
+    # softmaximization
+    # browser()
+    p <- exp(utilities / tau)
+    # probabilities
+    p <- p / rowSums(p)
+    # numerical overflow
+    p <- (pmax(p, 0.00001))
+    p <- (pmin(p, 0.99999))
+    # add loglik nasty way of checking the predicted choice probability a the item that was chosen
+    nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials-1)), chosen[2:length(chosen)] )]))
+    #browser()
+  }
+  #browser()
+  #avoid nan in objective function
+  if(any(is.nan(sum(nLL))))
+  { 
+    return(10 ^ 30)
+    
+  }else
+  {
+    return(sum(nLL))
+  }
+}
+
+
+
+#########
+######### social exploration model
+#########
+soc_utility_model <- function(par, learning_model_fun, acquisition_fun, dat) {
+  # for (rep in 1:ntrialss){
+  # unpack
+  #par<-exp(par)#parameters are defined in logspace, we exponentiate them here
+  theta <- par[1]# "learningrate"
+  tau <- par[2] #  "random" exploration
+  zeta <- par[3] # scales social info use
+  
+  mu0 <- 0# par[4] # exploration bonus
+  # create a parameter vector
+  # preallocate negative log likelihood
+  nLL <- rep(0, 12)
+  
+  for (r in unique(dat$round)) {
+    # collect choices for current round
+    round_df <- subset(dat, round == r)
+    trials <- nrow(round_df)
+    # Observations of subject choice behavior
+    chosen <- round_df$choices
+    y <- round_df$z[0:(trials - 1)] # trim off the last observation, because it was not used to inform a choice (round already over)
+    # social information
+    social_choices <- round_df$social_info
+    # create observation matrix
+    # Utilties of each choice
+    utilities <- NULL
+    prevPost <- NULL # set the previous posterior computation to NULL for qlearning
+    pMat <- NULL
+    #here, too
+    for (t in 1:(trials - 1)) {
       #learn
      # browser()
       if (t > 1) {
@@ -184,7 +258,7 @@ soc_utility_model <- function(par, learning_model_fun, acquisition_fun, dat) {
 
 
 #########
-######### social exploration model
+######### social exploration model with 2 learning rates
 #########
 soc_utility_model_2_lr <- function(par, dat) {
   # for (rep in 1:ntrialss){
@@ -368,6 +442,79 @@ fit_fun <- function(d1) {
     par = paramEstimates, 
     dat = d1
   )
+  output <- c(predict, fit$optim$bestmem) # leaveoutindex, nLL, prameters....
+  return(output) # return optimized value
+}
+
+
+##
+###
+### Fit function to fit the utility model 1lr no gems no social weight
+###
+fit_fun_1_lr_soc_w <- function(d1, rounds) {
+  # subselect participant, horizon and rounds not left out
+  
+  #which rounds to use
+  rounds <- rounds
+  nParams <- 2
+  
+  # Set upper and lower bounds based on nParams
+  lbound <- c(0.00000001,0.00000001, -40) 
+  ubound <- c(1,10, 40)                           
+  
+  
+  #####
+  # Begin cross validation routine
+  # TRAINING SET
+  fit <- DEoptim(
+    utility_model, 
+    lower = lbound, 
+    upper = ubound, 
+    dat = d1,
+    DEoptim.control(itermax = 100)
+  )
+  paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
+  # TEST SET
+  predict <- utility_model(
+    par = paramEstimates, 
+    dat = d1
+  )
+  output <- c(predict, fit$optim$bestmem) # leaveoutindex, nLL, parameters....
+  return(output) # return optimized value
+}
+
+##
+###
+### Fit function to fit the utility model 1lr no gems no social weight
+###
+fit_fun_util_only <- function(d1, rounds) {
+  # subselect participant, horizon and rounds not left out
+  
+  #which rounds to use
+  rounds <- rounds
+  nParams <- 2
+  
+  # Set upper and lower bounds based on nParams
+  lbound <- c(0.00000001,0.00000001) 
+  ubound <- c(1,10)                           
+  
+  
+  #####
+  # Begin cross validation routine
+  # TRAINING SET
+  fit <- DEoptim(
+    utility_model, 
+    lower = lbound, 
+    upper = ubound, 
+    dat = d1,
+    DEoptim.control(itermax = 100)
+  )
+  paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
+  # TEST SET
+  predict <- utility_model(
+    par = paramEstimates, 
+    dat = d1
+  )
   output <- c(predict, fit$optim$bestmem) # leaveoutindex, nLL, parameters....
   return(output) # return optimized value
 }
@@ -375,19 +522,16 @@ fit_fun <- function(d1) {
 
 
 
-
-
-
-
 ##
 ###
-### Fit function to fit the utility model
+### Fit function to fit the utility model 2lr
 ###
-fit_fun_util_only <- function(d1) {
+fit_fun_util_only_2lr <- function(d1) {
   # subselect participant, horizon and rounds not left out
-  #which rounds to use
+
+    #which rounds to use
   rounds <- 1:12
-  nParams<- 3
+  nParams <- 3
   
   # Set upper and lower bounds based on nParams
   lbound <- c(0.00000001,0.00000001,0.00000001) # first 2 are lr (pos, neg), then temperature, and social weight
@@ -459,7 +603,7 @@ cvfun <- function(selector, learning_model_fun, acquisition_fun, leaveoutindex) 
   fit <- DEoptim(
     modelFit, 
     lower = lbound, 
-    upper = ubound, 
+    upper = ubound,                
     subjD = d1, 
     k = kernelFun, 
     rounds = trainingSet, 

@@ -1,0 +1,327 @@
+---
+title: "fit_model_no_gems_1lr_socw"
+author: "Simon & Andrea"
+date: "2023-07-13"
+output: html_document
+---
+
+---
+title: "Modelfitting"
+author: "Simon&Andrea"
+date: '2022-10-120'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+pacman::p_load(tidyverse, rjson, DEoptim, doParallel, here,data.table,jsonlite,lme4)
+knitr::opts_knit$set(root.dir = here()) # set root fot the whole file
+```
+
+In this document, we will fit a kalman filter to the "social bandit" task that Andrea and I developed. 
+First, lets load some data.
+
+```{r}
+source("./C_modelfittingCode/models_mle.R") # modelcode for fitting
+source("./B_SimulationCode/load_environments.R") # environments
+source("./B_SimulationCode/sim_models.R") # modelcode for simulation
+
+
+# load behavioral data
+#explore_data <- read_csv(file = paste0("./Data/data_coord.csv"))
+social_data <-  read_csv(file = paste0("./data/social/data_social_coord_schoolbactch_1.csv"))
+social_data <-
+  social_data %>%
+  mutate(group = ifelse(player < 16, "adults", "kids")) %>%
+  filter(tot_points > 0) %>% filter(player < 50)# change to all participants
+
+# get na players and throw them out
+filtered_players <- social_data %>% group_by(player) %>%
+  dplyr::summarize(count_na = sum(is.na(cell))) %>%
+  filter(count_na > 0) %>% pull(player)# figure out whats happens here
+
+filtered_players <-
+  c(
+    filtered_players,
+    social_data %>% group_by(player) %>%
+      dplyr::summarize(count_na = sum(is.na(env_number))) %>%
+      filter(count_na > 0) %>% pull(player)
+  )
+
+social_data <-
+  social_data %>% filter(!(player %in% filtered_players)) 
+  
+  
+```
+
+# get demonstrators
+
+We need to then join demonstrators with players
+
+```{r}
+SI_path <- "./E_Develop_Social_Version/rounds_social_info/1_peer/social_info_json/"
+
+# load jsons with the selected social information and concat them in dataframe.
+# doublechek if the sequence is correct (how?)
+# figure out which are supposed to be rotaded. makes no difference for the simulation
+demonstrators <- list.files(SI_path) %>%
+  purrr::map_dfr(., ~ {
+    tibble(
+      choices = read_json(paste0(SI_path, .))$cells %>% unlist(),
+      env = read_json(paste0(SI_path, .))$envNr %>% unlist(),
+      player = read_json(paste0(SI_path, .))$roundNr %>% unlist(),
+      gem = read_json(paste0(SI_path, .))$gempresent %>% unlist()
+    )
+  })
+no_gem <- c(800, 921, 254, 1599, 1899, 408)
+gem_not_found <- c(1650, 504, 376, 868, 332, 1434)
+gem_found <- c(905, 1625, 1912, 335, 343, 795)
+never_exploit <- c(838, 2195, 1177, 1244, 468, 1639)
+
+demonstrators <- demonstrators %>%
+  mutate(
+    type = case_when(
+      player %in% no_gem ~ "no_gem",
+      player %in% gem_not_found ~ "gem_not_found",
+      player %in% gem_found ~ "gem_found",
+      player %in% never_exploit ~ "never_exploit"
+    )
+  ) %>%
+  filter(env < 7) %>% # adjust to include rotated environments
+  mutate(env = ifelse(gem, env + 6, env))
+####
+####
+#### Add demonstrator data in social data
+# new data in social data
+social_data$demonstrator <- NA
+social_data$demo_type <- NA
+# loop through participants
+for (p in unique(social_data$player)) {
+  # outerloop
+  for (r in unique(social_data[social_data$player == p, ]$round)) {
+    # get demonstrator for participant
+    demo <- social_data[social_data$round == r &
+      social_data$player == p, ]$social_info
+    for (d in unique(demonstrators$player)) {
+      # loop through demonstrators
+      c <- demonstrators[demonstrators$player == d, ]$choices
+      type <- demonstrators[demonstrators$player == d, ]$type %>% unique()
+      if (setequal(demo, c)) {
+        # if demonstrators and social info seen by participant match
+        social_data[social_data$round == r &
+          social_data$player == p, ]$demonstrator <- d
+        social_data[social_data$round == r &
+          social_data$player == p, ]$demo_type <- type
+      } else {
+        # do nothing
+      }
+    }
+  }
+}
+
+```
+
+# Fit model to social data
+This function fits the model specified in models mle and stores the parameter estimates as well as the fit index (lower is better)
+alongside the participant data in long format. In the future we want to modify this to fit different models
+
+```{r}
+# 
+cl <- makeCluster(detectCores(), type = 'PSOCK')
+registerDoParallel(cl)
+
+# load model fitting gunctions
+source("./C_modelfittingCode/models_mle.R")
+
+
+social_fits <- foreach(
+  player_nr = unique(social_data$player),
+  .packages = c("DEoptim", "dplyr"),
+  .combine = "rbind"
+) %dopar% {
+  
+  
+  #for(player_nr in unique(social_data$player)){
+  Xnew <- as.matrix(expand.grid(0:7, 0:7)) # do this outside the loop for better speed
+  
+  # social data TODO: concatenate nonsocial data.
+  d1 <- social_data %>% filter(player == player_nr) %>%
+    filter(gempresent == 0) %>%  # for now only have rounds without gems 
+    group_by(round) %>%
+    mutate(z = points, #(points - mean(points)) / sd(points), ventually figure out what is the best outcome for this
+      social_info = social_info,
+      choices = cells
+    ) %>% rowwise() %>%
+    mutate(social_info = ifelse(social_info == 64, 1, social_info)) %>%
+    ungroup()
+  
+  
+  rounds <- unique(d1$round)
+  print(player_nr)
+  
+  #for (r in rounds) { # loop through rounds in roundList
+  
+    cv <- fit_fun_util_only(d1 = d1, rounds) # only try one sub
+   
+    #collect fit indices
+  
+  d1$fit <- unlist(cv[1])
+  d1$lr <- unlist(cv[2])
+  #d1$lr_p <- unlist(cv[2])
+  #d1$lr_n <- unlist(cv[3])
+  d1$tau <- unlist(cv[3])
+  #d1$tau <- unlist(cv[4])
+  #d1$soc_w<-unlist(cv[5])
+  #d1$prior<-unlist(cv[5])
+  
+  #saveRDS(output, file = paste0("A_GeneratedFiles/modelfits/social_models/Q_fit", player_nr, ".rds"))
+  return(d1)
+}
+```
+
+
+
+Evaluate fit of 1 learning rate
+
+
+```{r}
+social_fits %>%
+  dplyr::select(player, group, fit) %>% 
+  distinct() %>% 
+  ggplot(aes(x = group, y = fit, color = group)) +
+  #geom_line(aes(group=index))+
+  stat_summary() +
+  theme_minimal()
+
+
+
+# check learning rates
+
+social_fits %>%
+  select(player, group, lr) %>% 
+  distinct() %>% 
+  ggplot(aes(x = group, y = lr, color = group)) +
+  #geom_line(aes(group=index))+
+  stat_summary() +
+  theme_minimal()
+
+# higher lr in kids
+social_fits %>%
+  select(player, group, lr) %>% 
+  distinct() %>% 
+  lm(data = ., lr ~ group ) %>% anova() # check with more observations
+
+# check temperature difference in kids and adults 
+social_fits %>% dplyr::select(player, group, tau) %>%
+  distinct() %>%
+  #mutate(asymmetry_index = (lr_p-lr_n)/(lr_p + lr_n)) %>%
+  ggplot(aes(x = tau, fill = group)) +
+  #geom_line(aes(group=index))+
+  geom_histogram(position = 'dodge') +
+  facet_wrap( ~ group) +
+  theme_minimal()
+```
+
+
+simulate!
+
+```{r}
+
+random_G2s <-  -1 * (log((1 / 64)) * 24 * 4)
+
+#why does this not work? @simon: this = the filtered players?
+social_fits <- social_fits %>% filter(!(player %in% filtered_players))
+
+#environment files are in generated files
+environments <- load_envs(path = "./A_GeneratedFiles/")
+social_sims_plot_d <- list()
+social_sims_plot_one <- list()
+
+# ENVIRONMENTINDEXING FOR SIMS is 1:8
+#for (i in 1:100){
+#  print(i)
+  # social_sims_plot_d[[i]]<-foreach(
+  #   player_nr = unique(social_fits$player),
+    i <- 1
+    rn <- i
+  #   .packages = c("DEoptim", "dplyr"),
+  #   .combine="rbind"
+  # ) %do% {
+    
+    for (player_nr in unique(social_fits$player)) {
+      Xnew <-
+        as.matrix(expand.grid(0:7, 0:7)) # do this outside the loop for better speed
+      output <- c()
+      print(player_nr)
+      # social data TODO: concatenate nonsocial data.
+      d1 <- social_fits %>% filter(player == player_nr) %>%
+        group_by(round) %>%
+        mutate(z = points,
+               #(points - mean(points)) /sd(points),
+               social_info = social_info,
+               choices = cells) %>% rowwise() %>%
+        mutate(social_info = ifelse(social_info == 64, 1, social_info)) %>%
+        ungroup()
+      
+      #### unpack parameters
+      estimates <- c(unique(d1$lr),
+                     #unique(d1$lr_n),
+                     unique(d1$tau))
+                     #unique(d1$soc_w))
+      ####
+      #for (r in rounds) { # loop through rounds in roundList
+      cv <- explore_env_social_fitted_pars(
+        par = estimates,
+        learning_model_fun = RW_Q,
+        acquisition_fun = ucb,
+        data = d1,
+        envs = environments
+      ) # only try one sub
+      #collect fitted parameters and fit index and return
+      #social_data$modelfit=cv
+      #output <- rbind(output, cv)
+      #}
+      cv$player = player_nr
+      cv$group = unique(d1$group)
+      cv$run = rn
+      social_sims_plot_one[[player_nr]] <- cv
+    }
+    
+    social_sims_plot_d[[i]] <- do.call("rbind", social_sims_plot_one)
+    #}
+    
+    
+    social_sims_plot_dhuge <- do.call("rbind", social_sims_plot_d)
+
+
+```
+
+```{r}
+
+
+social_sims_plot_dhuge %>% 
+  dplyr::group_by(trial, player, group) %>% filter(trial > 0) %>%
+  #filter(group!="adults")%>%
+  dplyr::summarise(m_rew = mean(z)) %>%
+  ggplot(aes(x = trial, y = m_rew, color = group)) +
+  ggtitle("Simulations") +
+  stat_summary() +
+  stat_smooth(method = "lm") +
+  theme_bw() -> sims
+
+
+social_fits %>% dplyr::group_by(trial, player, group) %>% filter(trial >
+                                                                   0) %>% #filter(group!="adults")%>%
+  dplyr::summarise(m_rew = mean(points)) %>%
+  ggplot(aes(x = trial, y = m_rew, color = group)) +
+  ggtitle("Participants") +
+  stat_summary() +
+  stat_smooth(method = "lm") +
+  theme_bw() -> ppts
+
+cowplot::plot_grid(sims, ppts)
+
+
+
+
+```
+
