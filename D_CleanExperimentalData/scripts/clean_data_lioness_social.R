@@ -35,7 +35,7 @@ linking_data <- read.csv('D_CleanExperimentalData/adolescents_data/raw_data/soci
   select(playerNr, externalID)
 
 ## merge with main dataset
-data_with_id <- left_join(data_adolescents, linking_data, by="playerNr") %>% 
+data_with_id <- left_join(data_adolescents, linking_data, by = "playerNr") %>%
   mutate(participantNr = externalID)
 
 ## how many participants finished the experiments

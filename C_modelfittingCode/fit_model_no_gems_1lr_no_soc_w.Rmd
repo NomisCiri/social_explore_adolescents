@@ -22,10 +22,6 @@ source("./B_SimulationCode/sim_models.R") # modelcode for simulation
 # load behavioral data
 #explore_data <- read_csv(file = paste0("./Data/data_coord.csv"))
 social_data <-  read_csv(file = paste0("./data/social/data_social_coord_schoolbactch_1.csv"))
-social_data <-
-  social_data %>%
-  mutate(group = ifelse(player < 16, "adults", "kids")) %>%
-  filter(tot_points > 0) %>% filter(player < 50)# change to all participants
 
 # get na players and throw them out
 filtered_players <- social_data %>% group_by(player) %>%
@@ -65,6 +61,7 @@ demonstrators <- list.files(SI_path) %>%
       gem = read_json(paste0(SI_path, .))$gempresent %>% unlist()
     )
   })
+
 no_gem <- c(800, 921, 254, 1599, 1899, 408)
 gem_not_found <- c(1650, 504, 376, 868, 332, 1434)
 gem_found <- c(905, 1625, 1912, 335, 343, 795)
