@@ -459,7 +459,7 @@ fit_fun_1_lr_soc_w <- function(d1, rounds) {
   nParams <- 3
   
   # Set upper and lower bounds based on nParams
-  lbound <- c(0.00000001,0.00000001, -40) 
+  lbound <- c(0.00000001,0.00000001, 0) 
   ubound <- c(1,10, 40)                           
   
   
