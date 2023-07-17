@@ -104,21 +104,7 @@ demonstrators <- demonstrators %>%
       player %in% gem_not_found ~ "gem_not_found",
       player %in% gem_found ~ "gem_found",
       player %in% never_exploit ~ "never_exploit"
-    ),
-    env = ifelse(gem == 0 & env == 5, env - 1,
-                 ifelse(
-                   gem == 1 & env < 6, env + 8,env)),
-    env = ifelse(env > 5, env - 1, env))
-
-## check there are 12 number of envs; 1:4 no gems, 5-12 gems
-
-demonstrators %>% 
-  select(player, env, gem, type) %>% 
-  distinct() %>% 
-  #filter(gem == 0) %>% 
-  ggplot() +
-  geom_bar(aes(x = factor(env), fill = type)) +
-  facet_wrap(~gem)
+    ))
 
 
 #### Add demonstrator data in social data
@@ -151,6 +137,22 @@ for (p in unique(data$uniqueID)) {
     }
   }
 }
+
+data <- data %>% 
+  mutate(env_number = ifelse(gempresent == 0 & env_number == 5, env_number - 1,
+             ifelse(
+               gempresent == 1 & env_number < 6, env_number + 8,env_number)),
+         env_number = ifelse(env_number > 5, env_number - 1, env_number))
+
+## check there are 12 number of envs; 1:4 no gems, 5-12 gems
+
+data %>% 
+  select(env_number, gempresent, demo_type) %>% 
+  distinct() %>% 
+  #filter(gem == 0) %>% 
+  ggplot() +
+  geom_bar(aes(x = factor(env_number), fill = demo_type)) +
+  facet_wrap(~gempresent)
 
 ## save dataset
 write.csv(data, "data/social/data_social_all_participants.csv", row.names = FALSE)
