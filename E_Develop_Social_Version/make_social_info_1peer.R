@@ -6,7 +6,7 @@
 pacman::p_load(tidyverse, rjson, here, jsonlite)
 
 # load dataset
-explore_data <- read_csv(file = paste0(here(), "/data/data_coord.csv"))
+explore_data <- read_csv(file = paste0(here(), "/data/solo/data_coord.csv "))
 
 # add unique rounds id
 explore_data <- explore_data %>%

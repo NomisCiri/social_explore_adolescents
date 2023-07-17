@@ -15,7 +15,7 @@ First, lets load some data.
 
 ```{r}
 source("./C_modelfittingCode/models_mle.R") # modelcode for fitting
-source("./B_SimulationCode/load_environments.R") # environments
+source("./B_SimulationCode/load_environments_social_experiment.R") # environments
 source("./B_SimulationCode/sim_models.R") # modelcode for simulation
 
 
@@ -47,66 +47,7 @@ social_data <-
 We need to then join demonstrators with players
 
 ```{r}
-SI_path <- "./E_Develop_Social_Version/rounds_social_info/1_peer/social_info_json/"
 
-# load jsons with the selected social information and concat them in dataframe.
-# doublechek if the sequence is correct (how?)
-# figure out which are supposed to be rotaded. makes no difference for the simulation
-demonstrators <- list.files(SI_path) %>%
-  purrr::map_dfr(., ~ {
-    tibble(
-      choices = read_json(paste0(SI_path, .))$cells %>% unlist(),
-      env = read_json(paste0(SI_path, .))$envNr %>% unlist(),
-      player = read_json(paste0(SI_path, .))$roundNr %>% unlist(),
-      gem = read_json(paste0(SI_path, .))$gempresent %>% unlist()
-    )
-  })
-
-no_gem <- c(800, 921, 254, 1599, 1899, 408)
-gem_not_found <- c(1650, 504, 376, 868, 332, 1434)
-gem_found <- c(905, 1625, 1912, 335, 343, 795)
-never_exploit <- c(838, 2195, 1177, 1244, 468, 1639)
-
-demonstrators <- demonstrators %>%
-  mutate(
-    type = case_when(
-      player %in% no_gem ~ "no_gem",
-      player %in% gem_not_found ~ "gem_not_found",
-      player %in% gem_found ~ "gem_found",
-      player %in% never_exploit ~ "never_exploit"
-    )
-  ) %>%
-  filter(env < 7) %>% # adjust to include rotated environments
-  mutate(env = ifelse(gem, env + 6, env))
-####
-####
-#### Add demonstrator data in social data
-# new data in social data
-social_data$demonstrator <- NA
-social_data$demo_type <- NA
-# loop through participants
-for (p in unique(social_data$player)) {
-  # outerloop
-  for (r in unique(social_data[social_data$player == p, ]$round)) {
-    # get demonstrator for participant
-    demo <- social_data[social_data$round == r &
-      social_data$player == p, ]$social_info
-    for (d in unique(demonstrators$player)) {
-      # loop through demonstrators
-      c <- demonstrators[demonstrators$player == d, ]$choices
-      type <- demonstrators[demonstrators$player == d, ]$type %>% unique()
-      if (setequal(demo, c)) {
-        # if demonstrators and social info seen by participant match
-        social_data[social_data$round == r &
-          social_data$player == p, ]$demonstrator <- d
-        social_data[social_data$round == r &
-          social_data$player == p, ]$demo_type <- type
-      } else {
-        # do nothing
-      }
-    }
-  }
-}
 
 ```
 
@@ -222,7 +163,7 @@ random_G2s <-  -1 * (log((1 / 64)) * 24 * 4)
 social_fits <- social_fits %>% filter(!(player %in% filtered_players))
 
 #environment files are in generated files
-environments <- load_envs(path = "./A_GeneratedFiles/")
+environments <- load_envs_social(path = "./A_GeneratedFiles/")
 social_sims_plot_d <- list()
 social_sims_plot_one <- list()
 

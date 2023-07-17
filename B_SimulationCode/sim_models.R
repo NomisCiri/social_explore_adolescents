@@ -30,7 +30,7 @@ explore_env_social_fitted_pars <- function(par, learning_model_fun, acquisition_
     # browser()
     # get the right environment to sample from
     #browser()
-    env=envs%>%filter(env_idx==unique(round_df$env_number))#[[unique(round_df$env_number)]]
+    env=envs%>%filter(env==unique(round_df$env_number))#[[unique(round_df$env_number)]]
     #browser()
     trials <- nrow(round_df)
     # social information
@@ -142,7 +142,7 @@ explore_env_social_fitted_pars_social <- function(par, learning_model_fun, acqui
    # browser()
     # get the right environment to sample from
     #browser()
-    env=envs%>%filter(env_idx==unique(round_df$env_number))#[[unique(round_df$env_number)]]
+    env=envs%>%filter(env==unique(round_df$env_number))#[[unique(round_df$env_number)]]
     #browser()
     trials <- nrow(round_df)
     # social information
@@ -258,7 +258,7 @@ explore_env_social_fitted_pars_2lr <- function(par, learning_model_fun, acquisit
     # browser()
     # get the right environment to sample from
     #browser()
-    env=envs%>%filter(env_idx==unique(round_df$env_number))#[[unique(round_df$env_number)]]
+    env=envs%>%filter(env==unique(round_df$env_number))#[[unique(round_df$env_number)]]
     #browser()
     trials <- nrow(round_df)
     # social information
