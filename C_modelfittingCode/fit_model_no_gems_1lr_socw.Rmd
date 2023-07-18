@@ -22,17 +22,13 @@ First, lets load some data.
 
 ```{r}
 source("./C_modelfittingCode/models_mle.R") # modelcode for fitting
-source("./B_SimulationCode/load_environments.R") # environments
+source("./B_SimulationCode/load_environments_social_experiment.R") # environments
 source("./B_SimulationCode/sim_models.R") # modelcode for simulation
 
 
 # load behavioral data
-#explore_data <- read_csv(file = paste0("./Data/data_coord.csv"))
-social_data <-  read_csv(file = paste0("./data/social/data_social_coord_schoolbactch_1.csv"))
-social_data <-
-  social_data %>%
-  mutate(group = ifelse(player < 16, "adults", "kids")) %>%
-  filter(tot_points > 0) %>% filter(player < 50)# change to all participants
+social_data <-  read_csv(file = paste0("./data/social/data_social_all_participants.csv"))
+social_data <-  filter(tot_points > 0) %>% filter(player < 50)# change to all participants
 
 # get na players and throw them out
 filtered_players <- social_data %>% group_by(player) %>%
