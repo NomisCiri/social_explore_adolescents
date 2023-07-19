@@ -1,11 +1,4 @@
 ---
-title: "fit_model_no_gems_1lr_socw"
-author: "Simon & Andrea"
-date: "2023-07-13"
-output: html_document
----
-
----
 title: "Modelfitting"
 author: "Simon&Andrea"
 date: '2022-10-120'
@@ -17,7 +10,7 @@ pacman::p_load(tidyverse, rjson, DEoptim, doParallel, here,data.table,jsonlite,l
 knitr::opts_knit$set(root.dir = here()) # set root fot the whole file
 ```
 
-In this document, we will fit a kalman filter to the "social bandit" task that Andrea and I developed. 
+In this document, we will fit learning model to the "social bandit" task that Andrea and I developed. 
 First, lets load some data.
 
 ```{r}
@@ -30,13 +23,13 @@ source("./B_SimulationCode/sim_models.R") # modelcode for simulation
 # load behavioral data
 #explore_data <- read_csv(file = paste0("./Data/data_coord.csv"))
 social_data <-  read_csv(file = paste0("./data/social/data_social_all_participants.csv")) %>% 
-  filter(uniqueID < 60) # get a subsample of both adults and adolescents 
+  filter(uniqueID < 60) # get a sub-sample of both adults and adolescents 
 
 
 ```
 
 # Fit model to social data
-This function fits the model specified in models mle and stores the parameter estimates as well as the fit index (lower is better)
+This function fits the model specified in models_mle and stores the parameter estimates as well as the fit index (lower is better)
 alongside the participant data in long format. In the future we want to modify this to fit different models
 
 ```{r}
@@ -44,12 +37,18 @@ alongside the participant data in long format. In the future we want to modify t
 cl <- makeCluster(detectCores(), type = 'PSOCK')
 registerDoParallel(cl)
 
-# load model fitting gunctions
+## loads the script where the learning models are specified (Q-learning, social Q-learning, UCB etc)
+source('../social_explore_adolescents/C_modelfittingCode/learning_models.R')
+
+## load functions that perform Maximul Likelihood Estimation
 source("./C_modelfittingCode/models_mle.R")
+
+## load functions that initialize the model fit
+source("./C_modelfittingCode/model_fitting_functions_social_bandits.R")
 
 
 social_fits <- foreach(
-  player_nr = unique(social_data$player),
+  player_nr = unique(social_data$uniqueID),
   .packages = c("DEoptim", "dplyr"),
   .combine = "rbind"
 ) %dopar% {
@@ -73,32 +72,30 @@ social_fits <- foreach(
 
   #for (r in rounds) { # loop through rounds in roundList
   
-    cv <- fit_fun_1_lr_soc_w(d1 = d1) # only try one sub
+  cv <- fit_fun_util_only_2lr(d1 = d1) # only try one sub
    
-    #collect fit indices
+  # collect fit indices
   
   d1$fit <- unlist(cv[1])
-  d1$lr <- unlist(cv[2])
-  #d1$lr_p <- unlist(cv[2])
-  #d1$lr_n <- unlist(cv[3])
-  d1$tau <- unlist(cv[3])
-  #d1$tau <- unlist(cv[4])
-  d1$soc_w <- unlist(cv[4])
+  d1$lr_p <- unlist(cv[2])
+  d1$lr_n <- unlist(cv[3])
+  d1$tau <- unlist(cv[4])
+  #d1$soc_w<-unlist(cv[5])
   #d1$prior<-unlist(cv[5])
   
-  #saveRDS(output, file = paste0("A_GeneratedFiles/modelfits/social_models/Q_fit", player_nr, ".rds"))
+  saveRDS(output, file = paste0("A_GeneratedFiles/modelfits/social_models/no_gems/Q2lr/fit", player_nr, ".rds"))
   return(d1)
 }
+
 ```
 
-
-
-Evaluate fit of 1 learning rate
+Evaluate fit 
 
 
 ```{r}
+
 social_fits %>%
-  dplyr::select(player, group, fit) %>% 
+  dplyr::select(uniqueID, group, fit) %>% 
   distinct() %>% 
   ggplot(aes(x = group, y = fit, color = group)) +
   #geom_line(aes(group=index))+
@@ -106,17 +103,23 @@ social_fits %>%
   theme_minimal()
 
 
-
-
 # check learning rates
-
 social_fits %>%
-  select(player, group, lr) %>% 
+  select(player, group, lr_p) %>% 
   distinct() %>% 
-  ggplot(aes(x = group, y = lr, color = group)) +
+  ggplot(aes(x = group, y = lr_p, color = group)) +
   #geom_line(aes(group=index))+
   stat_summary() +
   theme_minimal()
+
+social_fits %>%
+  select(player, group, lr_n) %>% 
+  distinct() %>% 
+  ggplot(aes(x = group, y = lr_n, color = group)) +
+  #geom_line(aes(group=index))+
+  stat_summary() +
+  theme_minimal()
+
 
 # higher lr in kids
 social_fits %>%
@@ -125,24 +128,15 @@ social_fits %>%
   lm(data = ., lr ~ group ) %>% anova() # check with more observations
 
 # check temperature difference in kids and adults 
-social_fits %>% dplyr::select(player, group, tau) %>%
+social_fits %>%
+dplyr::select(player, group, tau) %>%
   distinct() %>%
+  #mutate(asymmetry_index = (lr_p-lr_n)/(lr_p + lr_n)) %>%
   ggplot(aes(x = tau, fill = group)) +
   #geom_line(aes(group=index))+
   geom_histogram(position = 'dodge') +
   facet_wrap( ~ group) +
   theme_minimal()
-
-
-# check soc_weight difference in kids and adults 
-social_fits %>% dplyr::select(player, group, soc_w) %>%
-  distinct() %>%
-  ggplot(aes(x = soc_w, fill = group)) +
-  geom_vline(aes(xintercept = median(soc_w)))+
-  geom_histogram(position = 'dodge') +
-  facet_wrap( ~ group) +
-  theme_minimal()
-
 
 ```
 
@@ -153,11 +147,8 @@ simulate!
 
 random_G2s <-  -1 * (log((1 / 64)) * 24 * 4)
 
-#why does this not work? @simon: this = the filtered players?
-social_fits <- social_fits %>% filter(!(player %in% filtered_players))
-
 #environment files are in generated files
-environments <- load_envs(path = "./A_GeneratedFiles/")
+environments <- load_envs_social(path = "./A_GeneratedFiles/")
 social_sims_plot_d <- list()
 social_sims_plot_one <- list()
 
@@ -172,13 +163,14 @@ social_sims_plot_one <- list()
   #   .combine="rbind"
   # ) %do% {
     
-    for (player_nr in unique(social_fits$player)) {
+    for (player_nr in unique(social_fits$uniqueID)) {
       Xnew <-
         as.matrix(expand.grid(0:7, 0:7)) # do this outside the loop for better speed
       output <- c()
       print(player_nr)
+      
       # social data TODO: concatenate nonsocial data.
-      d1 <- social_fits %>% filter(player == player_nr) %>%
+      d1 <- social_fits %>% filter(uniqueID == player_nr) %>%
         group_by(round) %>%
         mutate(z = points,
                #(points - mean(points)) /sd(points),
@@ -188,15 +180,15 @@ social_sims_plot_one <- list()
         ungroup()
       
       #### unpack parameters
-      estimates <- c(unique(d1$lr),
-                     #unique(d1$lr_n),
-                     unique(d1$tau),
-                     unique(d1$soc_w))
+      estimates <- c(unique(d1$lr_p),
+                     unique(d1$lr_n),
+                     unique(d1$tau))
+                     #unique(d1$soc_w))
       ####
       #for (r in rounds) { # loop through rounds in roundList
-      cv <- explore_env_social_fitted_pars_social(
+      cv <- exploreEnv2lr(
         par = estimates,
-        learning_model_fun = RW_Q,
+        learning_model_fun = RW_Q_2(),
         acquisition_fun = ucb,
         data = d1,
         envs = environments
@@ -212,19 +204,18 @@ social_sims_plot_one <- list()
     }
     
     social_sims_plot_d[[i]] <- do.call("rbind", social_sims_plot_one)
+    
     #}
     
     
     social_sims_plot_dhuge <- do.call("rbind", social_sims_plot_d)
-
-
 ```
 
 ```{r}
 
-
-social_sims_plot_dhuge %>% 
-  dplyr::group_by(trial, player, group) %>% filter(trial > 0) %>%
+social_sims_plot_dhuge %>%
+  dplyr::group_by(trial, player, group) %>%
+  filter(trial > 0) %>%
   #filter(group!="adults")%>%
   dplyr::summarise(m_rew = mean(z)) %>%
   ggplot(aes(x = trial, y = m_rew, color = group)) +
@@ -233,9 +224,9 @@ social_sims_plot_dhuge %>%
   stat_smooth(method = "lm") +
   theme_bw() -> sims
 
-
-social_fits %>% dplyr::group_by(trial, player, group) %>% filter(trial >
-                                                                   0) %>% #filter(group!="adults")%>%
+social_fits %>%
+  dplyr::group_by(trial, player, group) %>%
+  filter(trial > 0) %>% #filter(group!="adults")%>%
   dplyr::summarise(m_rew = mean(points)) %>%
   ggplot(aes(x = trial, y = m_rew, color = group)) +
   ggtitle("Participants") +
@@ -244,8 +235,6 @@ social_fits %>% dplyr::group_by(trial, player, group) %>% filter(trial >
   theme_bw() -> ppts
 
 cowplot::plot_grid(sims, ppts)
-
-
 
 
 ```

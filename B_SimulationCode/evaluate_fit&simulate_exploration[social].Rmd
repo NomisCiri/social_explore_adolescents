@@ -1,0 +1,35 @@
+---
+title: "Modelfitting"
+author: "Simon&Andrea"
+date: '2022-10-120'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+pacman::p_load(tidyverse, rjson, DEoptim, doParallel, here,data.table,jsonlite,lme4)
+knitr::opts_knit$set(root.dir = here()) # set root fot the whole file
+```
+
+
+# read in different models
+
+```{r}
+
+
+
+```
+
+# evaluate fit
+
+```{r}
+## get nLL from model fit
+nLL <- 
+  
+## transform into BIC
+bic <- n_parameters * log(25 * 12) + 2 * nLL
+
+
+
+
+```
+

@@ -1,13 +1,15 @@
 
 ##############################################################################################################
-# FITTING FUNCTION
+# FITTING FUNCTIONs
 ##############################################################################################################
 # function to plug in to the optimaztion routine
 # selector: scalar, indicates a specific participant
 # learning_model_fun, only bayesan meantracker works
 # acquisition_fun, function, can be "ucb"
 
-fit_fun <- function(d1) {
+
+
+fitFun2lrsw <- function(d1) {
   # subselect participant, horizon and rounds not left out
   #which rounds to use
   rounds <- 1:12
@@ -84,7 +86,6 @@ fit_fun_util_only <- function(d1, rounds) {
   # subselect participant, horizon and rounds not left out
   
   #which rounds to use
-  rounds <- rounds
   nParams <- 2
   
   # Set upper and lower bounds based on nParams
@@ -123,7 +124,6 @@ fit_fun_util_only_2lr <- function(d1) {
   # subselect participant, horizon and rounds not left out
   
   #which rounds to use
-  rounds <- 1:12
   nParams <- 3
   
   # Set upper and lower bounds based on nParams
