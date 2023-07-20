@@ -91,7 +91,7 @@ social_fits <- foreach(
 
   #for (r in rounds) { # loop through rounds in roundList
   
-  cv <- fit_fun_util_only(d1 = d1, rounds) # only try one sub
+  cv <- fitFun1lr(d1 = d1, rounds) # only try one sub
    
   # collect fit indices
   
@@ -103,7 +103,7 @@ social_fits <- foreach(
   #d1$tau <- unlist(cv[4])
   #d1$soc_w<-unlist(cv[5])
   #d1$prior<-unlist(cv[5])
-  #saveRDS(output, file = paste0("A_GeneratedFiles/modelfits/social_models/Q_fit", player_nr, ".rds"))
+  saveRDS(cv, file = paste0("A_GeneratedFiles/modelfits/social_models/no_gems/Q1lr/fit", player_nr, ".rds"))
   
   return(d1)
 }

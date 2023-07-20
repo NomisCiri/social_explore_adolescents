@@ -15,16 +15,9 @@ First, lets load some data.
 
 ```{r}
 
-source("./C_modelfittingCode/models_mle.R") # modelcode for fitting
-source("./B_SimulationCode/load_environments_social_experiment.R") # environments
-source("./B_SimulationCode/sim_models.R") # modelcode for simulation
-
-
-# load behavioral data
-#explore_data <- read_csv(file = paste0("./Data/data_coord.csv"))
+## load behavioral data
 social_data <-  read_csv(file = paste0("./data/social/data_social_all_participants.csv")) %>% 
   filter(uniqueID < 60) # get a sub-sample of both adults and adolescents 
-
 
 ```
 
@@ -72,7 +65,7 @@ social_fits <- foreach(
 
   #for (r in rounds) { # loop through rounds in roundList
   
-  cv <- fitFun2lr(d1 = d1) # only try one sub
+  cv <- fitFun2lrsw(d1 = d1) # only try one sub
    
   # collect fit indices
   
@@ -80,10 +73,11 @@ social_fits <- foreach(
   d1$lr_p <- unlist(cv[2])
   d1$lr_n <- unlist(cv[3])
   d1$tau <- unlist(cv[4])
-  #d1$soc_w<-unlist(cv[5])
+  d1$soc_w <- unlist(cv[5])
+  
   #d1$prior<-unlist(cv[5])
   
-  saveRDS(cv, file = paste0("A_GeneratedFiles/modelfits/social_models/no_gems/Q2lr/fit", player_nr, ".rds"))
+  saveRDS(cv, file = paste0("A_GeneratedFiles/modelfits/social_models/no_gems/Q2lr_sw/fit", player_nr, ".rds"))
   return(d1)
 }
 
@@ -138,6 +132,17 @@ dplyr::select(player, group, tau) %>%
   facet_wrap( ~ group) +
   theme_minimal()
 
+
+social_fits %>%
+dplyr::select(player, group, soc_w) %>%
+  distinct() %>%
+  #mutate(asymmetry_index = (lr_p-lr_n)/(lr_p + lr_n)) %>%
+  ggplot(aes(x = soc_w, fill = group)) +
+  #geom_line(aes(group=index))+
+  geom_histogram(position = 'dodge') +
+  facet_wrap( ~ group) +
+  theme_minimal()
+
 ```
 
 
@@ -146,6 +151,9 @@ simulate!
 ```{r}
 
 random_G2s <-  -1 * (log((1 / 64)) * 24 * 4)
+
+source("./B_SimulationCode/load_environments_social_experiment.R") # environments
+source("./B_SimulationCode/sim_models.R") # modelcode for simulation
 
 #environment files are in generated files
 environments <- load_envs_social(path = "./A_GeneratedFiles/")
@@ -182,13 +190,13 @@ social_sims_plot_one <- list()
       #### unpack parameters
       estimates <- c(unique(d1$lr_p),
                      unique(d1$lr_n),
-                     unique(d1$tau))
-                     #unique(d1$soc_w))
+                     unique(d1$tau),
+                     unique(d1$soc_w))
       ####
       #for (r in rounds) { # loop through rounds in roundList
-      cv <- exploreEnv2lr(
+      cv <- exploreEnv2lrsw(
         par = estimates,
-        learning_model_fun = RW_Q_2(),
+        learning_model_fun = RW_Q_2,
         acquisition_fun = ucb,
         data = d1,
         envs = environments
@@ -206,7 +214,6 @@ social_sims_plot_one <- list()
     social_sims_plot_d[[i]] <- do.call("rbind", social_sims_plot_one)
     
     #}
-    
     
     social_sims_plot_dhuge <- do.call("rbind", social_sims_plot_d)
 ```
