@@ -116,6 +116,41 @@ fitFun2lrsw <- function(d1) {
   return(output) # return optimized value
 }
 
+
+##------------------------------------------------------------------------
+##  e-greedy Q-Learning model with 2 learning rates (pos&neg) and social weight  --
+##------------------------------------------------------------------------
+
+fitFun2lrsw <- function(d1) {
+  # subselect participant, horizon and rounds not left out
+  #which rounds to use
+  rounds <- 1:12
+  nParams<- 4
+  
+  # Set upper and lower bounds based on nParams
+  lbound <- c(0.00000001,0.00000001,0.00000001,0) # first 2 are lr (pos, neg), then greedy, and social weight
+  ubound <- c(1,1,0.99,40)                            # first 2 are lr (pos, neg), then greedy, and social weight
+  
+  #####
+  # Begin cross validation routine
+  # TRAINING SET
+  fit <- DEoptim(
+    utilityModel2lrsw_e_greedy, 
+    lower = lbound, 
+    upper = ubound, 
+    dat = d1,
+    DEoptim.control(itermax = 100)
+  )
+  paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
+  # TEST SET
+  predict <- utilityModel2lrsw_e_greedy(
+    par = paramEstimates, 
+    dat = d1
+  )
+  output <- c(predict, fit$optim$bestmem) # leaveoutindex, nLL, prameters....
+  return(output) # return optimized value
+}
+
 # 
 # ##
 # ###
