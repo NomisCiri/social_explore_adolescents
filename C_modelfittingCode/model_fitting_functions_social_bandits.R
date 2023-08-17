@@ -15,7 +15,7 @@
 ##                    basic Q-Learning model                   --
 ##---------------------------------------------------------------
 
-fitFun1lr <- function(d1, rounds) {
+fit_1lr <- function(d1, rounds) {
   # subselect participant, horizon and rounds not left out
   
   #which rounds to use
@@ -29,7 +29,7 @@ fitFun1lr <- function(d1, rounds) {
   # Begin cross validation routine
   # TRAINING SET
   fit <- DEoptim(
-    utilityModel, 
+    utility_1lr, 
     lower = lbound, 
     upper = ubound, 
     dat = d1,
@@ -38,7 +38,7 @@ fitFun1lr <- function(d1, rounds) {
   paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
   
   # TEST SET
-  predict <- utilityModel(
+  predict <- utility_1lr(
     par = paramEstimates, 
     dat = d1
   )
@@ -51,7 +51,7 @@ fitFun1lr <- function(d1, rounds) {
 ##       Q-Learning model with 2 learning rates (pos&neg)       --
 ##----------------------------------------------------------------
 
-fitFun2lr <- function(d1) {
+fit_2lr <- function(d1) {
   # subselect participant, horizon and rounds not left out
   
   #which rounds to use
@@ -66,7 +66,7 @@ fitFun2lr <- function(d1) {
   # Begin cross validation routine
   # TRAINING SET
   fit <- DEoptim(
-    utilityModel2lr, 
+    utility_2lr, 
     lower = lbound, 
     upper = ubound, 
     dat = d1,
@@ -74,7 +74,7 @@ fitFun2lr <- function(d1) {
   )
   paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
   # TEST SET
-  predict <- utilityModel2lr(
+  predict <- utility_2lr(
     par = paramEstimates, 
     dat = d1
   )
@@ -86,7 +86,7 @@ fitFun2lr <- function(d1) {
 ##  Q-Learning model with 2 learning rates (pos&neg) and social weight  --
 ##------------------------------------------------------------------------
 
-fitFun2lrsw <- function(d1) {
+fit_2lr_sw <- function(d1) {
   # subselect participant, horizon and rounds not left out
   #which rounds to use
   rounds <- 1:12
@@ -100,7 +100,7 @@ fitFun2lrsw <- function(d1) {
   # Begin cross validation routine
   # TRAINING SET
   fit <- DEoptim(
-    utilityModel2lrsw, 
+    utility_2lr_sw, 
     lower = lbound, 
     upper = ubound, 
     dat = d1,
@@ -108,7 +108,7 @@ fitFun2lrsw <- function(d1) {
   )
   paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
   # TEST SET
-  predict <- utilityModel2lrsw(
+  predict <- utility_2lr_sw(
     par = paramEstimates, 
     dat = d1
   )
@@ -118,37 +118,136 @@ fitFun2lrsw <- function(d1) {
 
 
 ##------------------------------------------------------------------------
-##  e-greedy Q-Learning model with 2 learning rates (pos&neg) and social weight  --
+##  e-greedy Q-Learning model with 2 learning rates (pos&neg) and social weight --
 ##------------------------------------------------------------------------
 
-fitFun2lrsw <- function(d1) {
+fit_2lr_sw_gre <- function(d1) {
   # subselect participant, horizon and rounds not left out
   #which rounds to use
   rounds <- 1:12
   nParams<- 4
   
   # Set upper and lower bounds based on nParams
-  lbound <- c(0.00000001,0.00000001,0.00000001,0) # first 2 are lr (pos, neg), then greedy, and social weight
-  ubound <- c(1,1,0.99,40)                            # first 2 are lr (pos, neg), then greedy, and social weight
+  lbound <- c(0.00000001,0.00000001,0.00000001,-1,-50) # first 2 are lr (pos, neg), then greedy, and social weight
+  ubound <- c(2,2,0.99,2,50)                            # first 2 are lr (pos, neg), then greedy, and social weight
   
   #####
   # Begin cross validation routine
-  # TRAINING SET
-  fit <- DEoptim(
-    utilityModel2lrsw_e_greedy, 
-    lower = lbound, 
-    upper = ubound, 
-    dat = d1,
-    DEoptim.control(itermax = 100)
+  output_catched<-tryCatch({#if sth crashes
+    # TRAINING SET
+    fit <- DEoptim(
+      utility_2lr_sw_e_greedy, 
+      lower = lbound, 
+      upper = ubound, 
+      dat = d1,
+      DEoptim.control(itermax = 100)
+    )
+    paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
+    # TEST SET
+    predict <- utility_2lr_sw_e_greedy(
+      par = paramEstimates, 
+      dat = d1
+    )
+    output <- c(predict, fit$optim$bestmem) # leaveoutindex, nLL, prameters....
+    return(output)
+  },
+  error = function(e) {
+    output<-rep(NA,length(lbound+1))
+    # TEST SET
+    return(output)
+  }
   )
-  paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
-  # TEST SET
-  predict <- utilityModel2lrsw_e_greedy(
-    par = paramEstimates, 
-    dat = d1
+  return(output_catched)
+}
+
+
+##------------------------------------------------------------------------
+##  2 e-greedy Q-Learning model with 2 learning rates (pos&neg) and social weight --
+##------------------------------------------------------------------------
+fit_2lr_sw_2gre <- function(d1,leaveoutindex) {
+  # subselect participant, horizon and rounds not left out
+  #which rounds to use
+  rounds <- unique(d1$round)
+  trainingSet <- rounds[!rounds == leaveoutindex] # remove round specified by leaveoutindex
+  # test set
+  testrialset <- leaveoutindex
+  
+  # Set upper and lower bounds based on nParams
+  lbound <- c(0.00000001,0.00000001,0.00000001,0.00000001) # first 2 are lr (pos, neg), then greedy, and social weight
+  ubound <- c(2,2,0.99999999,0.99999999)                            # first 2 are lr (pos, neg), then greedy, and social weight
+  
+  #####
+  # Begin cross validation routine
+  output_catched<-tryCatch({#if sth crashes
+    # TRAINING SET
+    fit <- DEoptim(
+      utility_2lr_2e_greedy, 
+      lower = lbound, 
+      upper = ubound, 
+      dat = d1%>%filter(round %in% trainingSet),
+      DEoptim.control(itermax = 50,NP=5)
+    )
+    paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
+    # TEST SET
+    predict <- utility_2lr_2e_greedy(
+      par = paramEstimates, 
+      dat = d1%>%filter(round==leaveoutindex)
+    )
+    output <- c(leaveoutindex,predict, fit$optim$bestmem) # leaveoutindex, nLL, prameters....
+    return(output)
+  },
+  error = function(e) {
+    output<-rep(NA,length(lbound+1))
+    # TEST SET
+    return(output)
+  }
   )
-  output <- c(predict, fit$optim$bestmem) # leaveoutindex, nLL, prameters....
-  return(output) # return optimized value
+  return(output_catched)
+}
+
+
+##------------------------------------------------------------------------
+##  2 e-greedy Q-Learning model with 2 learning rates (pos&neg) and social weight --
+##------------------------------------------------------------------------
+fit_2lr_sw_softmax_egreedy <- function(d1,leaveoutindex) {
+  # subselect participant, horizon and rounds not left out
+  #which rounds to use
+  rounds <- unique(d1$round)
+  trainingSet <- rounds[!rounds == leaveoutindex] # remove round specified by leaveoutindex
+  # test set
+  testrialset <- leaveoutindex
+  
+  # Set upper and lower bounds based on nParams
+  lbound <- c(0.00000001,0.00000001,0.00000001,0.00000001,0) # first 2 are lr (pos, neg),tau, greedy, and social weight
+  ubound <- c(5,5,20,0.99999999,50)                            # first 2 are lr (pos, neg),tau, greedy, and social weight
+  
+  #####
+  # Begin cross validation routine
+  output_catched<-tryCatch({#if sth crashes
+    # TRAINING SET
+    fit <- DEoptim(
+      utility_2lr_sw_softmax_egreedy, 
+      lower = lbound, 
+      upper = ubound, 
+      dat = d1%>%filter(round %in% trainingSet),
+      DEoptim.control(itermax = 100,NP=20)
+    )
+    paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
+    # TEST SET
+    predict <- utility_2lr_sw_softmax_egreedy(
+      par = paramEstimates, 
+      dat = d1%>%filter(round==leaveoutindex)
+    )
+    output <- c(leaveoutindex,predict, fit$optim$bestmem) # leaveoutindex, nLL, prameters....
+    return(output)
+  },
+  error = function(e) {
+    output<-rep(NA,length(lbound+1))
+    # TEST SET
+    return(output)
+  }
+  )
+  return(output_catched)
 }
 
 # 

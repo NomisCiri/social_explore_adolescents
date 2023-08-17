@@ -91,7 +91,7 @@ social_fits <- foreach(
 
   #for (r in rounds) { # loop through rounds in roundList
   
-  cv <- fitFun1lr(d1 = d1, rounds) # only try one sub
+  cv <- fit_1lr(d1 = d1, rounds) # only try one sub
    
   # collect fit indices
   
