@@ -16,6 +16,7 @@ writinglocation_ado <- 'D_CleanExperimentalData/adolescents_data/raw_data/social
 periods <- 12 # how many max periods in this 
 data_adolescents <- readLIONESS(folder_ado, writinglocation_ado, periods)
 
+
 ## Import adults data
 folder_adu <- 'D_CleanExperimentalData/adults_data//raw_data/social/lioness/'
 writinglocation_adu <- 'D_CleanExperimentalData/adults_data/raw_data/social/'
