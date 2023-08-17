@@ -47,11 +47,13 @@ readLIONESS <- function(folder, writinglocation, periods) {
 
     ## exclude incomplete participants
     decisions <- decisions %>%
-      filter(playerNr %in% player_finished$playerNr)
+      filter(playerNr %in% player_finished$playerNr) %>% 
+      mutate(file_nr = n)
 
     ## append to other batches (if existing)
     merged_data <-
-      bind_rows(merged_data, decisions)
+      bind_rows(merged_data, decisions) 
   }
+  
   return(merged_data)
 }

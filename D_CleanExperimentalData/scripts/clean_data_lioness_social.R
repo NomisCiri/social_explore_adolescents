@@ -16,7 +16,6 @@ writinglocation_ado <- 'D_CleanExperimentalData/adolescents_data/raw_data/social
 periods <- 12 # how many max periods in this 
 data_adolescents <- readLIONESS(folder_ado, writinglocation_ado, periods)
 
-
 ## Import adults data
 folder_adu <- 'D_CleanExperimentalData/adults_data//raw_data/social/lioness/'
 writinglocation_adu <- 'D_CleanExperimentalData/adults_data/raw_data/social/'
@@ -204,6 +203,12 @@ data_long_adults <- data.frame(player = numeric(0),
                                     gender = numeric(0),
                                     soc_info_round = numeric(0)
 )
+
+# create unique IDs
+data_adults <- data_adults %>% 
+  group_by(playerNr, file_nr) %>% 
+  mutate(playerNr = cur_group_id())
+
 
 for (n in 1:length(unique(data_adults$playerNr))) {
   
