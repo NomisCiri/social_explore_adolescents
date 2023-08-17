@@ -113,7 +113,7 @@ utility_1lr <- function(par, learning_model_fun, acquisition_fun, dat) {
   theta <- par[1]# "learningrate"
   tau <- par[2] #  "random" exploration
   mu0 <- 0# par[4] # exploration bonus
-
+  
   ## preallocate negative log likelihood
   nLL <- rep(0, length(dat$round))
   
@@ -128,7 +128,7 @@ utility_1lr <- function(par, learning_model_fun, acquisition_fun, dat) {
     
     ## rewards
     y <- round_df$z[0:(trials - 1)] # trim off the last observation, because it was not used to inform a choice (round already over)
-   
+    
     ## social information
     social_choices <- round_df$social_info
     
@@ -137,11 +137,11 @@ utility_1lr <- function(par, learning_model_fun, acquisition_fun, dat) {
     utilities <- NULL
     prevPost <- NULL # set the previous posterior computation to NULL for qlearning
     pMat <- NULL
-  
-      #here, too
-    for (t in 1:(trials - 1)) {
     
-        #learn
+    #here, too
+    for (t in 1:(trials - 1)) {
+      
+      #learn
       
       #browser()
       if (t > 1) {
@@ -157,6 +157,7 @@ utility_1lr <- function(par, learning_model_fun, acquisition_fun, dat) {
       # next choice getrials a social utility
       #utilityVec=utilityVec-max(utilityVec)
       utilityVec[social_choices[t]] <- utilityVec[social_choices[t]]
+      
       # build horizon_length x options matrix, where each row holds the utilities of each choice at each decision time in the search horizon
       utilities <- rbind(utilities, t(utilityVec)) 
       #browser()
@@ -173,9 +174,9 @@ utility_1lr <- function(par, learning_model_fun, acquisition_fun, dat) {
     p <- (pmax(p, 0.00001))
     p <- (pmin(p, 0.99999))
     
+    #browser()
     # add loglik nasty way of checking the predicted choice probability a the item that was chosen
-    nLL[which(unique(dat$round) == r)] <-
-      -sum(log(p[cbind(c(1:(trials - 1)), chosen[2:length(chosen)])]))
+    nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials - 1)), chosen[2:length(chosen)])]))
     #browser()
   }
   #browser()
@@ -306,6 +307,7 @@ utility_2lr_sw <- function(par, dat) {
       utilityVec <- ucb(out, 0)
       #next choice getrials a social utility
       #utilityVec=utilityVec-max(utilityVec)
+      
       utilityVec[social_choices[t]] <- utilityVec[social_choices[t]] + zeta
       # build horizon_length x options matrix, where each row holds the utilities of each choice at each decision time in the search horizon
       utilities <- rbind(utilities, t(utilityVec)) 

@@ -125,6 +125,7 @@ exploreEnv1lr <- function(par, learning_model_fun, acquisition_fun, data, envs) 
       #utilities
       utilityVec <- ucb(out, 0)
       utilityVec[social_choices[t]]<-utilityVec[social_choices[t]]# social update of utility
+      
       # softmaximization
       #utilities=utilityVec-max(utilityVec)# get no NAs
       p <- exp(utilityVec / tau)
@@ -133,6 +134,7 @@ exploreEnv1lr <- function(par, learning_model_fun, acquisition_fun, data, envs) 
       # numerical overflow
       p <- (pmax(p, 0.00001))
       p <- (pmin(p, 0.99999))
+      
       #  browser()
       ind <- sample(1:64, 1, prob = p) # choice index
       

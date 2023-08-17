@@ -36,10 +36,12 @@ bayesianMeanTracker <- function(x, y, theta, prevPost = NULL, mu0Par, var0Par) {
 # RW-Q learning no social info
 #######
 RW_Q <- function(x, y, theta, prevPost = NULL, mu0Par) {
+  
   # Updates the previous posterior based on a single observation
   # parameters
   mu0 <- mu0Par # prior mean
   lr <- theta[1]
+  
   if (is.null(prevPost)) { # if no posterior prior, assume it is the first observation
     predictions <- rep(mu0, 64)
   } else { # if previous posterior is provided, update
@@ -64,8 +66,8 @@ RW_Q_2 <- function(x, y, theta, prevPost = NULL, mu0Par) {
   # Updates the previous posterior based on a single observation
   # parameters
   mu0 <- mu0Par # prior mean
-  lr_p =theta[1]
-  lr_n =theta[2]
+  lr_p = theta[1]
+  lr_n = theta[2]
   
   if (is.null(prevPost)) { # if no posterior prior, assume it is the first observation
     predictions <- rep(mu0, 64)
