@@ -42,7 +42,7 @@ two_epsilonGreedy <- function(out, epsilon=c(0.1,0.1),y){
 }
 
 ##---------------------------------------------------------------
-##            softmax & epsilon greedy exploration 2 params     -
+## softmax & epsilon greedy exploration 2 lr 3socw    -
 ##---------------------------------------------------------------
 mix_soc_softmax_epsilonGreedy <- function(out, epsilon=0.1,tau=0.1,zeta=c(0,0,0),social_choices,soctype,y,t){
   n <- length(out)
@@ -552,6 +552,7 @@ utility_2lr_3sw_softmax_egreedy <- function(par, dat) {
     y <- round_df$z[0:(trials - 1)] # trim off the last observation, because it was not used to inform a choice (round already over)
     # social information
     social_choices<-round_df$social_info
+    soctype<-unique(round_df$soctype)
     # create observation matrix
     # Utilties of each choice
     p <- NULL
