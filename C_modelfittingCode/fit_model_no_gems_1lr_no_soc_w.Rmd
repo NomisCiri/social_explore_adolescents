@@ -15,11 +15,6 @@ First, lets load some data.
 
 ```{r}
 
-source("./C_modelfittingCode/models_mle.R") # modelcode for fitting
-source("./B_SimulationCode/load_environments_social_experiment.R") # environments
-source("./B_SimulationCode/sim_models.R") # modelcode for simulation
-
-
 # load behavioral data
 #explore_data <- read_csv(file = paste0("./Data/data_coord.csv"))
 social_data <-  read_csv(file = paste0("./data/social/data_social_all_participants.csv")) %>% 
@@ -51,7 +46,7 @@ This function fits the model specified in models mle and stores the parameter es
 alongside the participant data in long format. In the future we want to modify this to fit different models
 
 ```{r}
-# 
+# make clusters depending on how many cores you have on your machine
 cl <- makeCluster(detectCores(), type = 'PSOCK')
 registerDoParallel(cl)
 
@@ -80,9 +75,9 @@ social_fits <- foreach(
     
     filter(gempresent == 0) %>%  # for now only have rounds without gems 
     group_by(round) %>%
-    mutate(z = points, #(points - mean(points)) / sd(points), ventually figure out what is the best outcome for this
+    mutate(z = points, #(points - mean(points)) / sd(points), eventually figure out what is the best outcome for this
       social_info = social_info,
-      choices = cells
+      choices = cell
     ) %>% rowwise() %>%
     mutate(social_info = ifelse(social_info == 64, 1, social_info)) %>%
     ungroup()
@@ -157,8 +152,8 @@ simulate!
 
 random_G2s <-  -1 * (log((1 / 64)) * 24 * 4)
 
-#why does this not work? @simon: this = the filtered players?
-social_fits <- social_fits %>% filter(!(player %in% filtered_players))
+source("./B_SimulationCode/load_environments_social_experiment.R") # environments
+source("./B_SimulationCode/sim_models.R") # modelcode for simulation
 
 #environment files are in generated files
 environments <- load_envs_social(path = "./A_GeneratedFiles/")
@@ -199,7 +194,7 @@ social_sims_plot_one <- list()
                      #unique(d1$soc_w))
       ####
       #for (r in rounds) { # loop through rounds in roundList
-      cv <- explore_env_social_fitted_pars(
+      cv <- exploreEnv1lr(
         par = estimates,
         learning_model_fun = RW_Q,
         acquisition_fun = ucb,

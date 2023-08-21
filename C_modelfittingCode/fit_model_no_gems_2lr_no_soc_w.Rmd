@@ -147,6 +147,10 @@ simulate!
 
 random_G2s <-  -1 * (log((1 / 64)) * 24 * 4)
 
+source("./B_SimulationCode/load_environments_social_experiment.R") # environments
+source("./B_SimulationCode/sim_models.R") # modelcode for simulation
+
+
 #environment files are in generated files
 environments <- load_envs_social(path = "./A_GeneratedFiles/")
 social_sims_plot_d <- list()

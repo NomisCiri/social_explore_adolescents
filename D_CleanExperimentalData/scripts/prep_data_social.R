@@ -30,14 +30,17 @@ data <- bind_rows(data_adolescents, data_adults) %>%
   ungroup() %>% 
   group_by(player, group) %>% 
   mutate(uniqueID = cur_group_id()) %>% 
-  ungroup()
+  ungroup() %>% 
+  group_by(uniqueID, round) %>% 
+  mutate(unique_rounds = cur_group_id())
+  
 
 # same uniqueIDs as unique participants
 length(unique(data$uniqueID)) == nrow(data)/25/12
 
 ## find round when gem was first found
 when_gem_found <-  data %>%
-  group_by(player, round) %>%
+  group_by(uniqueID, round) %>%
   dplyr::slice(match(1, gem)) %>%
   mutate(round_gem_found = trial) %>%
   ungroup()  %>%

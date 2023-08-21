@@ -22,8 +22,8 @@ fit_1lr <- function(d1, rounds) {
   nParams <- 2
   
   # Set upper and lower bounds based on nParams
-  lbound <- c(0.00000001,0.00000001) 
-  ubound <- c(1,10)                           
+  lbound <- c(0.00000001, 0.00000001) 
+  ubound <- c(1, 10)                           
   
   #####
   # Begin cross validation routine
@@ -42,6 +42,7 @@ fit_1lr <- function(d1, rounds) {
     par = paramEstimates, 
     dat = d1
   )
+  
   output <- c(predict, fit$optim$bestmem) # leaveoutindex, nLL, parameters....
   return(output) # return optimized value
 }
@@ -90,7 +91,7 @@ fit_2lr_sw <- function(d1) {
   # subselect participant, horizon and rounds not left out
   #which rounds to use
   rounds <- 1:12
-  nParams<- 4
+  nParams <- 4
   
   # Set upper and lower bounds based on nParams
   lbound <- c(0.00000001,0.00000001,0.00000001,0) # first 2 are lr (pos, neg), then temperature, and social weight
