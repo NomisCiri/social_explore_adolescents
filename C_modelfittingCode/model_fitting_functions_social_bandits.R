@@ -263,8 +263,8 @@ fit_2lr_3sw_softmax_egreedy <- function(d1,leaveoutindex) {
   testrialset <- leaveoutindex
   
   # Set upper and lower bounds based on nParams
-  lbound <- c(0.00000001,0.00000001,0.00000001,0.00000001,0,0,0) # first 2 are lr (pos, neg),tau, greedy, and social weight
-  ubound <- c(5,5,20,0.99999999,50,50,50)                            # first 2 are lr (pos, neg),tau, greedy, and social weight
+  lbound <- c(0.00000001,0.00000001,0.00000001,0.00000001,0,0,0,0) # first 2 are lr (pos, neg),tau, greedy, and social weight
+  ubound <- c(5,5,20,0.99999999,50,50,50,50)                            # first 2 are lr (pos, neg),tau, greedy, and social weight
   
   #####
   # Begin cross validation routine
@@ -275,7 +275,7 @@ fit_2lr_3sw_softmax_egreedy <- function(d1,leaveoutindex) {
       lower = lbound, 
       upper = ubound, 
       dat = d1%>%filter(round %in% trainingSet),
-      DEoptim.control(itermax = 100,NP=20)
+      DEoptim.control(itermax = 200)
     )
     paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
     # TEST SET

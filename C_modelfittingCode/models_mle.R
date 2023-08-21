@@ -44,31 +44,6 @@ two_epsilonGreedy <- function(out, epsilon=c(0.1,0.1),y){
 ##---------------------------------------------------------------
 ## softmax & epsilon greedy exploration 2 lr 3socw    -
 ##---------------------------------------------------------------
-mix_soc_softmax_epsilonGreedy <- function(out, epsilon=0.1,tau=0.1,zeta=c(0,0,0),social_choices,soctype,y,t){
-  n <- length(out)
-  #browser()
-  if(max(y>150)){
-    #if gem was found: greedy
-    p <- rep(1/n*epsilon, n)#how many options
-    utility_vec <- out #+(beta *sqrt(out$sig))
-    p[which.is.max(utility_vec)] <- (1-epsilon) + (1/n*epsilon)
-  }else{
-    #if gem was not found: social-softmax
-    utilityVec <- out
-    utilityVec=utilityVec-max(utilityVec)
-    utilityVec[social_choices[t]]<-utilityVec[social_choices[t]]+zeta[soctype]
-    p <- exp(utilityVec / tau)
-    # probabilities
-    p <- p / sum(p)
-  }
-  #p[social_choices[t]] <- (1-zeta) + (1/n*zeta)
-  return(p)
-}
-
-
-##---------------------------------------------------------------
-##softmax & epsilon greedy exploration 2 params 3 social parm     -
-##---------------------------------------------------------------
 mix_soc_softmax_epsilonGreedy <- function(out, epsilon=0.1,tau=0.1,zeta=0,social_choices,y,t){
   n <- length(out)
   #browser()
@@ -82,6 +57,31 @@ mix_soc_softmax_epsilonGreedy <- function(out, epsilon=0.1,tau=0.1,zeta=0,social
     utilityVec <- out
     utilityVec=utilityVec-max(utilityVec)
     utilityVec[social_choices[t]]<-utilityVec[social_choices[t]]+zeta
+    p <- exp(utilityVec / tau)
+    # probabilities
+    p <- p / sum(p)
+  }
+  #p[social_choices[t]] <- (1-zeta) + (1/n*zeta)
+  return(p)
+}
+
+
+##---------------------------------------------------------------
+##softmax & epsilon greedy exploration 2 params 3 social parm     -
+##---------------------------------------------------------------
+mix_3soc_softmax_epsilonGreedy <- function(out, epsilon=0.1,tau=0.1,zeta=c(0,0,0,0),social_choices,soctype,y,t){
+  n <- length(out)
+  #browser()
+  if(max(y>150)){
+    #if gem was found: greedy
+    p <- rep(1/n*epsilon, n)#how many options
+    utility_vec <- out #+(beta *sqrt(out$sig))
+    p[which.is.max(utility_vec)] <- (1-epsilon) + (1/n*epsilon)
+  }else{
+    #if gem was not found: social-softmax
+    utilityVec <- out
+    #utilityVec=utilityVec-max(utilityVec)
+    utilityVec[social_choices[t]]<-utilityVec[social_choices[t]]+zeta[soctype]
     p <- exp(utilityVec / tau)
     # probabilities
     p <- p / sum(p)
@@ -537,7 +537,7 @@ utility_2lr_3sw_softmax_egreedy <- function(par, dat) {
   theta <- c(par[1], par[2])# "learningrate" 1 is positive, 2 is negative
   tau<-par[3]
   epsilon <- par[4] #  "random" exploration
-  zeta <- c(par[5],par[6],par[7]) # scales social info use
+  zeta <- c(par[5],par[6],par[7],par[8]) # scales social info use
   mu0 <- 0# par[4] # exploration bonus
   # create a parameter vector
   # preallocate negative log likelihood
@@ -569,6 +569,7 @@ utility_2lr_3sw_softmax_egreedy <- function(par, dat) {
         out <- RW_Q_2(chosen[t], y[t], theta = theta, prevPost = NULL, mu0Par = mu0)
       }
       #trial wise probabilites
+      #browser()
       ps_t<-mix_3soc_softmax_epsilonGreedy(out,epsilon,tau,zeta,social_choices,soctype,y=y[1:t],t)
       p<-rbind(p, t(ps_t))
     }

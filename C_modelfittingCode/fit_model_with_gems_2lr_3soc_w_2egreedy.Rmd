@@ -18,11 +18,12 @@ First, lets load some data.
 
 ## load behavioral data
 social_data <-  read_csv(file = paste0("./data/social/data_social_all_participants.csv")) %>%#drop_na()
-  filter(tot_points>0 & !is.na(demo_type))%>%filter(player_nr<30)%>%# get a sub-sample of both adults and adolescents 
+  filter(tot_points>0 & !is.na(demo_type))%>%filter(player<30)%>%# get a sub-sample of both adults and adolescents 
   mutate(soctype=case_when(
     demo_type=="gem_found"~1,# i need that to index the different social weight parameters
     demo_type=="gem_not_found"~2,
-    demo_type=="never_exploit"~3)
+    demo_type=="never_exploit"~3,
+    demo_type=="no_gem"~4)
   )
 ```
 
@@ -82,7 +83,7 @@ if (refit){
     #### leaves out one round and fits model on the other rounds. 
     #### then evaluates the modelfit on the held out data
     for (r in rounds) { # loop through rounds in roundList
-      cv_one<-fit_2lr_sw_softmax_egreedy(d1 = d1,leaveoutindex = r)
+      cv_one<-fit_2lr_3sw_softmax_egreedy(d1 = d1,leaveoutindex = r)
       cv <-rbind(cv,cv_one) # only try one sub
     }
     # collect fit indices and compute mean
@@ -91,10 +92,13 @@ if (refit){
     d1$lr_n <- mean(cv[,4],na.rm=T)
     d1$tau <- mean(cv[,5],na.rm=T)
     d1$epsilon_gem <- mean(cv[,6],na.rm=T)
-    d1$soc_w <- mean(cv[,7],na.rm=T)
+    d1$soc_w_1 <- mean(cv[,7],na.rm=T)
+    d1$soc_w_2 <- mean(cv[,8],na.rm=T)
+    d1$soc_w_3 <- mean(cv[,9],na.rm=T)
+    d1$soc_w_4 <- mean(cv[,10],na.rm=T)
     #d1$prior<-unlist(cv[5])
-    saveRDS(cv, file = paste0("./A_GeneratedFiles/modelfits/social_models/all_envs/utility_2lr_sw_softmax_egreedy/fit", player_nr, ".rds"))
-    saveRDS(d1, file = paste0("./A_GeneratedFiles/modelfits/social_models/all_envs/utility_2lr_sw_softmax_egreedy/data_fit", player_nr, ".rds"))
+    saveRDS(cv, file = paste0("./A_GeneratedFiles/modelfits/social_models/all_envs/utility_2lr_3sw_softmax_egreedy/fit", player_nr, ".rds"))
+    saveRDS(d1, file = paste0("./A_GeneratedFiles/modelfits/social_models/all_envs/utility_2lr_3sw_softmax_egreedy/data_fit", player_nr, ".rds"))
     return(d1)
   }
 } else{#read from disk if refit is false
