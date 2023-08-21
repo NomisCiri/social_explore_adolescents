@@ -96,9 +96,9 @@ mix_3soc_softmax_epsilonGreedy <- function(out, epsilon=0.1,tau=0.1,zeta=c(0,0,0
 ##---------------------------------------------------------------
 ##softmax & epsilon greedy exploration ucb for Kalman filter   -
 ##---------------------------------------------------------------
-KF_mix_3soc_softmax_epsilonGreedy <- function(out, epsilon=0.1,tau=0.1,ucb=0,y,t){
+KF_mix_softmax_epsilonGreedy <- function(out, epsilon=0.1,tau=0.1,ucb=0,y,t){
   #out is data frame
-  n <- length(out)
+  n <- length(out$mu)
   #browser()
   if(max(y>150)){
     #if gem was found: greedy
@@ -113,6 +113,7 @@ KF_mix_3soc_softmax_epsilonGreedy <- function(out, epsilon=0.1,tau=0.1,ucb=0,y,t
     # probabilities
     p <- p / sum(p)
   }
+  #browser()
   #p[social_choices[t]] <- (1-zeta) + (1/n*zeta)
   return(p)
 }
@@ -644,7 +645,7 @@ kalman_ucb_softmax_egreedy <- function(par, dat) {
   tau<-par[3]
   epsilon <- par[4] #  "random" exploration
   mu0 <- 0# par[4] # exploration bonus
-  var0<-20
+  var0<-5
   # create a parameter vector
   # preallocate negative log likelihood
   nLL <- rep(0, 12)
@@ -674,10 +675,10 @@ kalman_ucb_softmax_egreedy <- function(par, dat) {
         # first t of each round, start new
         out <- bayesianMeanTracker(chosen[t], y[t], theta = theta, prevPost = NULL, mu0Par = mu0,var0Par = var0)
       }
-      #trial wise probabilites
-      #browser()
-      ps_t<-KF_mix_3soc_softmax_epsilonGreedy(out,epsilon,tau,ucb,y=y[1:t],t)
+     
+      ps_t<-KF_mix_softmax_epsilonGreedy(out,epsilon,tau,ucb,y=y[1:t],t)
       p<-rbind(p, t(ps_t))
+      #browser()
     }
     # softmaximization
     # compute choice probabilites

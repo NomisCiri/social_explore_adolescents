@@ -95,9 +95,9 @@ KF_mix_3soc_softmax_epsilonGreedy <- function(out, epsilon=0.1,tau=0.1,beta=0,y,
     p[which.is.max(utility_vec)] <- (1-epsilon) + (1/n*epsilon)
   }else{
     #if gem was not found: social-softmax
-    utilityVec <- out$mu +(beta *sqrt(out$sig))
+    utility_vec <- out$mu +(beta *sqrt(out$sig))
     #utilityVec[social_choices[t]]<-utilityVec[social_choices[t]]
-    p <- exp(utilityVec / tau)
+    p <- exp(utility_vec / tau)
     # probabilities
     p <- p / sum(p)
   }
@@ -808,7 +808,7 @@ simumalte_bmt_ucb_softmax_egreedy <- function(par, learning_model_fun, acquisiti
   # unpack
   #browser()
   #par<-exp(par)#parameters are defined in logspace, we exponentiate them here
-  theta <- c(par[1])# "learningrate" 1 is positive, 2 is negative
+  error_var <- c(par[1])# "learningrate" 1 is positive, 2 is negative
   ucb<-par[2]
   tau<-par[3]
   epsilon <- par[4] #  "random" exploration
@@ -869,14 +869,14 @@ simumalte_bmt_ucb_softmax_egreedy <- function(par, learning_model_fun, acquisiti
       #print(r)
       #print(t)
       if (t > 1) {
-        out <- learning_model_fun(ind, y[t], theta = lr, prevPost = out, mu0Par = mu0,var0Par=var0)
+        out <- learning_model_fun(ind, y[t], theta = error_var, prevPost = out, mu0Par = mu0,var0Par=var0)
         
       } else {
-        out <- learning_model_fun(ind, y[t], theta = lr, prevPost = NULL, mu0Par = mu0,var0Par=var0)
+        out <- learning_model_fun(ind, y[t], theta = error_var, prevPost = NULL, mu0Par = mu0,var0Par=var0)
       }
       #browser()
       #utilities
-      p<-mix_soc_softmax_epsilonGreedy(out,epsilon,tau,zeta,social_choices,y=y[1:t],t)
+      p<-KF_mix_softmax_epsilonGreedy(out,epsilon,tau,ucb,y=y[1:t],t)
       # numerical overflow
       p <- (pmax(p, 0.00001))
       p <- (pmin(p, 0.99999))

@@ -322,7 +322,7 @@ simsub_dat%>%
   ggtitle("Simulations") +
   stat_summary() +
   stat_smooth(method = "lm") +
-  facet_wrap(pats_or_sim~gem,
+  facet_wrap(gem~pats_or_sim,
              labeller = labeller(
                pats_or_sim = labeller_patsim,
                gem=labeller_gem
@@ -330,6 +330,6 @@ simsub_dat%>%
   theme_bw() -> comp_plot
 
 
-
+comp_plot
 ```
 

@@ -85,29 +85,26 @@ if (refit){
     #### leaves out one round and fits model on the other rounds. 
     #### then evaluates the modelfit on the held out data
     for (r in rounds) { # loop through rounds in roundList
-      cv_one<-fit_2lr_3sw_softmax_egreedy(d1 = d1,leaveoutindex = r)
+      cv_one<-fit_bmt_ucb_softmax_egreedy(d1 = d1,leaveoutindex = r)
       cv <-rbind(cv,cv_one) # only try one sub
     }
     # collect fit indices and compute mean
     d1$fit <- mean(cv[,2],na.rm=T)
     
-    d1$lr_p <- mean(cv[,3],na.rm=T)
-    d1$lr_n <- mean(cv[,4],na.rm=T)
+    d1$error_var <- mean(cv[,3],na.rm=T)
+    d1$beta <- mean(cv[,4],na.rm=T)
     
     d1$tau <- mean(cv[,5],na.rm=T)
     d1$epsilon_gem <- mean(cv[,6],na.rm=T)
-    
-    d1$soc_w_1 <- mean(cv[,7],na.rm=T)
-    d1$soc_w_2 <- mean(cv[,8],na.rm=T)
-    d1$soc_w_3 <- mean(cv[,9],na.rm=T)
-    d1$soc_w_4 <- mean(cv[,10],na.rm=T)
+  
     #d1$prior<-unlist(cv[5])
-    saveRDS(cv, file = paste0("./A_GeneratedFiles/modelfits/social_models/all_envs/utility_2lr_3sw_softmax_egreedy/fit", player_nr, ".rds"))
-    saveRDS(d1, file = paste0("./A_GeneratedFiles/modelfits/social_models/all_envs/utility_2lr_3sw_softmax_egreedy/data_fit", player_nr, ".rds"))
+    saveRDS(cv, file = paste0("./A_GeneratedFiles/modelfits/social_models/all_envs/kalman_ucb_softmax_egreedy/fit", player_nr, ".rds"))
+    
+    saveRDS(d1, file = paste0("./A_GeneratedFiles/modelfits/social_models/all_envs/kalman_ucb_softmax_egreedy/data_fit", player_nr, ".rds"))
     return(d1)
   }
 } else{#read from disk if refit is false
-  fits_path<-"A_GeneratedFiles/modelfits/social_models/all_envs/utility_2lr_3sw_softmax_egreedy/"
+  fits_path<-"A_GeneratedFiles/modelfits/social_models/all_envs/kalman_ucb_softmax_egreedy/"
   
   social_fits<-list.files(fits_path)%>%
     purrr::map_dfr(.,~{
@@ -115,6 +112,7 @@ if (refit){
       return(d1)
     })
 }
+
 ```
 
 # Evaluate fit 
@@ -133,17 +131,17 @@ social_fits %>%
 
 # check learning rates
 social_fits %>%
-  select(player, group, lr_p) %>% 
+  select(player, group, error_var) %>% 
   distinct() %>% 
-  ggplot(aes(x = group, y = lr_p, color = group)) +
+  ggplot(aes(x = group, y = error_var, color = group)) +
   #geom_line(aes(group=index))+
   stat_boxplot()+
   theme_minimal()
 
 social_fits %>%
-  select(player, group, lr_n) %>% 
+  select(player, group, beta) %>% 
   distinct() %>% 
-  ggplot(aes(x = group, y = lr_n, color = group)) +
+  ggplot(aes(x = group, y = beta, color = group)) +
   #geom_line(aes(group=index))+
   stat_boxplot()+
   theme_minimal()
@@ -169,37 +167,6 @@ social_fits %>%
   stat_boxplot()+
   theme_minimal()
 
-# check greedy difference in kids and adults 
-social_fits %>%pivot_longer(cols=starts_with("soc_w"),names_to = "social_weight",values_to="value")%>%
-  dplyr::select(player, group,social_weight,value) %>%
-  distinct() %>%
-  #mutate(asymmetry_index = (lr_p-lr_n)/(lr_p + lr_n)) %>%
-  ggplot(aes(y = value, x=social_weight, color = group)) +
-  #geom_line(aes(group=index))+
-  stat_summary(position = position_dodge(0.1))+
-  theme_minimal()
-
-
-# group diffs in social parameters??
-#difference gem
-group_diffs_1<-social_fits %>%#pivot_longer(cols=starts_with("soc_w"),names_to = "social_weight",values_to="value")%>%
-  dplyr::select(player, group,soc_w_1) %>%unique()%>%
-  brms::brm(soc_w_1~group,data=.,cores=4)
-
-#difference gemnotfound
-group_diffs_2<-social_fits %>%#pivot_longer(cols=starts_with("soc_w"),names_to = "social_weight",values_to="value")%>%
-  dplyr::select(player, group,soc_w_2) %>%unique()%>%
-  brms::brm(soc_w_2~group,data=.,cores=4)
-
-#difference neverexploit
-group_diffs_3<-social_fits %>%#pivot_longer(cols=starts_with("soc_w"),names_to = "social_weight",values_to="value")%>%
-  dplyr::select(player, group,soc_w_3) %>%unique()%>%
-  brms::brm(soc_w_3~group,data=.,cores=4)
-
-#difference no gem
-group_diffs_4<-social_fits %>%#pivot_longer(cols=starts_with("soc_w"),names_to = "social_weight",values_to="value")%>%
-  dplyr::select(player, group,soc_w_4) %>%unique()%>%
-  brms::brm(soc_w_4~group,data=.,cores=4)
 ```
 
 
@@ -249,20 +216,17 @@ for (player_nr in unique(social_fits_dNa$uniqueID)) {
     ungroup()
   
   #### unpack parameters
-  estimates <- c(unique(d1$lr_p),
-                 unique(d1$lr_n),
+  estimates <- c(unique(d1$error_var),
+                 unique(d1$beta),
                  unique(d1$tau),
-                 unique(d1$epsilon_gem),
-                 unique(d1$soc_w_1),
-                 unique(d1$soc_w_2),
-                 unique(d1$soc_w_3),
-                 unique(d1$soc_w_4)
+                 unique(d1$epsilon_gem)
+     
   )
   ####
   #for (r in rounds) { # loop through rounds in roundList
-  cv <- simumalte_2lr_sw_softmax_egreedy(
+  cv <- simumalte_bmt_ucb_softmax_egreedy(
     par = estimates,
-    learning_model_fun = RW_Q_2,
+    learning_model_fun = bayesianMeanTracker,
     acquisition_fun = ucb,
     data = d1,
     envs = environments

@@ -19,7 +19,7 @@ bayesianMeanTracker <- function(x, y, theta, prevPost = NULL, mu0Par, var0Par) {
   }
   # Which of the 121 options were chosen at time?
   alloptrials <- expand.grid(0:7, 0:7)
-  chosen <- which(alloptrials$Var1 == x[1] & alloptrials$Var2 == x[2])
+  chosen <- x# which(alloptrials$Var1 == x[1] & alloptrials$Var2 == x[2])
   # Kalman gain
   kGain <- predictions$sig[chosen] / (predictions$sig[chosen] + vare) # feed the uncertainty in here.
   # update mean
@@ -27,7 +27,7 @@ bayesianMeanTracker <- function(x, y, theta, prevPost = NULL, mu0Par, var0Par) {
   # update variance for observed arm
   predictions$sig[chosen] <- predictions$sig[chosen] * (1 - kGain)
   # return output
-  #  browser()
+    #browser()
   
   return(predictions)
 }
@@ -91,8 +91,7 @@ RW_Q_2 <- function(x, y, theta, prevPost = NULL, mu0Par) {
   else if (pe <= 0) {
     predictions[chosen] <- predictions[chosen] + (lr_n * pe)
   }
-  # browser()
-  
+
   return(predictions)
 }
 
