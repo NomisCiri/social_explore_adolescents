@@ -11,7 +11,7 @@ bayesianMeanTracker <- function(x, y, theta, prevPost = NULL, mu0Par, var0Par) {
   # parameters
   mu0 <- mu0Par # prior mean
   var0 <- var0Par # prior variance
-  vare <- 3600#theta[1] # error varriance
+  vare <- theta[1] # error varriance
   if (is.null(prevPost)) { # if no posterior prior, assume it is the first observation
     predictions <- data.frame(mu = rep(mu0, 64), sig = rep(var0, 64))
   } else { # if previous posterior is provided, update
@@ -97,15 +97,3 @@ RW_Q_2 <- function(x, y, theta, prevPost = NULL, mu0Par) {
 }
 
 
-########
-## UCB sampling.... 
-########
-ucb <- function(out, pars, refactor = F) {
-  beta <- pars[1]
-  # calulate all the upper confidence bounds
-  outtotal <- out #+ (beta * sqrt(out$sig))
-  # turn into matrix
-  outtotal <- matrix(outtotal, ncol = 1, byrow = TRUE)
-  # return them
-  return(outtotal)
-}

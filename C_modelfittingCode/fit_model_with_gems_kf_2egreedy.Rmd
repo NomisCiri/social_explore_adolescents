@@ -25,9 +25,6 @@ social_data <-  read_csv(file = paste0("./data/social/data_social_all_participan
     demo_type=="never_exploit"~3,
     demo_type=="no_gem"~4)
   )
-
-#
-social_data%>%select(player,group)%>%unique()
 ```
 
 # Fit model to social data
@@ -72,6 +69,7 @@ if (refit){
     
     # social data TODO: concatenate nonsocial data.
     d1 <- social_data %>% filter(uniqueID == player_nr) %>%
+      # filter(gempresent == 0) %>%  # for now only have rounds without gems 
       group_by(round) %>%
       mutate(z = points, #(points - mean(points)) / sd(points), ventually figure out what is the best outcome for this
              social_info = social_info,
@@ -186,23 +184,22 @@ social_fits %>%pivot_longer(cols=starts_with("soc_w"),names_to = "social_weight"
 #difference gem
 group_diffs_1<-social_fits %>%#pivot_longer(cols=starts_with("soc_w"),names_to = "social_weight",values_to="value")%>%
   dplyr::select(player, group,soc_w_1) %>%unique()%>%
-  lm(soc_w_1~group,data=.)%>%anova()
+  brms::brm(soc_w_1~group,data=.,cores=4)
 
 #difference gemnotfound
 group_diffs_2<-social_fits %>%#pivot_longer(cols=starts_with("soc_w"),names_to = "social_weight",values_to="value")%>%
   dplyr::select(player, group,soc_w_2) %>%unique()%>%
-  lm(soc_w_2~group,data=.)%>%anova()
+  brms::brm(soc_w_2~group,data=.,cores=4)
 
 #difference neverexploit
 group_diffs_3<-social_fits %>%#pivot_longer(cols=starts_with("soc_w"),names_to = "social_weight",values_to="value")%>%
   dplyr::select(player, group,soc_w_3) %>%unique()%>%
-  lm(soc_w_3~group,data=.)%>%anova()
+  brms::brm(soc_w_3~group,data=.,cores=4)
 
 #difference no gem
 group_diffs_4<-social_fits %>%#pivot_longer(cols=starts_with("soc_w"),names_to = "social_weight",values_to="value")%>%
   dplyr::select(player, group,soc_w_4) %>%unique()%>%
-  lm(soc_w_4~group,data=.)%>%anova()
-
+  brms::brm(soc_w_4~group,data=.,cores=4)
 ```
 
 
@@ -263,7 +260,7 @@ for (player_nr in unique(social_fits_dNa$uniqueID)) {
   )
   ####
   #for (r in rounds) { # loop through rounds in roundList
-  cv <- simumalte_2lr_3sw_softmax_egreedy(
+  cv <- simumalte_2lr_sw_softmax_egreedy(
     par = estimates,
     learning_model_fun = RW_Q_2,
     acquisition_fun = ucb,
