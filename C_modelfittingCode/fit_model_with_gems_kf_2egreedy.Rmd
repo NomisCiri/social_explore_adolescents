@@ -140,6 +140,10 @@ social_fits %>%
   stat_boxplot()+
   theme_minimal()
 
+  social_fits%>%select(error_var,group,player)%>%unique()%>%
+  lm(error_var~group,data = .)%>%anova()
+
+
 social_fits %>%
   select(player, group, beta) %>% 
   distinct() %>% 
@@ -147,6 +151,10 @@ social_fits %>%
   #geom_line(aes(group=index))+
   stat_boxplot()+
   theme_minimal()
+
+social_fits%>%select(beta,group,player)%>%unique()%>%
+  lm(beta~group,data = .)%>%anova()
+
 
 # check greedy difference in kids and adults 
 social_fits %>%
@@ -158,6 +166,10 @@ social_fits %>%
   stat_boxplot()+
   theme_minimal()
 
+social_fits%>%select(epsilon_gem,group,player)%>%unique()%>%
+  lm(epsilon_gem~group,data = .)%>%anova()
+
+
 
 # check greedy difference in kids and adults 
 social_fits %>%
@@ -168,6 +180,10 @@ social_fits %>%
   #geom_line(aes(group=index))+
   stat_boxplot()+
   theme_minimal()
+
+#tau makes a difference
+social_fits%>%select(tau,group,player)%>%unique()%>%
+lm(tau~group,data = .)%>%anova()
 
 ```
 
