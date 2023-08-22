@@ -645,7 +645,7 @@ kalman_ucb_softmax_egreedy <- function(par, dat) {
   tau<-par[3]
   epsilon <- par[4] #  "random" exploration
   mu0 <- 0# par[4] # exploration bonus
-  var0<-5
+  var0<-40
   # create a parameter vector
   # preallocate negative log likelihood
   nLL <- rep(0, 12)

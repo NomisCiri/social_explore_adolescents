@@ -315,8 +315,8 @@ fit_bmt_ucb_softmax_egreedy <- function(d1,leaveoutindex) {
     testrialset <- leaveoutindex
     
     # Set upper and lower bounds based on nParams
-    lbound <- c(0.00000001,-10,0.00000001,0.00000001) # "noise",tau, beta greedy
-    ubound <- c(100,10,20,0.99999999)                       # "noise",beta,tau, greedy
+    lbound <- c(0.00000001,0,0.00000001,0.00000001) # "noise",tau, beta greedy
+    ubound <- c(100,20,20,0.99999999)                       # "noise",beta,tau, greedy
     
     #####
     # Begin cross validation routine

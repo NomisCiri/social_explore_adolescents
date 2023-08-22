@@ -44,7 +44,7 @@ Either fit the model or load from disk
 
 ```{r}
 # 
-refit=T
+refit=F
 if (refit){
   cl <- makeCluster(detectCores(), type = 'PSOCK')
   registerDoParallel(cl)
@@ -104,15 +104,17 @@ if (refit){
     return(d1)
   }
 } else{#read from disk if refit is false
-  fits_path<-"A_GeneratedFiles/modelfits/social_models/all_envs/kalman_ucb_softmax_egreedy/"
+  # fits_path<-"A_GeneratedFiles/modelfits/social_models/all_envs/kalman_ucb_softmax_egreedy/"
   
-  social_fits<-list.files(fits_path)%>%
-    purrr::map_dfr(.,~{
-      d1<-readRDS(paste0(fits_path,.))%>%tibble()
-      return(d1)
-    })
+  # social_fits<-list.files(fits_path)%>%
+  #   purrr::map_dfr(.,~{
+  #     d1<-readRDS(paste0(fits_path,.))%>%tibble()
+  #     return(d1)
+  #   })
+ social_fits<- read_csv(file = "A_GeneratedFiles/modelfits/social_models/all_envs/kalman_ucb_softmax_egreedy/bmt_ucb_fits.csv")
 }
 
+#write_csv(social_fits,file = "A_GeneratedFiles/modelfits/social_models/all_envs/kalman_ucb_softmax_egreedy/bmt_ucb_fits.csv")
 ```
 
 # Evaluate fit 
