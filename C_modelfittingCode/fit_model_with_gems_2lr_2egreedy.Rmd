@@ -17,9 +17,14 @@ First, lets load some data.
 ```{r}
 
 ## load behavioral data
-social_data <-  read_csv(file = paste0("./data/social/data_social_all_participants.csv")) #%>% 
-#filter(uniqueID < 30)#%>%
-#filter(tot_points>0)# get a sub-sample of both adults and adolescents 
+social_data <-  read_csv(file = paste0("./data/social/data_social_all_participants.csv")) %>%#drop_na()
+  filter(tot_points>0 & !is.na(demo_type))%>%#filter(player<30)%>%# get a sub-sample of both adults and adolescents 
+  mutate(soctype=case_when(
+    demo_type=="gem_found"~1,# i need that to index the different social weight parameters
+    demo_type=="gem_not_found"~2,
+    demo_type=="never_exploit"~3,
+    demo_type=="no_gem"~4)
+  )
 
 ```
 
@@ -64,42 +69,31 @@ if (refit){
       ungroup()
     
     rounds <- unique(d1$round)
-    cv<-NA
+    cv<-rep(NA,6)
     ####
     #### crossvalidation
     #### leaves out one round and fits model on the other rounds. 
     #### then evaluates the modelfit on the held out data
-    for (r in rounds) { # loop through rounds in roundList
-      cv_one<-fit_2lr_sw_2gre(d1 = d1,leaveoutindex = r)
+    #for (r in rounds) { # loop through rounds in roundList
+      cv_one<-fit_2lr_softmax_egreedy(d1 = d1,leaveoutindex = NA)
       cv <-rbind(cv,cv_one) # only try one sub
-    }
+    #}
     # collect fit indices and compute mean
     d1$fit <- mean(cv[,2],na.rm=T)
     d1$lr_p <- mean(cv[,3],na.rm=T)
     d1$lr_n <- mean(cv[,4],na.rm=T)
-    d1$epsilon_gem <- mean(cv[,5],na.rm=T)
-    d1$epsilon_no_gem <- mean(cv[,6],na.rm=T)
+    d1$tau <- mean(cv[,5],na.rm=T)
+    d1$epsilon_gem <- mean(cv[,6],na.rm=T)
+    
     
     #d1$prior<-unlist(cv[5])
-    saveRDS(cv, file = paste0("./A_GeneratedFiles/modelfits/social_models/all_envs/Q2lr_sw_2greedy/fit", player_nr, ".rds"))
-        saveRDS(d1, file = paste0("./A_GeneratedFiles/modelfits/social_models/all_envs/Q2lr_sw_2greedy/data_fit", player_nr, ".rds"))
+    saveRDS(cv, file = paste0("./A_GeneratedFiles/modelfits/social_models/all_envs/utility_2lr_softmax_egreedy/fit", player_nr, ".rds"))
+        saveRDS(d1, file = paste0("./A_GeneratedFiles/modelfits/social_models/all_envs/utility_2lr_softmax_egreedy/data_fit", player_nr, ".rds"))
     return(d1)
   }
 } else{#read from disk if refit is false
-  fits_path<-"A_GeneratedFiles/modelfits/social_models/all_envs/Q2lr_sw_2greedy/"
-  
-  social_fits<-list.files(fits_path)%>%
-    purrr::map_dfr(.,~{
-      dat<-readRDS(paste0(fits_path,.))
-      #get back player number from fit.
-      d1 <- social_data %>% filter(uniqueID == parse_number(.x))
-      #glue all data
-      d1$fit <- unlist(dat[1])
-      d1$lr_p <- unlist(dat[2])
-      d1$lr_n <- unlist(dat[3])
-      d1$epsilon_gem <- unlist(dat[4])
-      d1$epsilon_no_gem <- unlist(dat[5])
-    })
+  fits_path<-"A_GeneratedFiles/modelfits/social_models/all_envs/utility_2lr_softmax_egreedy/"
+
 }
 ```
 

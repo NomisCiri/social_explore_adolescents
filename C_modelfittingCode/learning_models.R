@@ -32,6 +32,39 @@ bayesianMeanTracker <- function(x, y, theta, prevPost = NULL, mu0Par, var0Par) {
   return(predictions)
 }
 
+
+########
+# BMT Model: maybe change into Q learning
+#######
+bayesianMeanTracker_soc <- function(x, y, theta,soc_w, prevPost = NULL, mu0Par, var0Par,soc_ch) {
+  # Updates the previous posterior based on a single observation
+  # parameters
+  mu0 <- mu0Par # prior mean
+  var0 <- var0Par # prior variance
+  vare <- theta[1] # error varriance
+  soc_w<-soc_w
+  if (is.null(prevPost)) { # if no posterior prior, assume it is the first observation
+    predictions <- data.frame(mu = rep(mu0, 64), sig = rep(var0, 64))
+  } else { # if previous posterior is provided, update
+    predictions <- prevPost
+  }
+  # Which of the 121 options were chosen at time?
+  alloptrials <- expand.grid(0:7, 0:7)
+  chosen <- x# which(alloptrials$Var1 == x[1] & alloptrials$Var2 == x[2])
+  conf<-as.numeric(chosen==soc_ch)# is one if chosen opion equals social info, 0 otherwise
+  # Kalman gain
+  kGain <- predictions$sig[chosen] / (predictions$sig[chosen] + vare) # feed the uncertainty in here.
+  # update mean
+ # browser()
+  predictions$mu[chosen] <- predictions$mu[chosen] + (kGain *  (1+soc_w * conf) *  (y - predictions$mu[chosen]))
+  # update variance for observed arm
+  predictions$sig[chosen] <- predictions$sig[chosen] * (1 - kGain)
+  # return output
+  #browser()
+  
+  return(predictions)
+}
+
 ########
 # RW-Q learning no social info
 #######

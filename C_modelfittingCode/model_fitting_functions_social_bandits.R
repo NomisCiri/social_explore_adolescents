@@ -122,11 +122,20 @@ fit_2lr_sw <- function(d1) {
 ##  e-greedy Q-Learning model with 2 learning rates (pos&neg) and social weight --
 ##------------------------------------------------------------------------
 
-fit_2lr_sw_gre <- function(d1) {
+fit_2lr_sw_gre <- function(d1,leaveoutindex) {
   # subselect participant, horizon and rounds not left out
   #which rounds to use
-  rounds <- 1:12
-  nParams<- 4
+  #which rounds to use
+  rounds <- unique(d1$round)
+  trainingSet <- rounds[!rounds == leaveoutindex] # remove round specified by leaveoutindex
+  # test set
+  testrialset <- leaveoutindex
+  
+  if(is.na(leaveoutindex)){
+    trainingSet <- rounds # remove round specified by leaveoutindex
+    # test set
+    testrialset <- rounds
+  }
   
   # Set upper and lower bounds based on nParams
   lbound <- c(0.00000001,0.00000001,0.00000001,-1,-50) # first 2 are lr (pos, neg), then greedy, and social weight
@@ -140,20 +149,20 @@ fit_2lr_sw_gre <- function(d1) {
       utility_2lr_sw_e_greedy, 
       lower = lbound, 
       upper = ubound, 
-      dat = d1,
-      DEoptim.control(itermax = 100)
+      dat =  d1%>%filter(round %in% trainingSet),
+      DEoptim.control(itermax = 100,NP=20)
     )
     paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
     # TEST SET
     predict <- utility_2lr_sw_e_greedy(
       par = paramEstimates, 
-      dat = d1
+      dat = d1%>%filter(round==leaveoutindex)
     )
     output <- c(predict, fit$optim$bestmem) # leaveoutindex, nLL, prameters....
     return(output)
   },
   error = function(e) {
-    output<-rep(NA,length(lbound+1))
+    output<-rep(NA,length(lbound+2))
     # TEST SET
     return(output)
   }
@@ -173,6 +182,11 @@ fit_2lr_sw_2gre <- function(d1,leaveoutindex) {
   # test set
   testrialset <- leaveoutindex
   
+  if(is.na(leaveoutindex)){
+    trainingSet <- rounds # remove round specified by leaveoutindex
+    # test set
+    testrialset <- rounds
+  }
   # Set upper and lower bounds based on nParams
   lbound <- c(0.00000001,0.00000001,0.00000001,0.00000001) # first 2 are lr (pos, neg), then greedy, and social weight
   ubound <- c(2,2,0.99999999,0.99999999)                            # first 2 are lr (pos, neg), then greedy, and social weight
@@ -186,7 +200,7 @@ fit_2lr_sw_2gre <- function(d1,leaveoutindex) {
       lower = lbound, 
       upper = ubound, 
       dat = d1%>%filter(round %in% trainingSet),
-      DEoptim.control(itermax = 50,NP=5)
+      DEoptim.control(itermax = 100,NP=20)
     )
     paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
     # TEST SET
@@ -198,7 +212,7 @@ fit_2lr_sw_2gre <- function(d1,leaveoutindex) {
     return(output)
   },
   error = function(e) {
-    output<-rep(NA,length(lbound+1))
+    output<-rep(NA,length(lbound+2))
     # TEST SET
     return(output)
   }
@@ -206,6 +220,54 @@ fit_2lr_sw_2gre <- function(d1,leaveoutindex) {
   return(output_catched)
 }
 
+##------------------------------------------------------------------------
+##  2 e-greedy Q-Learning model with 2 learning rates (pos&neg) no social weight --
+##------------------------------------------------------------------------
+fit_2lr_softmax_egreedy <- function(d1,leaveoutindex) {
+  # subselect participant, horizon and rounds not left out
+  #which rounds to use
+  rounds <- unique(d1$round)
+  trainingSet <- rounds[!rounds == leaveoutindex] # remove round specified by leaveoutindex
+  # test set
+  testrialset <- leaveoutindex
+  
+  if(is.na(leaveoutindex)){
+    trainingSet <- rounds # remove round specified by leaveoutindex
+    # test set
+    testrialset <- rounds
+  }
+  # Set upper and lower bounds based on nParams
+  lbound <- c(0.00000001,0.00000001,0.00000001,0.00000001) # first 2 are lr (pos, neg),tau, greedy, and social weight
+  ubound <- c(5,5,20,0.99999999)                            # first 2 are lr (pos, neg),tau, greedy, and social weight
+  
+  #####
+  # Begin cross validation routine
+  output_catched<-tryCatch({#if sth crashes
+    # TRAINING SET
+    fit <- DEoptim(
+      utility_2lr_softmax_egreedy, 
+      lower = lbound, 
+      upper = ubound, 
+      dat = d1%>%filter(round %in% trainingSet),
+      DEoptim.control(itermax = 100,NP=20)
+    )
+    paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
+    # TEST SET
+    predict <- utility_2lr_softmax_egreedy(
+      par = paramEstimates, 
+      dat = d1%>%filter(round==leaveoutindex)
+    )
+    output <- c(leaveoutindex,predict, fit$optim$bestmem) # leaveoutindex, nLL, prameters....
+    return(output)
+  },
+  error = function(e) {
+    output<-rep(NA,length(lbound+2))
+    # TEST SET
+    return(output)
+  }
+  )
+  return(output_catched)
+}
 
 ##------------------------------------------------------------------------
 ##  2 e-greedy Q-Learning model with 2 learning rates (pos&neg) and social weight --
@@ -218,6 +280,11 @@ fit_2lr_sw_softmax_egreedy <- function(d1,leaveoutindex) {
   # test set
   testrialset <- leaveoutindex
   
+  if(is.na(leaveoutindex)){
+    trainingSet <- rounds # remove round specified by leaveoutindex
+    # test set
+    testrialset <- rounds
+  }
   # Set upper and lower bounds based on nParams
   lbound <- c(0.00000001,0.00000001,0.00000001,0.00000001,0) # first 2 are lr (pos, neg),tau, greedy, and social weight
   ubound <- c(5,5,20,0.99999999,50)                            # first 2 are lr (pos, neg),tau, greedy, and social weight
@@ -243,7 +310,7 @@ fit_2lr_sw_softmax_egreedy <- function(d1,leaveoutindex) {
     return(output)
   },
   error = function(e) {
-    output<-rep(NA,length(lbound+1))
+    output<-rep(NA,length(lbound+2))
     # TEST SET
     return(output)
   }
@@ -255,7 +322,7 @@ fit_2lr_sw_softmax_egreedy <- function(d1,leaveoutindex) {
 ##------------------------------------------------------------------------
 ##  2 e-greedy Q-Learning model with 2 learning rates (pos&neg) and social weight --
 ##------------------------------------------------------------------------
-fit_2lr_3sw_softmax_egreedy <- function(d1,leaveoutindex) {
+fit_2lr_4sw_softmax_egreedy <- function(d1,leaveoutindex) {
   # subselect participant, horizon and rounds not left out
   #which rounds to use
   output_catched<-tryCatch({#if sth crashes
@@ -265,6 +332,11 @@ fit_2lr_3sw_softmax_egreedy <- function(d1,leaveoutindex) {
     # test set
     testrialset <- leaveoutindex
     
+    if(is.na(leaveoutindex)){
+      trainingSet <- rounds # remove round specified by leaveoutindex
+      # test set
+      testrialset <- rounds
+    }
     # Set upper and lower bounds based on nParams
     lbound <- c(0.00000001,0.00000001,0.00000001,0.00000001,0,0,0,0) # first 2 are lr (pos, neg),tau, greedy, and social weight
     ubound <- c(5,5,20,0.99999999,50,50,50,50)                            # first 2 are lr (pos, neg),tau, greedy, and social weight
@@ -277,11 +349,11 @@ fit_2lr_3sw_softmax_egreedy <- function(d1,leaveoutindex) {
       lower = lbound, 
       upper = ubound, 
       dat = d1%>%filter(round %in% trainingSet),
-      DEoptim.control(itermax = 100,NP=10)
+      DEoptim.control(itermax = 100,NP=20)
     )
     paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
     # TEST SET
-    predict <- utility_2lr_3sw_softmax_egreedy(
+    predict <- utility_2lr_4sw_softmax_egreedy(
       par = paramEstimates, 
       dat = d1%>%filter(round==leaveoutindex)
     )
@@ -302,7 +374,7 @@ fit_2lr_3sw_softmax_egreedy <- function(d1,leaveoutindex) {
 
 
 ##------------------------------------------------------------------------
-##  2 e-greedy Q-Learning model with 2 learning rates (pos&neg) and social weight --
+##  2 e-greedy BMT model with ucb --
 ##------------------------------------------------------------------------
 fit_bmt_ucb_softmax_egreedy <- function(d1,leaveoutindex) {
   # subselect participant, horizon and rounds not left out
@@ -314,6 +386,11 @@ fit_bmt_ucb_softmax_egreedy <- function(d1,leaveoutindex) {
     # test set
     testrialset <- leaveoutindex
     
+    if(is.na(leaveoutindex)){
+      trainingSet <- rounds # remove round specified by leaveoutindex
+      # test set
+      testrialset <- rounds
+    }
     # Set upper and lower bounds based on nParams
     lbound <- c(0.00000001,0,0.00000001,0.00000001) # "noise",tau, beta greedy
     ubound <- c(100,20,20,0.99999999)                       # "noise",beta,tau, greedy
@@ -345,6 +422,168 @@ fit_bmt_ucb_softmax_egreedy <- function(d1,leaveoutindex) {
   )
   return(output_catched)
 }
+
+
+##------------------------------------------------------------------------
+##  2 e-greedy BMT model with ucb and social weight --
+##------------------------------------------------------------------------
+fit_bmt_ucb_sw_softmax_egreedy <- function(d1,leaveoutindex) {
+  # subselect participant, horizon and rounds not left out
+  #which rounds to use
+  output_catched<-tryCatch({#if sth crashes
+    
+    rounds <- unique(d1$round)
+    trainingSet <- rounds[!rounds == leaveoutindex] # remove round specified by leaveoutindex
+    # test set
+    testrialset <- leaveoutindex
+    
+    if(is.na(leaveoutindex)){
+      trainingSet <- rounds # remove round specified by leaveoutindex
+      # test set
+      testrialset <- rounds
+    }
+    # Set upper and lower bounds based on nParams
+    # Set upper and lower bounds based on nParams
+    lbound <- c(0.00000001,0,0.00000001,0.00000001,0) # "noise",tau, beta greedy
+    ubound <- c(100,20,20,1,50)                       # "noise",beta,tau, greedy
+    
+    #####
+    # Begin cross validation routine
+    # TRAINING SET
+    fit <- DEoptim(
+      kalman_ucb_sw_softmax_egreedy, 
+      lower = lbound, 
+      upper = ubound, 
+      dat = d1%>%filter(round %in% trainingSet),
+      DEoptim.control(itermax = 100,NP=10)
+    )
+    paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
+    # TEST SET
+    predict <- kalman_ucb_sw_softmax_egreedy(
+      par = paramEstimates, 
+      dat = d1%>%filter(round==leaveoutindex)
+    )
+    output <- c(leaveoutindex,predict, fit$optim$bestmem) # leaveoutindex, nLL, prameters....
+    return(output)
+  },
+  error = function(e) {
+    output<-rep(NA,length(lbound+2))#cv index & fit index
+    # TEST SET
+    return(output)
+  }
+  )
+  return(output_catched)
+}
+
+##------------------------------------------------------------------------
+##  2 e-greedy BMT model with ucb and adaptive social weight --
+##------------------------------------------------------------------------
+fit_bmt_ucb_asw_softmax_egreedy <- function(d1,leaveoutindex) {
+  # subselect participant, horizon and rounds not left out
+  #which rounds to use
+  output_catched<-tryCatch({#if sth crashes
+    
+    rounds <- unique(d1$round)
+    trainingSet <- rounds[!rounds == leaveoutindex] # remove round specified by leaveoutindex
+    # test set
+    testrialset <- leaveoutindex
+    
+    if(is.na(leaveoutindex)){
+      trainingSet <- rounds # remove round specified by leaveoutindex
+      # test set
+      testrialset <- rounds
+    }
+    # Set upper and lower bounds based on nParams
+    # Set upper and lower bounds based on nParams
+    lbound <- c(0.00000001,0,0.00000001,0.00000001,0) # "noise",tau, beta greedy
+    ubound <- c(100,20,20,1,5)                       # "noise",beta,tau, greedy
+    
+    #####
+    # Begin cross validation routine
+    # TRAINING SET
+    fit <- DEoptim(
+      kalman_ucb_asw_softmax_egreedy, 
+      lower = lbound, 
+      upper = ubound, 
+      dat = d1%>%filter(round %in% trainingSet),
+      DEoptim.control(itermax = 100,NP=10)
+    )
+    paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
+    # TEST SET
+    predict <- kalman_ucb_sw_softmax_egreedy(
+      par = paramEstimates, 
+      dat = d1%>%filter(round==leaveoutindex)
+    )
+    output <- c(leaveoutindex,predict, fit$optim$bestmem) # leaveoutindex, nLL, prameters....
+    return(output)
+  },
+  error = function(e) {
+    output<-rep(NA,length(lbound+2))#cv index & fit index
+    # TEST SET
+    return(output)
+  }
+  )
+  return(output_catched)
+}
+
+
+##------------------------------------------------------------------------
+##  2 e-greedy BMT model with ucb and social weight --
+##------------------------------------------------------------------------
+fit_bmt_ucb_slr_softmax_egreedy <- function(d1,leaveoutindex) {
+  # subselect participant, horizon and rounds not left out
+  #which rounds to use
+  output_catched<-tryCatch({#if sth crashes
+    
+    
+    rounds <- unique(d1$round)
+    trainingSet <- rounds[!rounds == leaveoutindex] # remove round specified by leaveoutindex
+    # test set
+    testrialset <- leaveoutindex
+    
+    if(is.na(leaveoutindex)){
+      trainingSet <- rounds # remove round specified by leaveoutindex
+      # test set
+      testrialset <- rounds
+    }
+    
+    # Set upper and lower bounds based on nParams
+    # Set upper and lower bounds based on nParams
+    lbound <- c(0.00000001,0,0.00000001,0.00000001,0) # "noise",tau, beta greedy
+    ubound <- c(10,20,20,1,2)                       # "noise",beta,tau, greedy
+    
+    #####
+    # Begin cross validation routine
+    # TRAINING SET
+    fit <- DEoptim(
+      kalman_ucb_slr_softmax_egreedy, 
+      lower = lbound, 
+      upper = ubound, 
+      dat = d1%>%filter(round %in% trainingSet),
+      DEoptim.control(itermax = 100,NP=10)
+    )
+    paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
+    # TEST SET
+    predict <- kalman_ucb_sw_softmax_egreedy(
+      par = paramEstimates, 
+      dat = d1%>%filter(round==leaveoutindex)
+    )
+    output <- c(leaveoutindex,predict, fit$optim$bestmem) # leaveoutindex, nLL, prameters....
+    return(output)
+  },
+  error = function(e) {
+    output<-rep(NA,length(lbound+2))#cv index & fit index
+    # TEST SET
+    return(output)
+  }
+  )
+  return(output_catched)
+}
+
+
+
+
+
 
 # 
 # ##

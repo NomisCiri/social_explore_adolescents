@@ -84,10 +84,10 @@ if (refit){
     #### crossvalidation
     #### leaves out one round and fits model on the other rounds. 
     #### then evaluates the modelfit on the held out data
-    for (r in rounds) { # loop through rounds in roundList
-      cv_one<-fit_bmt_ucb_softmax_egreedy(d1 = d1,leaveoutindex = r)
+  #  for (r in rounds) { # loop through rounds in roundList
+      cv_one<-fit_bmt_ucb_softmax_egreedy(d1 = d1,leaveoutindex = NA)
       cv <-rbind(cv,cv_one) # only try one sub
-    }
+   # }
     # collect fit indices and compute mean
     d1$fit <- mean(cv[,2],na.rm=T)
     
@@ -184,6 +184,7 @@ social_fits %>%
 #tau makes a difference
 social_fits%>%select(tau,group,player)%>%unique()%>%
 lm(tau~group,data = .)%>%anova()
+
 
 ```
 
