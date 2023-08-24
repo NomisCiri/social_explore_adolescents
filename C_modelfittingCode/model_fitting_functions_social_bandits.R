@@ -156,7 +156,7 @@ fit_2lr_sw_gre <- function(d1,leaveoutindex) {
     # TEST SET
     predict <- utility_2lr_sw_e_greedy(
       par = paramEstimates, 
-      dat = d1%>%filter(round==leaveoutindex)
+      dat = d1%>%filter(round %in% testrialset)
     )
     output <- c(predict, fit$optim$bestmem) # leaveoutindex, nLL, prameters....
     return(output)
@@ -206,7 +206,7 @@ fit_2lr_sw_2gre <- function(d1,leaveoutindex) {
     # TEST SET
     predict <- utility_2lr_2e_greedy(
       par = paramEstimates, 
-      dat = d1%>%filter(round==leaveoutindex)
+      dat = d1%>%filter(round %in% testrialset)
     )
     output <- c(leaveoutindex,predict, fit$optim$bestmem) # leaveoutindex, nLL, prameters....
     return(output)
@@ -255,7 +255,7 @@ fit_2lr_softmax_egreedy <- function(d1,leaveoutindex) {
     # TEST SET
     predict <- utility_2lr_softmax_egreedy(
       par = paramEstimates, 
-      dat = d1%>%filter(round==leaveoutindex)
+      dat = d1%>%filter(round %in% testrialset)
     )
     output <- c(leaveoutindex,predict, fit$optim$bestmem) # leaveoutindex, nLL, prameters....
     return(output)
@@ -304,7 +304,7 @@ fit_2lr_sw_softmax_egreedy <- function(d1,leaveoutindex) {
     # TEST SET
     predict <- utility_2lr_sw_softmax_egreedy(
       par = paramEstimates, 
-      dat = d1%>%filter(round==leaveoutindex)
+      dat = d1%>%filter(round %in% testrialset)
     )
     output <- c(leaveoutindex,predict, fit$optim$bestmem) # leaveoutindex, nLL, prameters....
     return(output)
@@ -345,7 +345,7 @@ fit_2lr_4sw_softmax_egreedy <- function(d1,leaveoutindex) {
     # Begin cross validation routine
     # TRAINING SET
     fit <- DEoptim(
-      utility_2lr_3sw_softmax_egreedy, 
+      utility_2lr_4sw_softmax_egreedy, 
       lower = lbound, 
       upper = ubound, 
       dat = d1%>%filter(round %in% trainingSet),
@@ -355,7 +355,7 @@ fit_2lr_4sw_softmax_egreedy <- function(d1,leaveoutindex) {
     # TEST SET
     predict <- utility_2lr_4sw_softmax_egreedy(
       par = paramEstimates, 
-      dat = d1%>%filter(round==leaveoutindex)
+      dat = d1%>%filter(round %in% testrialset)
     )
     output <- c(leaveoutindex,predict, fit$optim$bestmem) # leaveoutindex, nLL, prameters....
     return(output)
@@ -409,7 +409,7 @@ fit_bmt_ucb_softmax_egreedy <- function(d1,leaveoutindex) {
     # TEST SET
     predict <- kalman_ucb_softmax_egreedy(
       par = paramEstimates, 
-      dat = d1%>%filter(round==leaveoutindex)
+      dat = d1%>%filter(round %in% testrialset)
     )
     output <- c(leaveoutindex,predict, fit$optim$bestmem) # leaveoutindex, nLL, prameters....
     return(output)
@@ -461,7 +461,7 @@ fit_bmt_ucb_sw_softmax_egreedy <- function(d1,leaveoutindex) {
     # TEST SET
     predict <- kalman_ucb_sw_softmax_egreedy(
       par = paramEstimates, 
-      dat = d1%>%filter(round==leaveoutindex)
+      dat = d1%>%filter(round %in% testrialset)
     )
     output <- c(leaveoutindex,predict, fit$optim$bestmem) # leaveoutindex, nLL, prameters....
     return(output)
@@ -512,7 +512,7 @@ fit_bmt_ucb_asw_softmax_egreedy <- function(d1,leaveoutindex) {
     # TEST SET
     predict <- kalman_ucb_sw_softmax_egreedy(
       par = paramEstimates, 
-      dat = d1%>%filter(round==leaveoutindex)
+      dat = d1%>%filter(round %in% testrialset)
     )
     output <- c(leaveoutindex,predict, fit$optim$bestmem) # leaveoutindex, nLL, prameters....
     return(output)
@@ -566,7 +566,7 @@ fit_bmt_ucb_slr_softmax_egreedy <- function(d1,leaveoutindex) {
     # TEST SET
     predict <- kalman_ucb_sw_softmax_egreedy(
       par = paramEstimates, 
-      dat = d1%>%filter(round==leaveoutindex)
+      dat = d1%>%filter(round %in% testrialset)
     )
     output <- c(leaveoutindex,predict, fit$optim$bestmem) # leaveoutindex, nLL, prameters....
     return(output)

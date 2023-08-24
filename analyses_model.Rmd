@@ -89,7 +89,9 @@ for (i in 1:length(modelspace_path)){
         )
       )%>%tibble()%>%select(fit,player,group)%>%
         unique()%>%
-        mutate(model=modelspace_path[i])
+        mutate(model=modelspace_path[i],
+               model_idx=i
+               )
       return(d1)
     })
 }
@@ -101,12 +103,29 @@ fit_df<-do.call("rbind",fit_dfs)
 # Compare models
 
 ```{r}
-fit_df%>%group_by(model,group)%>%
-  summarise(m_fit=mean(2*fit,na.rm=T))%>%
+n_pars=c(4,5,8,5,4)
+
+fit_df%>%group_by(model,group,player)%>%
+  mutate(bic=n_pars[model_idx]*log(25*12)*2*fit)%>%
+  group_by(model,group)%>%
+  summarize(m_bic=mean(bic,na.rm=T))%>%
   group_by(group)%>%
-  mutate(winner=ifelse(m_fit==min(m_fit),1,0))
+  mutate(winner=ifelse(m_bic==min(m_bic),1,0))
 ```
 
+```{r}
+fit_df%>%group_by(model,group,player)%>%
+  mutate(bic=n_pars[model_idx]*log(25*12)*2*fit)%>%
+  group_by(model,group)%>%
+  summarize(m_bic=mean(bic,na.rm=T))%>%
+  group_by(group)%>%
+  mutate(winner=ifelse(m_bic==min(m_bic),1,0))%>%
+  mutate(m_bic=m_bic-min(m_bic))%>%
+  ggplot(aes(x=model,y=m_bic,fill=group))+
+  geom_bar(stat="identity",position="dodge")+
+  ylab("bic_diff")+
+  theme(axis.text.x = element_text(angle=45,hjust=1))
+```
 
 simulate!
 
