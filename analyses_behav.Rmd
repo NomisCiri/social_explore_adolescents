@@ -49,9 +49,14 @@ mod_full_data<-social_data%>%group_by(demo_type,player,round,group)%>%
   count(social_info_use)%>%filter(!is.na(social_info_use))%>%filter(social_info_use=="copy")%>%
   brms::brm(n~group*demo_type+round,data=.,family="poisson",chains=4,cores=4)
 
+sjPlot::tab_model(mod_full_data)
 
+plot_model(mod_full_data, type = "pred", terms = c("c12hour", "barthtot [30,50,70]", "c161sex"))
 
 ```
+
+#TODO
+How much do the copying choices deviate from randomness?
 
 ```{r}
 mod_gem_found<-social_data%>%group_by(demo_type,player,round,group)%>%

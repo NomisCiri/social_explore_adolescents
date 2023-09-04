@@ -125,6 +125,7 @@ fit_df%>%group_by(model,group,player)%>%
   ggplot(aes(x=model,y=m_bic,fill=group))+
   geom_bar(stat="identity",position="dodge")+
   ylab("bic_diff")+
+  theme_minimal(14)+
   theme(axis.text.x = element_text(angle=45,hjust=1))
 ```
 
