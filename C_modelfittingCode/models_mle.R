@@ -1,84 +1,292 @@
-########
-# Models for the social information project SC_06_2023
-#######
+############################################################################
+############################################################################
+###                                                                      ###
+###                SCRIPT WHERE MLE FUNCTIONS ARE WRITTEN                ###
+###                                                                      ###
+############################################################################
+############################################################################
 
+##-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-
+##-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-
+##
+##                    Aquisition models  
+##
+##-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-
+##-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-
 
-########
-# BMT Model: maybe change into Q learning
-#######
-bayesianMeanTracker <- function(x, y, theta, prevPost = NULL, mu0Par, var0Par) {
-  # Updates the previous posterior based on a single observation
-  # parameters
-  mu0 <- mu0Par # prior mean
-  var0 <- var0Par # prior variance
-  vare <- 3600#theta[1] # error varriance
-  if (is.null(prevPost)) { # if no posterior prior, assume it is the first observation
-    predictions <- data.frame(mu = rep(mu0, 64), sig = rep(var0, 64))
-  } else { # if previous posterior is provided, update
-    predictions <- prevPost
+##---------------------------------------------------------------
+##                    epsilon greedy exploration                   --
+##---------------------------------------------------------------
+epsilonGreedy_sw <- function(out, epsilon=.1,zeta=1,beta=1,social_choices,t){
+  n <- length(out)
+  t_w=beta*t
+  trembl<-(epsilon/t_w)
+  p <- rep(1/n*trembl, n)#how many options
+  utility_vec <- out #+(beta *sqrt(out$sig))
+  utility_vec[social_choices[t]] <- utility_vec[social_choices[t]] + zeta#does not work
+  p[which.is.max(utility_vec)] <- (1-trembl) + (1/n*trembl)
+  return(p)
+}
+
+##---------------------------------------------------------------
+##                    epsilon greedy exploration 2 params                   --
+##---------------------------------------------------------------
+two_epsilonGreedy <- function(out, epsilon=c(0.1,0.1),y){
+  n <- length(out)
+  trembl<-ifelse(max(y>150),(epsilon[1]),(epsilon[2]))
+  p <- rep(1/n*trembl, n)#how many options
+  utility_vec <- out #+(beta *sqrt(out$sig))
+  p[which.is.max(utility_vec)] <- (1-trembl) + (1/n*trembl)
+  #p[social_choices[t]] <- (1-zeta) + (1/n*zeta)
+  return(p)
+}
+
+##---------------------------------------------------------------
+## softmax & epsilon greedy exploration 2 lr    -
+##---------------------------------------------------------------
+mix_softmax_epsilonGreedy <- function(out, epsilon=0.1,tau=0.1,y,t){
+  n <- length(out)
+  #browser()
+  if(max(y>150)){
+    #if gem was found: greedy
+    p <- rep(1/n*epsilon, n)#how many options
+    utility_vec <- out #+(beta *sqrt(out$sig))
+    p[which.is.max(utility_vec)] <- (1-epsilon) + (1/n*epsilon)
+  }else{
+    #if gem was not found: social-softmax
+    utilityVec <- out
+    utilityVec=utilityVec-max(utilityVec)
+    p <- exp(utilityVec / tau)
+    # probabilities
+    p <- p / sum(p)
   }
-  # Which of the 121 options were chosen at time?
-  alloptrials <- expand.grid(0:7, 0:7)
-  chosen <- which(alloptrials$Var1 == x[1] & alloptrials$Var2 == x[2])
-  # Kalman gain
-  kGain <- predictions$sig[chosen] / (predictions$sig[chosen] + vare) # feed the uncertainty in here.
-  # update mean
-  predictions$mu[chosen] <- predictions$mu[chosen] + (kGain * (y - predictions$mu[chosen]))
-  # update variance for observed arm
-  predictions$sig[chosen] <- predictions$sig[chosen] * (1 - kGain)
-  # return output
-  #  browser()
-  
-  return(predictions)
+  #p[social_choices[t]] <- (1-zeta) + (1/n*zeta)
+  return(p)
 }
 
-########
-# RW-Q learning
-#######
-RW_Q <- function(x, y, theta, prevPost = NULL, mu0Par) {
-  # Updates the previous posterior based on a single observation
-  # parameters
-  mu0 <- mu0Par # prior mean
-  lr=theta[1]
-  if (is.null(prevPost)) { # if no posterior prior, assume it is the first observation
-    predictions <- rep(mu0, 64)
-  } else { # if previous posterior is provided, update
-    predictions <- prevPost
+
+##---------------------------------------------------------------
+## softmax & epsilon greedy exploration 2 lr 4sw    -
+##---------------------------------------------------------------
+mix_sw_softmax_epsilonGreedy <- function(out, epsilon=0.1,tau=0.1,zeta=0,social_choices,y,t){
+  n <- length(out)
+  #browser()
+  if(max(y>150)){
+    #if gem was found: greedy
+    p <- rep(1/n*epsilon, n)#how many options
+    utility_vec <- out #+(beta *sqrt(out$sig))
+    utility_vec[social_choices[t]]<-utility_vec[social_choices[t]]+zeta
+    
+    p[which.is.max(utility_vec)] <- (1-epsilon) + (1/n*epsilon)
+  }else{
+    #if gem was not found: social-softmax
+    utility_vec <- out
+    utility_vec[social_choices[t]]<-utility_vec[social_choices[t]]+zeta
+    p <- exp(utility_vec / tau)
+    # probabilities
+    p <- p / sum(p)
   }
-  # Which of the 64 options were chosen at time?
-  alloptrials <- expand.grid(x1=0:7, x2=0:7)
-  chosen <- which(alloptrials$x1 == x[1] & alloptrials$x2 == x[2])
-  # value update
-  predictions[chosen] <- predictions[chosen] + (lr * (y - predictions[chosen]))
-  # browser()
+  #p[social_choices[t]] <- (1-zeta) + (1/n*zeta)
+  return(p)
+}
+
+
+##---------------------------------------------------------------
+##softmax & epsilon greedy exploration 2 params 3 social parm     -
+##---------------------------------------------------------------
+mix_4sw_softmax_epsilonGreedy <- function(out, epsilon=0.1,tau=0.1,zeta=c(0,0,0,0),social_choices,soctype,y,t){
+  n <- length(out)
+  #browser()
+  if(max(y>150)){
+    #if gem was found: greedy
+    utility_vec <- out
+    utility_vec[social_choices[t]]<-utility_vec[social_choices[t]]+zeta[soctype]
+    
+    p <- rep(1/n*epsilon, n)#how many options
+    p[which.is.max(utility_vec)] <- (1-epsilon) + (1/n*epsilon)
+  }else{
+    #if gem was not found: social-softmax
+    utility_vec <- out
+    #utilityVec=utilityVec-max(utilityVec)
+    utility_vec[social_choices[t]]<-utility_vec[social_choices[t]]+zeta[soctype]
+    p <- exp(utility_vec / tau)
+    # probabilities
+    p <- p / sum(p)
+  }
+  #p[social_choices[t]] <- (1-zeta) + (1/n*zeta)
+  return(p)
+}
+
+
+##---------------------------------------------------------------
+##softmax & epsilon greedy exploration ucb for Kalman filter   -
+##---------------------------------------------------------------
+KF_mix_softmax_epsilonGreedy <- function(out, epsilon=0.1,tau=0.1,ucb=0,y,t){
+  #out is data frame
+  n <- length(out$mu)
+  #browser()
+  if(max(y>150)){
+    #if gem was found: greedy
+    p <- rep(1/n*epsilon, n)#how many options
+    utility_vec <- out$mu +(ucb *sqrt(out$sig))
+    p[which.is.max(utility_vec)] <- (1-epsilon) + (1/n*epsilon)
+  }else{
+    #if gem was not found: social-softmax
+    utility_vec <- out$mu +(ucb *sqrt(out$sig))
+    #utilityVec[social_choices[t]]<-utilityVec[social_choices[t]]
+    p <- exp(utility_vec / tau)
+    # probabilities
+    p <- p / sum(p)
+  }
+  #browser()
+  #p[social_choices[t]] <- (1-zeta) + (1/n*zeta)
+  return(p)
+}
+
+
+
+##---------------------------------------------------------------
+##softmax & epsilon greedy exploration ucb for Kalman filter   -
+##---------------------------------------------------------------
+KF_sw_mix_softmax_epsilonGreedy <- function(out, epsilon=0.1,tau=0.1,ucb=0,zeta=0,y,t,social_choices){
+  #out is data frame
+  n <- length(out$mu)
+  #browser()
+  if(max(y>200)){
+    #if gem was found: greedy
+    p <- rep(1/n*epsilon, n)#how many options
+    utility_vec <- out$mu +(ucb *sqrt(out$sig))
+    utility_vec[social_choices[t]]<-utility_vec[social_choices[t]]+zeta
+    
+    p[which.is.max(utility_vec)] <- (1-epsilon) + (1/n*epsilon)
+  }else{
+    #if gem was not found: social-softmax
+    utility_vec <- out$mu +(ucb *sqrt(out$sig))
+    utility_vec[social_choices[t]]<-utility_vec[social_choices[t]]+zeta
+    p <- exp(utility_vec / tau)
+    # probabilities
+    p <- p / sum(p)
+  }
+  #browser()
+  #p[social_choices[t]] <- (1-zeta) + (1/n*zeta)
+  return(p)
+}
+
+
+
+#next: argmax with some prob after gem, otherwise do value based exploration.
+
+##-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-
+##-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-
+##
+##                    Learning models  
+##
+##-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-
+##-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-
+
+
+##---------------------------------------------------------------
+##                    basic Q-Learning model                   --
+##---------------------------------------------------------------
+
+utility_1lr <- function(par, learning_model_fun, acquisition_fun, dat) {
   
-  return(predictions)
-}
-
-########
-## UCB sampling.... 
-########
-ucb <- function(out, pars, refactor = F) {
-  beta <- pars[1]
-  # calulate all the upper confidence bounds
-  outtotal <- out #+ (beta * sqrt(out$sig))
-  # turn into matrix
-  outtotal <- matrix(outtotal, ncol = 1, byrow = TRUE)
-  # return them
-  return(outtotal)
-}
-
-
-#########
-######### social exploration model
-#########
-soc_utility_model <- function(par, learning_model_fun, acquisition_fun, dat) {
   # for (rep in 1:ntrialss){
   # unpack
+  
   #par<-exp(par)#parameters are defined in logspace, we exponentiate them here
   theta <- par[1]# "learningrate"
   tau <- par[2] #  "random" exploration
-  zeta<-par[3] # scales social info use
+  mu0 <- 0# par[4] # exploration bonus
+  
+  ## preallocate negative log likelihood
+  nLL <- rep(0, length(dat$round))
+  
+  for (r in unique(dat$round)) {
+    
+    ## collect choices for current round
+    round_df <- subset(dat, round == r)
+    trials <- nrow(round_df)
+    
+    ## Observations of subject choice behavior 
+    chosen <- round_df$choices
+    
+    ## rewards
+    y <- round_df$z[0:(trials - 1)] # trim off the last observation, because it was not used to inform a choice (round already over)
+    
+    ## social information
+    social_choices <- round_df$social_info
+    
+    # create observation matrix
+    # Utilties of each choice
+    utilities <- NULL
+    prevPost <- NULL # set the previous posterior computation to NULL for qlearning
+    pMat <- NULL
+    
+    #here, too
+    for (t in 1:(trials - 1)) {
+      
+      #learn
+      
+      #browser()
+      if (t > 1) {
+        out <- RW_Q(chosen[t], y[t], theta = theta, prevPost = out, mu0Par = mu0)
+      } else {
+        # first t of each round, start new
+        out <- RW_Q(chosen[t], y[t], theta = theta, prevPost = NULL, mu0Par = mu0)
+      }
+      
+      ## ?? what is this?
+      utilityVec <- ucb(out, 0)
+      
+      # next choice getrials a social utility
+      #utilityVec=utilityVec-max(utilityVec)
+      utilityVec[social_choices[t]] <- utilityVec[social_choices[t]]
+      
+      # build horizon_length x options matrix, where each row holds the utilities of each choice at each decision time in the search horizon
+      utilities <- rbind(utilities, t(utilityVec)) 
+      #browser()
+    }
+    
+    # softmaximization
+    # browser()
+    p <- exp(utilities / tau)
+    
+    # probabilities
+    p <- p / rowSums(p)
+    
+    # numerical overflow
+    p <- (pmax(p, 0.00001))
+    p <- (pmin(p, 0.99999))
+    
+    #browser()
+    # add loglik nasty way of checking the predicted choice probability a the item that was chosen
+    nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials - 1)), chosen[2:length(chosen)])]))
+    #browser()
+  }
+  #browser()
+  
+  #avoid nan in objective function
+  if (any(is.nan(sum(nLL))))
+  { 
+    return(10 ^ 30)
+    
+  }else
+  {
+    return(sum(nLL))
+  }
+}
+
+##----------------------------------------------------------------
+##       Q-Learning model with 2 learning rates (pos&neg)       --
+##----------------------------------------------------------------
+
+utility_2lr <- function(par, dat) {
+  # for (rep in 1:ntrialss){
+  # unpack
+  #par<-exp(par)#parameters are defined in logspace, we exponentiate them here
+  theta <- c(par[1], par[2])# "learningrate" 1 is positive, 2 is negative
+  tau <- par[3] #  "random" exploration
   
   mu0 <-0# par[4] # exploration bonus
   # create a parameter vector
@@ -91,17 +299,10 @@ soc_utility_model <- function(par, learning_model_fun, acquisition_fun, dat) {
     trials <- nrow(round_df)
     # Observations of subject choice behavior
     chosen <- round_df$choices
-    # trim first observation, since it wasn't a choice but a randomly revealed tile (not informative for log likelihood).
-    chosen <- chosen[2:length(chosen)] 
     y <- round_df$z[0:(trials - 1)] # trim off the last observation, because it was not used to inform a choice (round already over)
-    x1 <- round_df$x[0:(trials - 1)]
-    x2 <- round_df$y[0:(trials - 1)]
-    
     # social information
     social_choices<-round_df$social_info
     # create observation matrix
-    X <- as.matrix(cbind(x1, x2))
-    #Xnew <- as.matrix(Xnew)# unsure whatrials the use of this
     # Utilties of each choice
     utilities <- NULL
     prevPost <- NULL # set the previous posterior computation to NULL for qlearning
@@ -109,23 +310,23 @@ soc_utility_model <- function(par, learning_model_fun, acquisition_fun, dat) {
     #here, too
     for (t in 1:(trials-1)) {
       #learn
+      # browser()
       if (t > 1) {
-        out <- RW_Q(X[t, 1:2], y[t], theta = theta, prevPost = out, mu0Par = mu0)
+        out <- RW_Q_2(chosen[t], y[t], theta = theta, prevPost = out, mu0Par = mu0)
       } else {
         # first t of each round, start new
-        out <- RW_Q(X[t, 1:2], y[t], theta = theta, prevPost = NULL, mu0Par = mu0)
+        out <- RW_Q_2(chosen[t], y[t], theta = theta, prevPost = NULL, mu0Par = mu0)
       }
       utilityVec <- ucb(out, 0)
       #next choice getrials a social utility
       #utilityVec=utilityVec-max(utilityVec)
-      utilityVec[social_choices[t]]<-utilityVec[social_choices[t]]+zeta
-      #browser()
+      utilityVec[social_choices[t]]<-utilityVec[social_choices[t]]
       # build horizon_length x options matrix, where each row holds the utilities of each choice at each decision time in the search horizon
       utilities <- rbind(utilities, t(utilityVec)) 
       #browser()
     }
     # softmaximization
-    
+    # browser()
     p <- exp(utilities / tau)
     # probabilities
     p <- p / rowSums(p)
@@ -133,7 +334,7 @@ soc_utility_model <- function(par, learning_model_fun, acquisition_fun, dat) {
     p <- (pmax(p, 0.00001))
     p <- (pmin(p, 0.99999))
     # add loglik nasty way of checking the predicted choice probability a the item that was chosen
-    nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials-1)), chosen)]))
+    nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials-1)), chosen[2:length(chosen)] )]))
     #browser()
   }
   #browser()
@@ -148,43 +349,687 @@ soc_utility_model <- function(par, learning_model_fun, acquisition_fun, dat) {
   }
 }
 
+##------------------------------------------------------------------------
+##  Q-Learning model with 2 learning rates (pos&neg) and social weight  --
+##------------------------------------------------------------------------
 
-##############################################################################################################
-# FITTING FUNCTION
-##############################################################################################################
-# function to plug in to the optimaztion routine
-# selector: scalar, indicates a specific participant
-# learning_model_fun, only bayesan meantracker works
-# acquisition_fun, function, can be "ucb"
+utility_2lr_sw <- function(par, dat) {
+  # for (rep in 1:ntrialss){
+  # unpack
+  #par<-exp(par)#parameters are defined in logspace, we exponentiate them here
+  theta <- c(par[1], par[2])# "learningrate" 1 is positive, 2 is negative
+  tau <- par[3] #  "random" exploration
+  zeta <- par[4] # scales social info use
+  mu0 <- 0# par[4] # exploration bonus
+  # create a parameter vector
+  # preallocate negative log likelihood
+  nLL <- rep(0, 12)
+  
+  for (r in unique(dat$round)){
+    # collect choices for current round
+    round_df <- subset(dat, round == r)
+    trials <- nrow(round_df)
+    # Observations of subject choice behavior
+    chosen <- round_df$choices
+    y <- round_df$z[0:(trials - 1)] # trim off the last observation, because it was not used to inform a choice (round already over)
+    # social information
+    social_choices<-round_df$social_info
+    # create observation matrix
+    # Utilties of each choice
+    utilities <- NULL
+    prevPost <- NULL # set the previous posterior computation to NULL for qlearning
+    pMat <- NULL
+    #here, too
+    for (t in 1:(trials-1)) {
+      #learn
+      # browser()
+      if (t > 1) {
+        out <- RW_Q_2(chosen[t], y[t], theta = theta, prevPost = out, mu0Par = mu0)
+      } else {
+        # first t of each round, start new
+        out <- RW_Q_2(chosen[t], y[t], theta = theta, prevPost = NULL, mu0Par = mu0)
+      }
+      utilityVec <- ucb(out, 0)
+      #next choice getrials a social utility
+      #utilityVec=utilityVec-max(utilityVec)
+      
+      utilityVec[social_choices[t]] <- utilityVec[social_choices[t]] + zeta
+      # build horizon_length x options matrix, where each row holds the utilities of each choice at each decision time in the search horizon
+      utilities <- rbind(utilities, t(utilityVec)) 
+      #browser()
+    }
+    # softmaximization
+    # browser()
+    p <- exp(utilities / tau)
+    # probabilities
+    p <- p / rowSums(p)
+    # numerical overflow
+    p <- (pmax(p, 0.00001))
+    p <- (pmin(p, 0.99999))
+    # add loglik nasty way of checking the predicted choice probability a the item that was chosen
+    nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials-1)), chosen[2:length(chosen)] )]))
+    #browser()
+  }
+  #browser()
+  #avoid nan in objective function
+  if(any(is.nan(sum(nLL))))
+  { 
+    return(10 ^ 30)
+    
+  }else
+  {
+    return(sum(nLL))
+  }
+}
 
-fit_fun <- function(d1) {
-  # subselect participant, horizon and rounds not left out
-  #which rounds to use
-  rounds <- 1:12
-  nParams<-3
-  # Set upper and lower bounds based on nParams
-  lbound <- c(0.00000001,0.00000001,-4)
-  ubound <- c(1,10,4)
+##------------------------------------------------------------------------
+##  Q-Learning model with 2 learning rates (pos&neg) and social weight  --
+##------------------------------------------------------------------------
+
+utility_2lr_sw_e_greedy <- function(par, dat) {
+  # for (rep in 1:ntrialss){
+  # unpack
+  #par<-exp(par)#parameters are defined in logspace, we exponentiate them here
+  theta <- c(par[1], par[2])# "learningrate" 1 is positive, 2 is negative
+  epsilon <- par[3] #  "random" exploration
+  beta<-par[4]
+  zeta <- par[5] # scales social info use
+  mu0 <- 0# par[4] # exploration bonus
+  # create a parameter vector
+  # preallocate negative log likelihood
+  nLL <- rep(0, 12)
   
+  for (r in unique(dat$round)){
+    # collect choices for current round
+    round_df <- subset(dat, round == r)
+    trials <- nrow(round_df)
+    # Observations of subject choice behavior
+    chosen <- round_df$choices
+    y <- round_df$z[0:(trials - 1)] # trim off the last observation, because it was not used to inform a choice (round already over)
+    # social information
+    social_choices<-round_df$social_info
+    # create observation matrix
+    # Utilties of each choice
+    p <- NULL
+    prevPost <- NULL # set the previous posterior computation to NULL for qlearning
+    pMat <- NULL
+    #here, too
+    for (t in 1:(trials-1)) {
+      #learn
+      # browser()
+      if (t > 1) {
+        out <- RW_Q_2(chosen[t], y[t], theta = theta, prevPost = out, mu0Par = mu0)
+        
+      } else {
+        # first t of each round, start new
+        out <- RW_Q_2(chosen[t], y[t], theta = theta, prevPost = NULL, mu0Par = mu0)
+      }
+      #trial wise probabilites
+      ps_t<-epsilonGreedy_social(out,epsilon,zeta,beta,social_choices,t)
+      p<-rbind(p, t(ps_t))
+    }
+    # softmaximization
+    # compute choice probabilites
+    # numerical overflow
+    p <- (pmax(p, 0.00001))
+    p <- (pmin(p, 0.99999))
+    # add loglik nasty way of checking the predicted choice probability a the item that was chosen
+    nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials-1)), chosen[2:length(chosen)] )]))
+    #browser()
+  }
+  #avoid nan or na in objective function
+  if(any(is.nan(sum(nLL))) | any(is.na(sum(nLL))))
+  { 
+    return(10 ^ 30)
+    
+  }else
+  {
+    return(sum(nLL))
+  }
+}
+
+
+
+
+##------------------------------------------------------------------------
+##  Q-Learning model with 2 learning rates and epsilon greed --
+##------------------------------------------------------------------------
+
+utility_2lr_2e_greedy <- function(par, dat) {
+  # for (rep in 1:ntrialss){
+  # unpack
+  #par<-exp(par)#parameters are defined in logspace, we exponentiate them here
+  theta <- c(par[1], par[2])# "learningrate" 1 is positive, 2 is negative
+  epsilon <- c(par[3],par[4]) #  "random" exploration
+  mu0 <- 0# par[4] # exploration bonus
+  # create a parameter vector
+  # preallocate negative log likelihood
+  nLL <- rep(0, 12)
   
-  #####
-  # Begin cross validation routine
-  # TRAINING SET
-  fit <- DEoptim(
-    soc_utility_model, 
-    lower = lbound, 
-    upper = ubound, 
-    dat = d1,
-    DEoptim.control(itermax = 100)
-  )
-  paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
-  # TEST SET
-  predict <- soc_utility_model(
-    par = paramEstimates, 
-    dat = d1
-  )
-  output <- c(predict, fit$optim$bestmem) # leaveoutindex, nLL, parameters....
-  return(output) # return optimized value
+  for (r in unique(dat$round)){
+    # collect choices for current round
+    round_df <- subset(dat, round == r)
+    trials <- nrow(round_df)
+    # Observations of subject choice behavior
+    chosen <- round_df$choices
+    y <- round_df$z[0:(trials - 1)] # trim off the last observation, because it was not used to inform a choice (round already over)
+    # social information
+    social_choices<-round_df$social_info
+    # create observation matrix
+    # Utilties of each choice
+    p <- NULL
+    prevPost <- NULL # set the previous posterior computation to NULL for qlearning
+    pMat <- NULL
+    #here, too
+    for (t in 1:(trials-1)) {
+      #learn
+      # browser()
+      if (t > 1) {
+        out <- RW_Q_2(chosen[t], y[t], theta = theta, prevPost = out, mu0Par = mu0)
+      } else {
+        # first t of each round, start new
+        out <- RW_Q_2(chosen[t], y[t], theta = theta, prevPost = NULL, mu0Par = mu0)
+      }
+      #trial wise probabilites
+      ps_t<-two_epsilonGreedy(out,epsilon,y=y[1:t])
+      p<-rbind(p, t(ps_t))
+    }
+    # softmaximization
+    # compute choice probabilites
+    # numerical overflow
+    p <- (pmax(p, 0.00001))
+    p <- (pmin(p, 0.99999))
+    # add loglik nasty way of checking the predicted choice probability a the item that was chosen
+    nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials-1)), chosen[2:length(chosen)] )]))
+    #browser()
+  }
+  #avoid nan or na in objective function
+  if(any(is.nan(sum(nLL))) | any(is.na(sum(nLL))))
+  { 
+    return(10 ^ 30)
+    
+  }else
+  {
+    return(sum(nLL))
+  }
+}
+
+
+##------------------------------------------------------------------------
+##Q-Learning model with 2 learning rates and epsilon greedy --
+##------------------------------------------------------------------------
+
+
+utility_2lr_softmax_egreedy <- function(par, dat) {
+  # for (rep in 1:ntrialss){
+  # unpack
+  #par<-exp(par)#parameters are defined in logspace, we exponentiate them here
+  theta <- c(par[1], par[2])# "learningrate" 1 is positive, 2 is negative
+  tau<-par[3]
+  epsilon <- par[4] #  "random" exploration
+  mu0 <- 0# par[4] # exploration bonus
+  # create a parameter vector
+  # preallocate negative log likelihood
+  nLL <- rep(0, 12)
+  
+  for (r in unique(dat$round)){
+    # collect choices for current round
+    round_df <- subset(dat, round == r)
+    trials <- nrow(round_df)
+    # Observations of subject choice behavior
+    chosen <- round_df$choices
+    y <- round_df$z[0:(trials - 1)] # trim off the last observation, because it was not used to inform a choice (round already over)
+    # social information
+    social_choices<-round_df$social_info
+    # create observation matrix
+    # Utilties of each choice
+    p <- NULL
+    prevPost <- NULL # set the previous posterior computation to NULL for qlearning
+    pMat <- NULL
+    #here, too
+    for (t in 1:(trials-1)) {
+      #learn
+      # browser()
+      if (t > 1) {
+        out <- RW_Q_2(chosen[t], y[t], theta = theta, prevPost = out, mu0Par = mu0)
+      } else {
+        # first t of each round, start new
+        out <- RW_Q_2(chosen[t], y[t], theta = theta, prevPost = NULL, mu0Par = mu0)
+      }
+      #trial wise probabilites
+      ps_t<-mix_softmax_epsilonGreedy(out,epsilon,tau,y,t)
+      p<-rbind(p, t(ps_t))
+    }
+    # softmaximization
+    # compute choice probabilites
+    # numerical overflow
+    p <- (pmax(p, 0.00001))
+    p <- (pmin(p, 0.99999))
+    # add loglik nasty way of checking the predicted choice probability a the item that was chosen
+    nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials-1)), chosen[2:length(chosen)] )]))
+    #browser()
+  }
+  #avoid nan or na in objective function
+  if(any(is.nan(sum(nLL))) | any(is.na(sum(nLL))))
+  { 
+    return(10 ^ 30)
+    
+  }else
+  {
+    return(sum(nLL))
+  }
+}
+
+
+##------------------------------------------------------------------------
+##Q-Learning model with 2 learning rates and social weight and epsilon greedy --
+##------------------------------------------------------------------------
+
+
+utility_2lr_sw_softmax_egreedy <- function(par, dat) {
+  # for (rep in 1:ntrialss){
+  # unpack
+  #par<-exp(par)#parameters are defined in logspace, we exponentiate them here
+  theta <- c(par[1], par[2])# "learningrate" 1 is positive, 2 is negative
+  tau<-par[3]
+  epsilon <- par[4] #  "random" exploration
+  zeta <- par[5] # scales social info use
+  mu0 <- 0# par[4] # exploration bonus
+  # create a parameter vector
+  # preallocate negative log likelihood
+  nLL <- rep(0, 12)
+  
+  for (r in unique(dat$round)){
+    # collect choices for current round
+    round_df <- subset(dat, round == r)
+    trials <- nrow(round_df)
+    # Observations of subject choice behavior
+    chosen <- round_df$choices
+    y <- round_df$z[0:(trials - 1)] # trim off the last observation, because it was not used to inform a choice (round already over)
+    # social information
+    social_choices<-round_df$social_info
+    # create observation matrix
+    # Utilties of each choice
+    p <- NULL
+    prevPost <- NULL # set the previous posterior computation to NULL for qlearning
+    pMat <- NULL
+    #here, too
+    for (t in 1:(trials-1)) {
+      #learn
+      # browser()
+      if (t > 1) {
+        out <- RW_Q_2(chosen[t], y[t], theta = theta, prevPost = out, mu0Par = mu0)
+      } else {
+        # first t of each round, start new
+        out <- RW_Q_2(chosen[t], y[t], theta = theta, prevPost = NULL, mu0Par = mu0)
+      }
+      #trial wise probabilites
+      ps_t<-mix_sw_softmax_epsilonGreedy(out,epsilon,tau,zeta,social_choices,y=y[1:t],t)
+      p<-rbind(p, t(ps_t))
+    }
+    # softmaximization
+    # compute choice probabilites
+    # numerical overflow
+    p <- (pmax(p, 0.00001))
+    p <- (pmin(p, 0.99999))
+    # add loglik nasty way of checking the predicted choice probability a the item that was chosen
+    nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials-1)), chosen[2:length(chosen)] )]))
+    #browser()
+  }
+  #avoid nan or na in objective function
+  if(any(is.nan(sum(nLL))) | any(is.na(sum(nLL))))
+  { 
+    return(10 ^ 30)
+    
+  }else
+  {
+    return(sum(nLL))
+  }
+}
+
+
+##------------------------------------------------------------------------
+##Q-Learning model with 2 learning rates and 4social weight and epsilon greedy --
+##------------------------------------------------------------------------
+
+utility_2lr_4sw_softmax_egreedy <- function(par, dat) {
+  # for (rep in 1:ntrialss){
+  # unpack
+  #par<-exp(par)#parameters are defined in logspace, we exponentiate them here
+  theta <- c(par[1], par[2])# "learningrate" 1 is positive, 2 is negative
+  tau<-par[3]
+  epsilon <- par[4] #  "random" exploration
+  zeta <- c(par[5],par[6],par[7],par[8]) # scales social info use
+  mu0 <- 0# par[4] # exploration bonus
+  # create a parameter vector
+  # preallocate negative log likelihood
+  nLL <- rep(0, 12)
+  
+  for (r in unique(dat$round)){
+    # collect choices for current round
+    round_df <- subset(dat, round == r)
+    trials <- nrow(round_df)
+    # Observations of subject choice behavior
+    chosen <- round_df$choices
+    y <- round_df$z[0:(trials - 1)] # trim off the last observation, because it was not used to inform a choice (round already over)
+    # social information
+    social_choices<-round_df$social_info
+    soctype<-unique(round_df$soctype)
+    # create observation matrix
+    # Utilties of each choice
+    p <- NULL
+    prevPost <- NULL # set the previous posterior computation to NULL for qlearning
+    pMat <- NULL
+    #here, too
+    for (t in 1:(trials-1)) {
+      #learn
+      # browser()
+      if (t > 1) {
+        out <- RW_Q_2(chosen[t], y[t], theta = theta, prevPost = out, mu0Par = mu0)
+      } else {
+        # first t of each round, start new
+        out <- RW_Q_2(chosen[t], y[t], theta = theta, prevPost = NULL, mu0Par = mu0)
+      }
+      #trial wise probabilites
+      #browser()
+      ps_t<-mix_4sw_softmax_epsilonGreedy(out,epsilon,tau,zeta,social_choices,soctype,y=y[1:t],t)
+      p<-rbind(p, t(ps_t))
+    }
+    # softmaximization
+    # compute choice probabilites
+    # numerical overflow
+    p <- (pmax(p, 0.00001))
+    p <- (pmin(p, 0.99999))
+    # add loglik nasty way of checking the predicted choice probability a the item that was chosen
+    nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials-1)), chosen[2:length(chosen)] )]))
+    #browser()
+  }
+  #avoid nan or na in objective function
+  if(any(is.nan(sum(nLL))) | any(is.na(sum(nLL))))
+  { 
+    return(10 ^ 30)
+    
+  }else
+  {
+    return(sum(nLL))
+  }
+}
+
+
+##------------------------------------------------------------------------
+##BAYESIAN MEAN TRACKER model with ucb and epsilon greedy--
+##------------------------------------------------------------------------
+
+kalman_ucb_softmax_egreedy <- function(par, dat) {
+  # for (rep in 1:ntrialss){
+  # unpack
+  #par<-exp(par)#parameters are defined in logspace, we exponentiate them here
+  theta <- c(par[1])# "learningrate" 1 is positive, 2 is negative
+  ucb<-par[2]
+  tau<-par[3]
+  epsilon <- par[4] #  "random" exploration
+  mu0 <- 0# par[4] # exploration bonus
+  var0<-40
+  # create a parameter vector
+  # preallocate negative log likelihood
+  nLL <- rep(0, 12)
+  
+  for (r in unique(dat$round)){
+    # collect choices for current round
+    round_df <- subset(dat, round == r)
+    trials <- nrow(round_df)
+    # Observations of subject choice behavior
+    chosen <- round_df$choices
+    y <- round_df$z[0:(trials - 1)] # trim off the last observation, because it was not used to inform a choice (round already over)
+    # social information
+    social_choices<-round_df$social_info
+    soctype<-unique(round_df$soctype)
+    # create observation matrix
+    # Utilties of each choice
+    p <- NULL
+    prevPost <- NULL # set the previous posterior computation to NULL for qlearning
+    pMat <- NULL
+    #here, too
+    for (t in 1:(trials-1)) {
+      #learn
+      # browser()
+      if (t > 1) {
+        out <- bayesianMeanTracker(chosen[t], y[t], theta = theta, prevPost = out, mu0Par = mu0,var0Par = var0)
+      } else {
+        # first t of each round, start new
+        out <- bayesianMeanTracker(chosen[t], y[t], theta = theta, prevPost = NULL, mu0Par = mu0,var0Par = var0)
+      }
+      
+      ps_t<-KF_mix_softmax_epsilonGreedy(out,epsilon,tau,ucb,y=y[1:t],t)
+      p<-rbind(p, t(ps_t))
+      #browser()
+    }
+    # softmaximization
+    # compute choice probabilites
+    # numerical overflow
+    p <- (pmax(p, 0.00001))
+    p <- (pmin(p, 0.99999))
+    # add loglik nasty way of checking the predicted choice probability a the item that was chosen
+    nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials-1)), chosen[2:length(chosen)] )]))
+    #browser()
+  }
+  #avoid nan or na in objective function
+  if(any(is.nan(sum(nLL))) | any(is.na(sum(nLL))))
+  { 
+    return(10 ^ 30)
+    
+  }else
+  {
+    return(sum(nLL))
+  }
+}
+
+##------------------------------------------------------------------------
+##BAYESIAN MEAN TRACKER model with ucb and epsilon greedy and social weight--
+##------------------------------------------------------------------------
+
+kalman_ucb_sw_softmax_egreedy <- function(par, dat) {
+  # for (rep in 1:ntrialss){
+  # unpack
+  # par<-exp(par)#parameters are defined in logspace, we exponentiate them here
+  theta <- par[1]# "learningrate" 1 is positive, 2 is negative
+  ucb<-par[2]
+  tau<-par[3]
+  epsilon <- par[4] #  "random" exploration
+  zeta <- par[5] #  "random" exploration
+  
+  mu0 <- 0# par[4] # exploration bonus
+  var0<-10
+  # create a parameter vector
+  # preallocate negative log likelihood
+  nLL <- rep(0, 12)
+  
+  for (r in unique(dat$round)){
+    # collect choices for current round
+    round_df <- subset(dat, round == r)
+    trials <- nrow(round_df)
+    # Observations of subject choice behavior
+    chosen <- round_df$choices
+    y <- round_df$z[0:(trials - 1)] # trim off the last observation, because it was not used to inform a choice (round already over)
+    # social information
+    social_choices<-round_df$social_info
+    soctype<-unique(round_df$soctype)
+    # create observation matrix
+    # Utilties of each choice
+    p <- NULL
+    prevPost <- NULL # set the previous posterior computation to NULL for qlearning
+    pMat <- NULL
+    #here, too
+    for (t in 1:(trials-1)) {
+      #learn
+      # browser()
+      if (t > 1) {
+        out <- bayesianMeanTracker(chosen[t], y[t], theta = theta, prevPost = out, mu0Par = mu0,var0Par = var0)
+      } else {
+        # first t of each round, start new
+        out <- bayesianMeanTracker(chosen[t], y[t], theta = theta, prevPost = NULL, mu0Par = mu0,var0Par = var0)
+      }
+      
+      ps_t<-KF_sw_mix_softmax_epsilonGreedy(out,epsilon,tau,ucb,zeta,y=y[1:t],t,social_choices)
+      p<-rbind(p, t(ps_t))
+      # browser()
+    }
+    # softmaximization
+    # compute choice probabilites
+    # numerical overflow
+    p <- (pmax(p, 0.00001))
+    p <- (pmin(p, 0.99999))
+    # add loglik nasty way of checking the predicted choice probability a the item that was chosen
+    nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials-1)), chosen[2:length(chosen)] )]))
+    #browser()
+  }
+  #avoid nan or na in objective function
+  if(any(is.nan(sum(nLL))) | any(is.na(sum(nLL))))
+  { 
+    return(10 ^ 30)
+    
+  }else
+  {
+    return(sum(nLL))
+  }
+}
+
+kalman_lr_ucb_sw_softmax_egreedy <- function(par, dat) {
+  # for (rep in 1:ntrialss){
+  # unpack
+  # par<-exp(par)#parameters are defined in logspace, we exponentiate them here
+  theta <- par[1]# "learningrate" 1 is positive, 2 is negative
+  ucb<-par[2]
+  tau<-par[3]
+  epsilon <- par[4] #  "random" exploration
+  zeta <- par[5] #  "random" exploration
+  
+  mu0 <- 0# par[4] # exploration bonus
+  var0<-10
+  # create a parameter vector
+  # preallocate negative log likelihood
+  nLL <- rep(0, 12)
+  
+  for (r in unique(dat$round)){
+    # collect choices for current round
+    round_df <- subset(dat, round == r)
+    trials <- nrow(round_df)
+    # Observations of subject choice behavior
+    chosen <- round_df$choices
+    y <- round_df$z[0:(trials - 1)] # trim off the last observation, because it was not used to inform a choice (round already over)
+    # social information
+    social_choices<-round_df$social_info
+    soctype<-unique(round_df$soctype)
+    # create observation matrix
+    # Utilties of each choice
+    p <- NULL
+    prevPost <- NULL # set the previous posterior computation to NULL for qlearning
+    pMat <- NULL
+    #here, too
+    for (t in 1:(trials-1)) {
+      #learn
+      # browser()
+      if (t > 1) {
+        out <- bayesianMeanTracker(chosen[t], y[t], theta = theta, prevPost = out, mu0Par = mu0,var0Par = var0)
+      } else {
+        # first t of each round, start new
+        out <- bayesianMeanTracker(chosen[t], y[t], theta = theta, prevPost = NULL, mu0Par = mu0,var0Par = var0)
+      }
+      
+      ps_t<-KF_sw_mix_softmax_epsilonGreedy(out,epsilon,tau,ucb,zeta,y=y[1:t],t,social_choices)
+      p<-rbind(p, t(ps_t))
+      # browser()
+    }
+    # softmaximization
+    # compute choice probabilites
+    # numerical overflow
+    p <- (pmax(p, 0.00001))
+    p <- (pmin(p, 0.99999))
+    # add loglik nasty way of checking the predicted choice probability a the item that was chosen
+    nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials-1)), chosen[2:length(chosen)] )]))
+    #browser()
+  }
+  #avoid nan or na in objective function
+  if(any(is.nan(sum(nLL))) | any(is.na(sum(nLL))))
+  { 
+    return(10 ^ 30)
+    
+  }else
+  {
+    return(sum(nLL))
+  }
+}
+
+
+
+##------------------------------------------------------------------------
+##BAYESIAN MEAN TRACKER model with ucb and epsilon greedy and social lr weight--
+##------------------------------------------------------------------------
+
+kalman_ucb_slr_softmax_egreedy <- function(par, dat) {
+  # for (rep in 1:ntrialss){
+  # unpack
+  # par<-exp(par)#parameters are defined in logspace, we exponentiate them here
+  theta <- par[1]# "learningrate" 1 is positive, 2 is negative
+  ucb<-par[2]
+  tau<-par[3]
+  epsilon <- par[4] #  "random" exploration
+  zeta <- par[5] #  "random" exploration
+  
+  mu0 <- 0# par[4] # exploration bonus
+  var0<-5
+  # create a parameter vector
+  # preallocate negative log likelihood
+  nLL <- rep(0, 12)
+  
+  for (r in unique(dat$round)){
+    # collect choices for current round
+    round_df <- subset(dat, round == r)
+    trials <- nrow(round_df)
+    # Observations of subject choice behavior
+    chosen <- round_df$choices
+    y <- round_df$z[0:(trials - 1)] # trim off the last observation, because it was not used to inform a choice (round already over)
+    # social information
+    social_choices<-round_df$social_info
+    soctype<-unique(round_df$soctype)
+    # create observation matrix
+    # Utilties of each choice
+    p <- NULL
+    prevPost <- NULL # set the previous posterior computation to NULL for qlearning
+    pMat <- NULL
+    #here, too
+    for (t in 1:(trials-1)) {
+      #learn
+      # browser()
+      if (t > 1) {
+        out <- bayesianMeanTracker_soc(chosen[t], y[t], theta = theta,soc_w=zeta, prevPost = out, mu0Par = mu0,var0Par = var0,social_choices[t])
+      } else {
+        # first t of each round, start new
+        out <- bayesianMeanTracker_soc(chosen[t], y[t], theta = theta,soc_w=zeta, prevPost = NULL, mu0Par = mu0,var0Par = var0,social_choices[t])
+      }
+      
+      ps_t<-KF_mix_softmax_epsilonGreedy(out,epsilon,tau,ucb,y=y[1:t],t)
+      p<-rbind(p, t(ps_t))
+      # browser()
+    }
+    # softmaximization
+    # compute choice probabilites
+    # numerical overflow
+    p <- (pmax(p, 0.00001))
+    p <- (pmin(p, 0.99999))
+    # add loglik nasty way of checking the predicted choice probability a the item that was chosen
+    nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials-1)), chosen[2:length(chosen)] )]))
+    #browser()
+  }
+  #avoid nan or na in objective function
+  if(any(is.nan(sum(nLL))) | any(is.na(sum(nLL))))
+  { 
+    return(10 ^ 30)
+    
+  }else
+  {
+    return(sum(nLL))
+  }
 }
 
 
@@ -193,66 +1038,160 @@ fit_fun <- function(d1) {
 
 
 
+##------------------------------------------------------------------------
+##BAYESIAN MEAN TRACKER model with ucb and epsilon greedy and social weight--
+##------------------------------------------------------------------------
 
-
-
-
-
-
-##############################################################################################################
-# CROSS VALIDATION FUNCTION (NOT USED)
-##############################################################################################################
-# function to plug in to the optimaztion routine
-# selector: scalar, indicates a specific participant
-# kernel, only bayesan meantracker works
-# acquisition, function, can be "ucb", "probofimp", "expofimp", or "PMU"
-# horizonLength is number of search decisions in each t
-# leaveoutindex is [1,2,...,n_rounds]
-# inertiaWeight: whether nor not acquisition functions are weighted by inertia
-
-cvfun <- function(selector, learning_model_fun, acquisition_fun, leaveoutindex) {
-  # subselect participant, horizon and rounds not left out
-  d1 <- subset(data, id == selector)
-  # training set
-  rounds <- 1:12
-  trainingSet <- rounds[!rounds == leaveoutindex] # remove round specified by leaveoutindex
-  # test set
-  testrialset <- leaveoutindex
-  nParams <- 1
+kalman_ucb_asw_softmax_egreedy <- function(par, dat) {
+  # for (rep in 1:ntrialss){
+  # unpack
+  # par<-exp(par)#parameters are defined in logspace, we exponentiate them here
+  theta <- par[1]# "learningrate" 1 is positive, 2 is negative
+  ucb<-par[2]
+  tau<-par[3]
+  epsilon <- par[4] #  "random" exploration
+  zeta <- par[5] #  "random" exploration
   
-  # this allows for changing the parameter number and boundaries more flexibly
-  if (inheritrials(acquisition_fun, "UCB") | inheritrials(acquisition_fun, "exploreCountrials") | inheritrials(acquisition_fun, "epsilonGreedy")) {
-    nParams <- nParams + 1 # add beta parameter
-  }
-  if (inheritrials(learning_model_fun, "GP") | inheritrials(learning_model_fun, "KalmanFilter")) {
-    nParams <- nParams + 1 # add lambda or error variance
-  }
-  # Set upper and lower bounds based on nParams
-  lbound <- rep(-5, nParams)
-  ubound <- rep(4, nParams)
-  if (inheritrials(acquisition, "epsilonGreedy")) { # separate range for epsilon greedy, which after inverse logic transform is bounded between [0,1]
-    lbound[length(lbound)] <- -10
-    ubound[length(ubound)] <- 10
-  }
+  mu0 <- 0# par[4] # exploration bonus
+  var0<-10
+  # create a parameter vector
+  # preallocate negative log likelihood
+  nLL <- rep(0, 12)
   
-  
-  #####
-  # Begin cross validation routine
-  # TRAINING SET
-  fit <- DEoptim(
-    modelFit, 
-    lower = lbound, 
-    upper = ubound, 
-    subjD = d1, 
-    k = kernelFun, 
-    rounds = trainingSet, 
-    acquisition = acquisition,
-    DEoptim.control(itermax = 100)
-  )
-  paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
-  # TEST SET
-  predict <- modelFit(par = paramEstimates, subjD = d1, acquisition = acquisition, k = kernelFun, rounds = testrialset)
-  output <- c(leaveoutindex, predict, fit$optim$bestmem) # leaveoutindex, nLL, parameters....
-  return(output) # return optimized value
+  for (r in unique(dat$round)){
+    # collect choices for current round
+    round_df <- subset(dat, round == r)
+    trials <- nrow(round_df)
+    # Observations of subject choice behavior
+    chosen <- round_df$choices
+    y <- round_df$z[0:(trials - 1)] # trim off the last observation, because it was not used to inform a choice (round already over)
+    # social information
+    social_choices<-round_df$social_info
+    soctype<-unique(round_df$soctype)
+    # create observation matrix
+    # Utilties of each choice
+    p <- NULL
+    prevPost <- NULL # set the previous posterior computation to NULL for qlearning
+    pMat <- NULL
+    #here, too
+    for (t in 1:(trials-1)) {
+      #learn
+      # browser()
+      if (t > 1) {
+        out <- bayesianMeanTracker(chosen[t], y[t], theta = theta, prevPost = out, mu0Par = mu0,var0Par = var0)
+        if (social_choices[t-1]==social_choices[t]){
+          soc_w=soc_w+zeta
+        }else{
+          soc_w=0
+        }
+      } else {
+        # first t of each round, start new
+        out <- bayesianMeanTracker(chosen[t], y[t], theta = theta, prevPost = NULL, mu0Par = mu0,var0Par = var0)
+        soc_w=0
+      }
+      
+      ps_t<-KF_sw_mix_softmax_epsilonGreedy(out,epsilon,tau,ucb,soc_w,y=y[1:t],t,social_choices)
+      p<-rbind(p, t(ps_t))
+      # browser()
+    }
+    # softmaximization
+    # compute choice probabilites
+    # numerical overflow
+    p <- (pmax(p, 0.00001))
+    p <- (pmin(p, 0.99999))
+    # add loglik nasty way of checking the predicted choice probability a the item that was chosen
+    nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials-1)), chosen[2:length(chosen)] )]))
+    #browser()
+  }
+  #avoid nan or na in objective function
+  if(any(is.nan(sum(nLL))) | any(is.na(sum(nLL))))
+  { 
+    return(10 ^ 30)
+    
+  }else
+  {
+    return(sum(nLL))
+  }
 }
+
+
+
+##------------------------------------------------------------------------
+##non-greedy BAYESIAN MEAN TRACKER model with ucb and epsilon and social weight--
+##------------------------------------------------------------------------
+
+kalman_ucb_sw_softmax_e <- function(par, dat) {
+  # for (rep in 1:ntrialss){
+  # unpack
+  # par<-exp(par)#parameters are defined in logspace, we exponentiate them here
+  theta <- par[1]# "learningrate" 1 is positive, 2 is negative
+  ucb<-par[2]
+  tau<-par[3]
+  epsilon <- par[4] #  "random" exploration
+  zeta <- par[5] #  "random" exploration
+  
+  mu0 <- 0# par[4] # exploration bonus
+  var0<-10
+  # create a parameter vector
+  # preallocate negative log likelihood
+  nLL <- rep(0, 12)
+  
+  for (r in unique(dat$round)){
+    # collect choices for current round
+    round_df <- subset(dat, round == r)
+    trials <- nrow(round_df)
+    # Observations of subject choice behavior
+    chosen <- round_df$choices
+    y <- round_df$z[0:(trials - 1)] # trim off the last observation, because it was not used to inform a choice (round already over)
+    # social information
+    social_choices<-round_df$social_info
+    soctype<-unique(round_df$soctype)
+    # create observation matrix
+    # Utilties of each choice
+    p <- NULL
+    prevPost <- NULL # set the previous posterior computation to NULL for qlearning
+    pMat <- NULL
+    #here, too
+    for (t in 1:(trials-1)) {
+      #learn
+      # browser()
+      if (t > 1) {
+        out <- bayesianMeanTracker(chosen[t], y[t], theta = theta, prevPost = out, mu0Par = mu0,var0Par = var0)
+        if (social_choices[t-1]==social_choices[t]){
+          soc_w=soc_w+zeta
+        }else{
+          soc_w=0
+        }
+      } else {
+        # first t of each round, start new
+        out <- bayesianMeanTracker(chosen[t], y[t], theta = theta, prevPost = NULL, mu0Par = mu0,var0Par = var0)
+        soc_w=0
+      }
+      
+      ps_t<-KF_sw_mix_softmax_epsilon(out,epsilon,tau,ucb,soc_w,y=y[1:t],t,social_choices)
+      p<-rbind(p, t(ps_t))
+      # browser()
+    }
+    # softmaximization
+    # compute choice probabilites
+    # numerical overflow
+    p <- (pmax(p, 0.00001))
+    p <- (pmin(p, 0.99999))
+    # add loglik nasty way of checking the predicted choice probability a the item that was chosen
+    nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials-1)), chosen[2:length(chosen)] )]))
+    #browser()
+  }
+  #avoid nan or na in objective function
+  if(any(is.nan(sum(nLL))) | any(is.na(sum(nLL))))
+  { 
+    return(10 ^ 30)
+    
+  }else
+  {
+    return(sum(nLL))
+  }
+}
+
+
+
 

@@ -1,17 +1,126 @@
+##############################################################################################
+##############################################################################################
+###                                                                                        ###
+###  FUNCTIONS TO SIMULATE EXPLORATION OF ENVIRONMENT GIVEN PARAMETERS FROM MODEL FITTING  ###
+###                                                                                        ###
+##############################################################################################
+##############################################################################################
+
+# ##---------------------------------------------------------------
+# ##                    epsilon greedy exploration                   --
+# ##---------------------------------------------------------------
+# epsilonGreedy_social <- function(out, epsilon=.1,zeta=1,beta=1,social_choices,t){
+#   n <- length(out)
+#   t_w=beta*t
+#   trembl<-(epsilon/t_w)
+#   p <- rep(1/n*trembl, n)#how many options
+#   utility_vec <- out #+(beta *sqrt(out$sig))
+#   utility_vec[social_choices[t]] <- utility_vec[social_choices[t]] + zeta
+#   p[which.is.max(utility_vec)] <- (1-trembl) + (1/n*trembl)
+#   return(p)
+# }
+# 
+# 
+# two_epsilonGreedy <- function(out, epsilon=c(0.1,0.1),y){
+#   n <- length(out)
+#   trembl<-ifelse(max(y>150),(epsilon[1]),(epsilon[2]))
+#   p <- rep(1/n*trembl, n)#how many options
+#   utility_vec <- out #+(beta *sqrt(out$sig))
+#   p[which.is.max(utility_vec)] <- (1-trembl) + (1/n*trembl)
+#   #p[social_choices[t]] <- (1-zeta) + (1/n*zeta)
+#   return(p)
+# }
+# 
+# 
+# mix_soc_softmax_epsilonGreedy <- function(out, epsilon=0.1,tau=0.1,zeta=0,social_choices,y,t){
+#   n <- length(out)
+#   #browser()
+#   if(max(y>150)){
+#     #if gem was found: greedy
+#     p <- rep(1/n*epsilon, n)#how many options
+#     utility_vec <- out #+(beta *sqrt(out$sig))
+#     p[which.is.max(utility_vec)] <- (1-epsilon) + (1/n*epsilon)
+#   }else{
+#     #if gem was not found: social-softmax
+#     utilityVec <- out
+#     utilityVec=utilityVec-max(utilityVec)
+#     utilityVec[social_choices[t]]<-utilityVec[social_choices[t]]+zeta
+#     p <- exp(utilityVec / tau)
+#     # probabilities
+#     p <- p / sum(p)
+#   }
+#   #p[social_choices[t]] <- (1-zeta) + (1/n*zeta)
+#   return(p)
+# }
+# 
+# 
+# ##---------------------------------------------------------------
+# ##softmax & epsilon greedy exploration 2 params 3 social parm     -
+# ##---------------------------------------------------------------
+# mix_4soc_softmax_epsilonGreedy <- function(out, epsilon=0.1,tau=0.1,zeta=c(0,0,0,0),social_choices,soctype,y,t){
+#   n <- length(out)
+#   #browser()
+#   if(max(y>150)){
+#     #if gem was found: greedy
+#     utility_vec <- out
+#     utility_vec[social_choices[t]]<-utility_vec[social_choices[t]]+zeta[soctype]
+#     
+#     p <- rep(1/n*epsilon, n)#how many options
+#     p[which.is.max(utility_vec)] <- (1-epsilon) + (1/n*epsilon)
+#   }else{
+#     #if gem was not found: social-softmax
+#     utility_vec <- out
+#     #utilityVec=utilityVec-max(utilityVec)
+#     utility_vec[social_choices[t]]<-utility_vec[social_choices[t]]+zeta[soctype]
+#     p <- exp(utility_vec / tau)
+#     # probabilities
+#     p <- p / sum(p)
+#   }
+#   #p[social_choices[t]] <- (1-zeta) + (1/n*zeta)
+#   return(p)
+# }
 
 
-#########
-######### Exploration Environmental change
-#########
-explore_env_social_fitted_pars <- function(par, learning_model_fun, acquisition_fun,data,envs) {
+##---------------------------------------------------------------
+##softmax & epsilon greedy exploration ucb for Kalman filter   -
+##---------------------------------------------------------------
+KF_mix_softmax_epsilonGreedy <- function(out, epsilon=0.1,tau=0.1,beta=0,y,t){
+  #out is data frame
+  n <- length(out$mu)
+  #browser()
+  if(max(y>150)){
+    #if gem was found: greedy
+    p <- rep(1/n*epsilon, n)#how many options
+    utility_vec <- out$mu +(beta *sqrt(out$sig))
+    p[which.is.max(utility_vec)] <- (1-epsilon) + (1/n*epsilon)
+  }else{
+    #if gem was not found: social-softmax
+    utility_vec <- out$mu +(beta *sqrt(out$sig))
+    #utilityVec[social_choices[t]]<-utilityVec[social_choices[t]]
+    p <- exp(utility_vec / tau)
+    # probabilities
+    p <- p / sum(p)
+  }
+  #p[social_choices[t]] <- (1-zeta) + (1/n*zeta)
+  return(p)
+}
+
+
+
+
+
+##----------------------------------------------------------------
+##              Model: Q-learning no social weight              --
+##----------------------------------------------------------------
+
+exploreEnv1lr <- function(par, learning_model_fun, acquisition_fun, data, envs) {
   # for (rep in 1:ntrialss){
   # unpack
   #browser()
   #par<-exp(par)#parameters are defined in logspace, we exponentiate them here
   lr <- par[1]# "learningrate"
   tau <- par[2] #  "random" exploration
-  zeta<-par[3] # scales social info use
-  mu0=0
+  mu0 <-  0
   
   mu=list()
   all_choices <- NULL
@@ -20,17 +129,18 @@ explore_env_social_fitted_pars <- function(par, learning_model_fun, acquisition_
   dat=expand.grid(x1=0:7,x2=0:7)
   plot_dat=list()
   chosen=NULL
+  # browser()
+  all_choices<-NULL
   
   for (r in unique(data$round)){
-    
     # collect choices for current round
     #print(r)
     round_df <- data%>%filter(round == r)
     #get environment as seen by participant
-   # browser()
+    # browser()
     # get the right environment to sample from
     #browser()
-    env=envs%>%filter(env_idx==unique(round_df$env_number))#[[unique(round_df$env_number)]]
+    env=envs%>%filter(env==unique(round_df$env_number))#[[unique(round_df$env_number)]]
     #browser()
     trials <- nrow(round_df)
     # social information
@@ -43,10 +153,9 @@ explore_env_social_fitted_pars <- function(par, learning_model_fun, acquisition_
     ind <- round_df$choices[1]
     nTrials <- length(social_choices)
     X <- as.matrix(dat[ind, 1:2]) # generate a new vector of Xs
-    y <- as.matrix(rnorm(1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance)/100)
-    
+    y <- as.matrix(rnorm(1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))
     # store first choice of round
-    all_choices<-data.frame(
+    round_choices<-data.frame(
       trial = 1, 
       x = as.numeric(X[1, 1]), 
       y = as.numeric(X[1, 2]),
@@ -62,16 +171,17 @@ explore_env_social_fitted_pars <- function(par, learning_model_fun, acquisition_
     for (t in 1:(trials-1)) {
       # output by GP with particular parameter settings
       # don't forget mean centering and standardization.... mean is already 0 :)
-     # browser()
+      # browser()
       if (t > 1) {
-        out <- RW_Q(X[t, 1:2], y[t], theta = lr, prevPost = out, mu0Par = mu0)
+        out <- RW_Q(ind, y[t], theta = lr, prevPost = out, mu0Par = mu0)
       } else {
-        out <- RW_Q(X[t, 1:2], y[t], theta = lr, prevPost = NULL, mu0Par = mu0)
+        out <- RW_Q(ind, y[t], theta = lr, prevPost = NULL, mu0Par = mu0)
       }
       #browser()
       #utilities
       utilityVec <- ucb(out, 0)
-      utilityVec[social_choices[t]]<-utilityVec[social_choices[t]]+zeta# social update of utility
+      utilityVec[social_choices[t]]<-utilityVec[social_choices[t]]# social update of utility
+      
       # softmaximization
       #utilities=utilityVec-max(utilityVec)# get no NAs
       p <- exp(utilityVec / tau)
@@ -80,14 +190,245 @@ explore_env_social_fitted_pars <- function(par, learning_model_fun, acquisition_
       # numerical overflow
       p <- (pmax(p, 0.00001))
       p <- (pmin(p, 0.99999))
-    #  browser()
+      
+      #  browser()
       ind <- sample(1:64, 1, prob = p) # choice index
       
       # collect x y coordinate of choice
       X <- rbind(X, as.matrix(dat[ind, 1:2]))
       # sample from environment
-      y <- rbind(y, as.matrix(rnorm(n = 1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance)/100)) 
-     # y_real=rbind
+      y <- rbind(y, as.matrix(rnorm(n = 1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))) 
+      #  browser()
+      # y_real=rbind
+      # write it to the next trial index because choice has already been made, learning will happen in next round
+      one_trial_choices <- data.frame(
+        trial = t + 1,
+        x = as.numeric(X[t + 1, 1]),
+        y = as.numeric(X[t + 1, 2]),
+        z = as.numeric(y[t + 1]),
+        index = ind,
+        social_info = social_choices[t + 1],
+        round = r,
+        util_list = I(list(utilityVec)),
+        p_list = I(list(p))
+      )
+      
+      round_choices <- rbind(round_choices, one_trial_choices)
+      # browser()
+    }
+    all_choices<-rbind(all_choices,round_choices)
+  }# end rounds
+  #browser()
+  return(all_choices)
+}
+
+
+##---------------------------------------------------------------
+##     Model: Q-learning 2 learning rates no social weight     --
+##---------------------------------------------------------------
+
+exploreEnv2lr <- function(par, learning_model_fun, acquisition_fun,data,envs) {
+  # for (rep in 1:ntrialss){
+  # unpack
+  #browser()
+  #par<-exp(par)#parameters are defined in logspace, we exponentiate them here
+  lr <- c(par[1],par[2])# "learningrates, 1: pos, 2: neg"
+  tau <- par[3] #  "random" exploration
+  mu0=0
+  
+  mu <- list()
+  all_choices <- NULL
+  dummy <- NULL
+  
+  #look up samples
+  dat=expand.grid(x1=0:7,x2=0:7)
+  plot_dat=list()
+  chosen=NULL
+  # browser()
+  all_choices<-NULL
+  
+  for (r in unique(data$round)){
+    # collect choices for current round
+    #print(r)
+    round_df <- data%>%filter(round == r)
+    #get environment as seen by participant
+    # browser()
+    # get the right environment to sample from
+    #browser()
+    env=envs%>%filter(env==unique(round_df$env_number))#[[unique(round_df$env_number)]]
+    #browser()
+    trials <- nrow(round_df)
+    # social information
+    social_choices<-round_df$social_info
+    # Utilties of each choice
+    utilities <- NULL
+    prevPost <- NULL # set the previous posterior computation to NULL for qlearning
+    pMat <- NULL
+    #here, too
+    ind <- round_df$choices[1]
+    nTrials <- length(social_choices)
+    X <- as.matrix(dat[ind, 1:2]) # generate a new vector of Xs
+    y <- as.matrix(rnorm(1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))
+    # store first choice of round
+    round_choices<-data.frame(
+      trial = 1, 
+      x = as.numeric(X[1, 1]), 
+      y = as.numeric(X[1, 2]),
+      z = as.numeric(y[1]),
+      index=ind,
+      social_info=NA,
+      round=r,
+      util_list=NA,# there are no utilities yet
+      p_list=I(list(rep(1/64,64)))
+    )
+    
+    # loop over trials
+    for (t in 1:(trials-1)) {
+      # output by GP with particular parameter settings
+      # don't forget mean centering and standardization.... mean is already 0 :)
+      # browser()
+      if (t > 1) {
+        out <- learning_model_fun(ind, y[t], theta = lr, prevPost = out, mu0Par = mu0)
+        
+      } else {
+        out <- learning_model_fun(ind, y[t], theta = lr, prevPost = NULL, mu0Par = mu0)
+      }
+      #browser()
+      #utilities
+      utilityVec <- ucb(out, 0)
+      utilityVec[social_choices[t]] <- utilityVec[social_choices[t]] # social update of utility
+      # softmaximization
+      #utilities=utilityVec-max(utilityVec)# get no NAs
+      p <- exp(utilityVec / tau)
+      # probabilities
+      p <- p / colSums(p)
+      # numerical overflow
+      p <- (pmax(p, 0.00001))
+      p <- (pmin(p, 0.99999))
+      #  browser()
+      ind <- sample(1:64, 1, prob = p) # choice index
+      
+      # collect x y coordinate of choice
+      X <- rbind(X, as.matrix(dat[ind, 1:2]))
+      # sample from environment
+      y <- rbind(y, as.matrix(rnorm(n = 1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))) 
+      #  browser()
+      # y_real=rbind
+      
+      # write it to the next trial index because choice has already been made, learning will happen in next round
+      one_trial_choices <- data.frame(
+        trial = t + 1,
+        x = as.numeric(X[t + 1, 1]),
+        y = as.numeric(X[t + 1, 2]),
+        z = as.numeric(y[t + 1]),
+        index = ind,
+        social_info = social_choices[t + 1],
+        round = r,
+        util_list = I(list(utilityVec)),
+        p_list = I(list(p))
+      )
+      
+      round_choices <- rbind(round_choices, one_trial_choices)
+      # browser()
+    }
+    all_choices<-rbind(all_choices,round_choices)
+  }# end rounds
+  #browser()
+  return(all_choices)
+}
+
+##---------------------------------------------------------------
+##    Model: Q-learning 2 learning rates with social weight    --
+##---------------------------------------------------------------
+
+exploreEnv2lrsw <- function(par, learning_model_fun, acquisition_fun,data,envs) {
+  # for (rep in 1:ntrialss){
+  # unpack
+  #browser()
+  #par<-exp(par)#parameters are defined in logspace, we exponentiate them here
+  lr <- c(par[1],par[2])# "learningrates, 1: pos, 2: neg"
+  tau <- par[3] #  "random" exploration
+  zeta <- par[4] # scales social info use
+  mu0 <- 0
+  
+  mu <- list()
+  all_choices <- NULL
+  dummy <- NULL
+  
+  #look up samples
+  dat=expand.grid(x1=0:7,x2=0:7)
+  plot_dat=list()
+  chosen=NULL
+  # browser()
+  all_choices<-NULL
+  
+  for (r in unique(data$round)){
+    # collect choices for current round
+    #print(r)
+    round_df <- data%>%filter(round == r)
+    #get environment as seen by participant
+    # browser()
+    # get the right environment to sample from
+    #browser()
+    env=envs%>%filter(env==unique(round_df$env_number))#[[unique(round_df$env_number)]]
+    #browser()
+    trials <- nrow(round_df)
+    # social information
+    social_choices<-round_df$social_info
+    # Utilties of each choice
+    utilities <- NULL
+    prevPost <- NULL # set the previous posterior computation to NULL for qlearning
+    pMat <- NULL
+    #here, too
+    ind <- round_df$choices[1]
+    nTrials <- length(social_choices)
+    X <- as.matrix(dat[ind, 1:2]) # generate a new vector of Xs
+    y <- as.matrix(rnorm(1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))
+    # store first choice of round
+    round_choices<-data.frame(
+      trial = 1, 
+      x = as.numeric(X[1, 1]), 
+      y = as.numeric(X[1, 2]),
+      z = as.numeric(y[1]),
+      index=ind,
+      social_info=NA,
+      round=r,
+      util_list=NA,# there are no utilities yet
+      p_list=I(list(rep(1/64,64)))
+    )
+    
+    # loop over trials
+    for (t in 1:(trials-1)) {
+      # output by GP with particular parameter settings
+      # don't forget mean centering and standardization.... mean is already 0 :)
+      # browser()
+      if (t > 1) {
+        out <- learning_model_fun(ind, y[t], theta = lr, prevPost = out, mu0Par = mu0)
+        
+      } else {
+        out <- learning_model_fun(ind, y[t], theta = lr, prevPost = NULL, mu0Par = mu0)
+      }
+      #browser()
+      #utilities
+      utilityVec <- ucb(out, 0)
+      utilityVec[social_choices[t]] <- utilityVec[social_choices[t]] + zeta# social update of utility
+      # softmaximization
+      #utilities=utilityVec-max(utilityVec)# get no NAs
+      p <- exp(utilityVec / tau)
+      # probabilities
+      p <- p / colSums(p)
+      # numerical overflow
+      p <- (pmax(p, 0.00001))
+      p <- (pmin(p, 0.99999))
+      #  browser()
+      ind <- sample(1:64, 1, prob = p) # choice index
+      
+      # collect x y coordinate of choice
+      X <- rbind(X, as.matrix(dat[ind, 1:2]))
+      # sample from environment
+      y <- rbind(y, as.matrix(rnorm(n = 1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))) 
+      #  browser()
+      # y_real=rbind
       # write it to the next trial index because choice has already been made, learning will happen in next round
       one_trial_choices <- data.frame(
         trial = t+1, 
@@ -101,26 +442,123 @@ explore_env_social_fitted_pars <- function(par, learning_model_fun, acquisition_
         p_list=I(list(p))
       )
       
-      all_choices <- rbind(all_choices, one_trial_choices)
-     # browser()
+      round_choices <- rbind(round_choices, one_trial_choices)
+      # browser()
     }
-    # # collect the data so you can plot it later
-    # plot_dat[[r]] <- expand.grid(x = 1:8, y = 1:8, trials = 0:max(all_choices$trial))
-    # plot_dat[[r]]$sample <- 0
-    # plot_dat[[r]]$out <- 0
-    # plot_dat[[r]]$mu <- 0
-    # 
-    # for (i in 1:length(all_choices$x)) {
-    #   all_choices$y[i]#
-    #   all_choices$x[i]
-    #   #was the item chosen?
-    #   plot_dat[[r]][plot_dat[[r]]$x == all_choices$x[i] & plot_dat[[r]]$y == all_choices$y[i] & plot_dat[[r]]$trials == all_choices$trial[i], ]$sample <- 1
-    #   #outcomes
-    #   plot_dat[[r]][plot_dat[[r]]$trials == all_choices$trial[i], ]$out <- all_choices$z[i]
-    #   plot_dat[[r]][plot_dat[[r]]$trials == all_choices$trial[i], ]$mu <- mu[[i]]
-    # }
-    # # browser()
-    # all_choices<-NULL
+    all_choices<-rbind(all_choices,round_choices)
+  }# end rounds
+  #browser()
+  return(all_choices)
+}
+
+
+
+
+##---------------------------------------------------------------
+##    Model: Q-learning 2 learning rates with social weight and greedy   --
+##---------------------------------------------------------------
+
+simumalte_2lr_sw_2greedy <- function(par, learning_model_fun, acquisition_fun,data,envs) {
+  # for (rep in 1:ntrialss){
+  # unpack
+  #browser()
+  #par<-exp(par)#parameters are defined in logspace, we exponentiate them here
+  lr <- c(par[1],par[2])# "learningrates, 1: pos, 2: neg"
+  epsilon <- c(par[3],par[4]) #  "random" exploration
+  mu0 <- 0
+  
+  mu <- list()
+  all_choices <- NULL
+  dummy <- NULL
+  
+  #look up samples
+  dat=expand.grid(x1=0:7,x2=0:7)
+  plot_dat=list()
+  chosen=NULL
+  # browser()
+  all_choices<-NULL
+  
+  for (r in unique(data$round)){
+    # collect choices for current round
+    #print(r)
+    round_df <- data%>%filter(round == r)
+    #get environment as seen by participant
+    # browser()
+    # get the right environment to sample from
+    #browser()
+    env=envs%>%filter(env==unique(round_df$env_number))#[[unique(round_df$env_number)]]
+    #browser()
+    trials <- nrow(round_df)
+    # social information
+    social_choices<-round_df$social_info
+    # Utilties of each choice
+    utilities <- NULL
+    prevPost <- NULL # set the previous posterior computation to NULL for qlearning
+    pMat <- NULL
+    #here, too
+    ind <- round_df$choices[1]
+    nTrials <- length(social_choices)
+    X <- as.matrix(dat[ind, 1:2]) # generate a new vector of Xs
+    y <- as.matrix(rnorm(1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))
+    # store first choice of round
+    round_choices<-data.frame(
+      trial = 1, 
+      x = as.numeric(X[1, 1]), 
+      y = as.numeric(X[1, 2]),
+      z = as.numeric(y[1]),
+      index=ind,
+      social_info=NA,
+      round=r,
+      envi=unique(round_df$env_number),
+      p_list=I(list(rep(1/64,64)))
+    )
+    
+    # loop over trials
+    for (t in 1:(trials-1)) {
+      # output by GP with particular parameter settings
+      # don't forget mean centering and standardization.... mean is already 0 :)
+      #browser()
+      #print(r)
+      #print(t)
+      if (t > 1) {
+        out <- learning_model_fun(ind, y[t], theta = lr, prevPost = out, mu0Par = mu0)
+        
+      } else {
+        out <- learning_model_fun(ind, y[t], theta = lr, prevPost = NULL, mu0Par = mu0)
+      }
+      #browser()
+      #utilities
+      p<-two_epsilonGreedy(out,epsilon,y[1:t])
+      # numerical overflow
+      p <- (pmax(p, 0.00001))
+      p <- (pmin(p, 0.99999))
+      #  browser()
+      ind <- sample(1:64, 1, prob = p) # choice index
+      
+      # collect x y coordinate of choice
+      X <- rbind(X, as.matrix(dat[ind, 1:2]))
+      # sample from environment
+      y <- rbind(y, as.matrix(rnorm(n = 1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))) 
+      #  browser()
+      # y_real=rbind
+      # write it to the next trial index because choice has already been made, learning will happen in next round
+      one_trial_choices <- data.frame(
+        trial = t+1, 
+        x = as.numeric(X[t+1, 1]), 
+        y = as.numeric(X[t+1, 2]),
+        z = as.numeric(y[t+1]),
+        index=ind,
+        social_info=social_choices[t+1],
+        round=r,
+        envi=unique(round_df$env_number),
+        #util_list=I(list(utilityVec)),
+        p_list=I(list(p))
+      )
+      
+      round_choices <- rbind(round_choices, one_trial_choices)
+      # browser()
+    }
+    all_choices<-rbind(all_choices,round_choices)
   }# end rounds
   #browser()
   return(all_choices)
@@ -131,129 +569,483 @@ explore_env_social_fitted_pars <- function(par, learning_model_fun, acquisition_
 
 
 
+##---------------------------------------------------------------
+##    Model: Q-learning 2 learning rates with social weight and greedy   --
+##---------------------------------------------------------------
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#########
-######### deprecated
-#########
-explore_env_social_agents <- function(explore_func, choiceRule, env, cntrl, iter) {
+simumalte_2lr_sw_softmax_egreedy <- function(par, learning_model_fun, acquisition_fun,data,envs) {
   # for (rep in 1:ntrialss){
   # unpack
-  lambda <- cntrl$lambda# generalization for rbf kernel
-  beta <- cntrl$beta # this scales risk attitude.
-  zeta<-cntrl$social_weight # scales social info use
+  #browser()
+  #par<-exp(par)#parameters are defined in logspace, we exponentiate them here
+  lr <- c(par[1], par[2])# "learningrate" 1 is positive, 2 is negative
+  tau<-par[3]
+  epsilon <- par[4] #  "random" exploration
+  zeta <- par[5] # scales social info use
+  mu0 <- 0
   
-  tau <- cntrl$tau
-  mu0 <- cntrl$mu0 # exploration bonus
-  var0 <- cntrl$var0
-  # create a parameter vector
-  parVec <- cntrl$parVec
-  #
-  ExploreBonus <- cntrl$ExploreBonus
-  # kernel is RBF
-  # k<-rbf
-  # loop through trials
-  out <- cntrl$out
-  AllChoices <- cntrl$AllChoices
-  dummy <- cntrl$dummy
-  trial <- cntrl$trial
-  social_choices<-cntrl$social_choices
-  dat <- cntrl$dat
   mu <- list()
-  sig <- list()
+  all_choices <- NULL
+  dummy <- NULL
   
-  ind <- sample(1:64, 1)
-  nTrials <- length(social_choices)
-  X <- as.matrix(dat[ind, 1:2]) # generate a new vector of Xs
-  y <- as.matrix(rnorm(1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))
+  #look up samples
+  dat=expand.grid(x1=0:7,x2=0:7)
+  plot_dat=list()
+  chosen=NULL
+  # browser()
+  all_choices<-NULL
   
-  Xstar <- as.matrix(dat[, 1:2])
-  
-  for (trial in 1:nTrials) {
-    # output by GP with particular parameter settings
-    # don't forget mean centering and standardization.... mean is already 0 :)
-    if (trial > 1) {
-      out <- bayesianMeanTracker(X[trial, 1:2], y[trial], theta = lambda, prevPost = out, mu0Par = mu0, var0Par = var0)
-    } else {
-      out <- bayesianMeanTracker(X[trial, 1:2], y[trial], theta = lambda, prevPost = NULL, mu0Par = mu0, var0Par = var0)
-    }
+  for (r in unique(data$round)){
+    # collect choices for current round
+    #print(r)
+    round_df <- data%>%filter(round == r)
+    #get environment as seen by participant
     # browser()
-    # utility vector. transpose if you use greedyMean
-    # where is everybody?
-    # here i need a function that calls bayesianMeanTracker. n times and returns the values X for each n. Also, i need some kind of list, where i save the prior for each instance....
-    #
-    # browser()
-    utilityVec <- ucb(out, beta)
-    utilityVec[social_choices[trial]]<-utilityVec[social_choices[trial]]+zeta# social update of utility
-    # softmaximization
-    p <- exp(utilityVec / tau)
-    # probabilities
-    p <- p / colSums(p)
-    # numerical overflow
-    p <- (pmax(p, 0.00001))
-    p <- (pmin(p, 0.99999))
-    ind <- sample(1:64, 1, prob = p) # sample from an adolescent environemnt
-    
-    X <- rbind(X, as.matrix(dat[ind, 1:2]))
-    # bind y-observations
-    y <- rbind(y, as.matrix(rnorm(n = 1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))) # change this into a sample.
-    
-    one_trial_choices <- data.frame(
-      trial = trial, 
-      x = as.numeric(X[trial, 1]), 
-      y = as.numeric(X[trial, 2]),
-      z = as.numeric(y[trial])
+    # get the right environment to sample from
+    #browser()
+    env=envs%>%filter(env==unique(round_df$env_number))#[[unique(round_df$env_number)]]
+    #browser()
+    trials <- nrow(round_df)
+    # social information
+    social_choices<-round_df$social_info
+    # Utilties of each choice
+    utilities <- NULL
+    prevPost <- NULL # set the previous posterior computation to NULL for qlearning
+    pMat <- NULL
+    #here, too
+    ind <- round_df$choices[1]
+    nTrials <- length(social_choices)
+    X <- as.matrix(dat[ind, 1:2]) # generate a new vector of Xs
+    y <- as.matrix(rnorm(1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))
+    # store first choice of round
+    round_choices<-data.frame(
+      trial = 1, 
+      x = as.numeric(X[1, 1]), 
+      y = as.numeric(X[1, 2]),
+      z = as.numeric(y[1]),
+      index=ind,
+      social_info=NA,
+      round=r,
+      envi=unique(round_df$env_number),
+      p_list=I(list(rep(1/64,64)))
     )
     
-    AllChoices <- rbind(AllChoices, one_trial_choices)
-    mu[[trial]] <- out$mu
-    sig[[trial]] <- out$sig
-  }
-  # dummy data frame
-  # }
-  # This Here is for Plotting
-  
-  Plot_dat <- expand.grid(x = 1:8, y = 1:8, trials = 0:max(one_trial_choices$trial))
-  Plot_dat$sample <- 0
-  Plot_dat$out <- 0
-  Plot_dat$mu <- 0
-  Plot_dat$sig <- 40
-  
-  for (i in 1:length(AllChoices$x)) {
-    AllChoices$y[i]
-    AllChoices$x[i]
-    Plot_dat[Plot_dat$x == AllChoices$x[i] & Plot_dat$y == AllChoices$y[i] & Plot_dat$trials == AllChoices$trial[i], ]$sample <- 1
-    Plot_dat[Plot_dat$trials == AllChoices$trial[i], ]$out <- AllChoices$z[i]
-    Plot_dat[Plot_dat$trials == AllChoices$trial[i], ]$mu <- mu[[i]]
-    Plot_dat[Plot_dat$trials == AllChoices$trial[i], ]$sig <- sig[[i]]
-  }
-  # browser()
-  
-  Plot_dat$iter <- iter
-  return(Plot_dat)
+    # loop over trials
+    for (t in 1:(trials-1)) {
+      # output by GP with particular parameter settings
+      # don't forget mean centering and standardization.... mean is already 0 :)
+      #browser()
+      #print(r)
+      #print(t)
+      if (t > 1) {
+        out <- learning_model_fun(ind, y[t], theta = lr, prevPost = out, mu0Par = mu0)
+        
+      } else {
+        out <- learning_model_fun(ind, y[t], theta = lr, prevPost = NULL, mu0Par = mu0)
+      }
+      #browser()
+      #utilities
+      p<-mix_soc_softmax_epsilonGreedy(out,epsilon,tau,zeta,social_choices,y=y[1:t],t)
+      # numerical overflow
+      p <- (pmax(p, 0.00001))
+      p <- (pmin(p, 0.99999))
+      #  browser()
+      ind <- sample(1:64, 1, prob = p) # choice index
+      
+      # collect x y coordinate of choice
+      X <- rbind(X, as.matrix(dat[ind, 1:2]))
+      # sample from environment
+      y <- rbind(y, as.matrix(rnorm(n = 1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))) 
+      #  browser()
+      # y_real=rbind
+      # write it to the next trial index because choice has already been made, learning will happen in next round
+      one_trial_choices <- data.frame(
+        trial = t+1, 
+        x = as.numeric(X[t+1, 1]), 
+        y = as.numeric(X[t+1, 2]),
+        z = as.numeric(y[t+1]),
+        index=ind,
+        social_info=social_choices[t+1],
+        round=r,
+        envi=unique(round_df$env_number),
+        #util_list=I(list(utilityVec)),
+        p_list=I(list(p))
+      )
+      
+      round_choices <- rbind(round_choices, one_trial_choices)
+      # browser()
+    }
+    all_choices<-rbind(all_choices,round_choices)
+  }# end rounds
+  #browser()
+  return(all_choices)
 }
+
+
+
+##---------------------------------------------------------------
+##    Model: Q-learning 2 learning rates with 3social weight and greedy   --
+##---------------------------------------------------------------
+
+simumalte_2lr_3sw_softmax_egreedy <- function(par, learning_model_fun, acquisition_fun,data,envs) {
+  # for (rep in 1:ntrialss){
+  # unpack
+  #browser()
+  #par<-exp(par)#parameters are defined in logspace, we exponentiate them here
+  lr <- c(par[1], par[2])# "learningrate" 1 is positive, 2 is negative
+  tau<-par[3]
+  epsilon <- par[4] #  "random" exploration
+  zeta <- c(par[5],par[6],par[7],par[8]) # scales social info use
+  # scales social info use
+  mu0 <- 0
+  
+  mu <- list()
+  all_choices <- NULL
+  dummy <- NULL
+  
+  #look up samples
+  dat=expand.grid(x1=0:7,x2=0:7)
+  plot_dat=list()
+  chosen=NULL
+  # browser()
+  all_choices<-NULL
+  
+  for (r in unique(data$round)){
+    # collect choices for current round
+    #print(r)
+    round_df <- data%>%filter(round == r)
+    #get environment as seen by participant
+    # browser()
+    # get the right environment to sample from
+    #browser()
+    env=envs%>%filter(env==unique(round_df$env_number))#[[unique(round_df$env_number)]]
+    #browser()
+    trials <- nrow(round_df)
+    # social information
+    social_choices<-round_df$social_info
+    soctype<-unique(round_df$soctype)#which type of SI?
+    
+    # Utilties of each choice
+    utilities <- NULL
+    prevPost <- NULL # set the previous posterior computation to NULL for qlearning
+    pMat <- NULL
+    #here, too
+    ind <- round_df$choices[1]
+    nTrials <- length(social_choices)
+    X <- as.matrix(dat[ind, 1:2]) # generate a new vector of Xs
+    y <- as.matrix(rnorm(1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))
+    # store first choice of round
+    round_choices<-data.frame(
+      trial = 1, 
+      x = as.numeric(X[1, 1]), 
+      y = as.numeric(X[1, 2]),
+      z = as.numeric(y[1]),
+      index=ind,
+      social_info=NA,
+      round=r,
+      envi=unique(round_df$env_number),
+      p_list=I(list(rep(1/64,64)))
+    )
+    
+    # loop over trials
+    for (t in 1:(trials-1)) {
+      # output by GP with particular parameter settings
+      # don't forget mean centering and standardization.... mean is already 0 :)
+      #browser()
+      #print(r)
+      #print(t)
+      if (t > 1) {
+        out <- learning_model_fun(ind, y[t], theta = lr, prevPost = out, mu0Par = mu0)
+        
+      } else {
+        out <- learning_model_fun(ind, y[t], theta = lr, prevPost = NULL, mu0Par = mu0)
+      }
+      #browser()
+      #utilities
+      p<-mix_3soc_softmax_epsilonGreedy(out,epsilon,tau,zeta,social_choices,soctype,y=y[1:t],t)#(out,epsilon,tau,zeta,social_choices,y=y[1:t],t)
+      # numerical overflow
+      p <- (pmax(p, 0.00001))
+      p <- (pmin(p, 0.99999))
+      #  browser()
+      ind <- sample(1:64, 1, prob = p) # choice index
+      
+      # collect x y coordinate of choice
+      X <- rbind(X, as.matrix(dat[ind, 1:2]))
+      # sample from environment
+      y <- rbind(y, as.matrix(rnorm(n = 1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))) 
+      #  browser()
+      # y_real=rbind
+      # write it to the next trial index because choice has already been made, learning will happen in next round
+      one_trial_choices <- data.frame(
+        trial = t+1, 
+        x = as.numeric(X[t+1, 1]), 
+        y = as.numeric(X[t+1, 2]),
+        z = as.numeric(y[t+1]),
+        index=ind,
+        social_info=social_choices[t+1],
+        round=r,
+        envi=unique(round_df$env_number),
+        #util_list=I(list(utilityVec)),
+        p_list=I(list(p))
+      )
+      
+      round_choices <- rbind(round_choices, one_trial_choices)
+      # browser()
+    }
+    all_choices<-rbind(all_choices,round_choices)
+  }# end rounds
+  #browser()
+  return(all_choices)
+}
+
+
+##---------------------------------------------------------------
+##    Model: BMT with UCB  --
+##---------------------------------------------------------------
+
+simualte_bmt_ucb_softmax_egreedy <- function(par, learning_model_fun, acquisition_fun,data,envs) {
+  # for (rep in 1:ntrialss){
+  # unpack
+  #browser()
+  #par<-exp(par)#parameters are defined in logspace, we exponentiate them here
+  error_var <- c(par[1])# "learningrate" 1 is positive, 2 is negative
+  ucb<-par[2]
+  tau<-par[3]
+  epsilon <- par[4] #  "random" exploration
+  mu0 <- 0
+  var0<-10
+  
+  mu <- list()
+  all_choices <- NULL
+  dummy <- NULL
+  
+  #look up samples
+  dat=expand.grid(x1=0:7,x2=0:7)
+  plot_dat=list()
+  chosen=NULL
+  # browser()
+  all_choices<-NULL
+  
+  for (r in unique(data$round)){
+    # collect choices for current round
+    #print(r)
+    round_df <- data%>%filter(round == r)
+    #get environment as seen by participant
+    # browser()
+    # get the right environment to sample from
+    #browser()
+    env=envs%>%filter(env==unique(round_df$env_number))#[[unique(round_df$env_number)]]
+    #browser()
+    trials <- nrow(round_df)
+    # social information
+    social_choices<-round_df$social_info
+    # Utilties of each choice
+    utilities <- NULL
+    prevPost <- NULL # set the previous posterior computation to NULL for qlearning
+    pMat <- NULL
+    #here, too
+    ind <- round_df$choices[1]
+    nTrials <- length(social_choices)
+    X <- as.matrix(dat[ind, 1:2]) # generate a new vector of Xs
+    y <- as.matrix(rnorm(1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))
+    # store first choice of round
+    round_choices<-data.frame(
+      trial = 1, 
+      x = as.numeric(X[1, 1]), 
+      y = as.numeric(X[1, 2]),
+      z = as.numeric(y[1]),
+      index=ind,
+      social_info=NA,
+      round=r,
+      envi=unique(round_df$env_number),
+      exp_ch=round_df$choices[1],
+      exp_rew=round_df$points[1],
+      p_list=I(list(rep(1/64,64)))
+    )
+    
+    # loop over trials
+    for (t in 1:(trials-1)) {
+      # output by GP with particular parameter settings
+      # don't forget mean centering and standardization.... mean is already 0 :)
+      #browser()
+      #print(r)
+      #print(t)
+      if (t > 1) {
+        out <- learning_model_fun(ind, y[t], theta = error_var, prevPost = out, mu0Par = mu0,var0Par=var0)
+        
+      } else {
+        out <- learning_model_fun(ind, y[t], theta = error_var, prevPost = NULL, mu0Par = mu0,var0Par=var0)
+      }
+      #browser()
+      #utilities
+      p<-KF_mix_softmax_epsilonGreedy(out,epsilon,tau,ucb,y=y[1:t],t)
+      #browser()
+      # numerical overflow
+      p <- (pmax(p, 0.00001))
+      p <- (pmin(p, 0.99999))
+      #  browser()
+      
+      ind <- sample(1:64, 1, prob = p) # choice index
+      
+      
+      # collect x y coordinate of choice
+      X <- rbind(X, as.matrix(dat[ind, 1:2]))
+      # sample from environment
+      
+      y <- rbind(y, as.matrix(rnorm(n = 1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))) 
+      # y_real=rbind
+      # write it to the next trial index because choice has already been made, learning will happen in next round
+      one_trial_choices <- data.frame(
+        trial = t+1, 
+        x = as.numeric(X[t+1, 1]), 
+        y = as.numeric(X[t+1, 2]),
+        z = as.numeric(y[t+1]),
+        index=ind,
+        social_info=social_choices[t+1],
+        round=r,
+        envi=unique(round_df$env_number),
+        exp_ch=round_df$choices[t+1],
+        exp_rew=round_df$points[t+1],
+        #util_list=I(list(utilityVec)),
+        p_list=I(list(p))
+      )
+      
+      round_choices <- rbind(round_choices, one_trial_choices)
+      # browser()
+    }
+    all_choices<-rbind(all_choices,round_choices)
+  }# end rounds
+  #browser()
+  return(all_choices)
+}
+##----------------------------------------------------------------
+##     Model: Q-learning 1 learning rate with social weight     --
+##----------------------------------------------------------------
+
+# explore_env_social_fitted_pars_social <- function(par, learning_model_fun, acquisition_fun,data,envs) {
+#   # for (rep in 1:ntrialss){
+#   # unpack
+#   #browser()
+#   #par<-exp(par)#parameters are defined in logspace, we exponentiate them here
+#   lr <- par[1]# "learningrate"
+#   tau <- par[2] #  "random" exploration
+#   zeta<-par[3] # scales social info use
+#   mu0=0
+#   
+#   mu=list()
+#   all_choices <- NULL
+#   dummy <- NULL
+#   #look up samples
+#   dat=expand.grid(x1=0:7,x2=0:7)
+#   plot_dat=list()
+#   chosen=NULL
+#  # browser()
+#   all_choices<-NULL
+#   
+#   for (r in unique(data$round)){
+#     # collect choices for current round
+#     #print(r)
+#     round_df <- data%>%filter(round == r)
+#     #get environment as seen by participant
+#    # browser()
+#     # get the right environment to sample from
+#     #browser()
+#     env=envs%>%filter(env==unique(round_df$env_number))#[[unique(round_df$env_number)]]
+#     #browser()
+#     trials <- nrow(round_df)
+#     # social information
+#     social_choices<-round_df$social_info
+#     # Utilties of each choice
+#     utilities <- NULL
+#     prevPost <- NULL # set the previous posterior computation to NULL for qlearning
+#     pMat <- NULL
+#     #here, too
+#     ind <- round_df$choices[1]
+#     nTrials <- length(social_choices)
+#     X <- as.matrix(dat[ind, 1:2]) # generate a new vector of Xs
+#     y <- as.matrix(rnorm(1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))
+#     # store first choice of round
+#     round_choices<-data.frame(
+#       trial = 1, 
+#       x = as.numeric(X[1, 1]), 
+#       y = as.numeric(X[1, 2]),
+#       z = as.numeric(y[1]),
+#       index=ind,
+#       social_info=NA,
+#       round=r,
+#       util_list=NA,# there are no utilities yet
+#       p_list=I(list(rep(1/64,64)))
+#     )
+#     
+#     # loop over trials
+#     for (t in 1:(trials-1)) {
+#       # output by GP with particular parameter settings
+#       # don't forget mean centering and standardization.... mean is already 0 :)
+#      # browser()
+#       if (t > 1) {
+#         out <- RW_Q(ind, y[t], theta = lr, prevPost = out, mu0Par = mu0)
+#       } else {
+#         out <- RW_Q(ind, y[t], theta = lr, prevPost = NULL, mu0Par = mu0)
+#       }
+#       #browser()
+#       #utilities
+#       utilityVec <- ucb(out, 0)
+#       utilityVec[social_choices[t]]<-utilityVec[social_choices[t]]+zeta# social update of utility
+#       # softmaximization
+#       #utilities=utilityVec-max(utilityVec)# get no NAs
+#       p <- exp(utilityVec / tau)
+#       # probabilities
+#       p <- p / colSums(p)
+#       # numerical overflow
+#       p <- (pmax(p, 0.00001))
+#       p <- (pmin(p, 0.99999))
+#     #  browser()
+#       ind <- sample(1:64, 1, prob = p) # choice index
+#       
+#       # collect x y coordinate of choice
+#       X <- rbind(X, as.matrix(dat[ind, 1:2]))
+#       # sample from environment
+#       y <- rbind(y, as.matrix(rnorm(n = 1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))) 
+#     #  browser()
+#      # y_real=rbind
+#       # write it to the next trial index because choice has already been made, learning will happen in next round
+#       one_trial_choices <- data.frame(
+#         trial = t+1, 
+#         x = as.numeric(X[t+1, 1]), 
+#         y = as.numeric(X[t+1, 2]),
+#         z = as.numeric(y[t+1]),
+#         index=ind,
+#         social_info=social_choices[t+1],
+#         round=r,
+#         util_list=I(list(utilityVec)),
+#         p_list=I(list(p))
+#       )
+#       
+#       round_choices <- rbind(round_choices, one_trial_choices)
+#      # browser()
+#     }
+#     all_choices<-rbind(all_choices,round_choices)
+#   }# end rounds
+#   #browser()
+#   return(all_choices)
+# }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
