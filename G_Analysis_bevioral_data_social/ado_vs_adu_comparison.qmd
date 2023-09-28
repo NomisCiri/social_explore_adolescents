@@ -1,0 +1,366 @@
+```{r echo=FALSE, warning=FALSE}
+
+pacman::p_load(tidyverse, rjson, data.table, gghalves, here, lmerTest, infer)
+
+
+```
+
+```{r load data, echo=FALSE, warning=FALSE, message=FALSE }
+
+explore_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants.csv")) %>% 
+  dplyr::filter(!is.na(points)) %>% 
+  dplyr::filter(!is.na(gempresent)) %>% 
+  dplyr::filter(!is.na(demo_type))
+
+
+
+all_data <-
+  explore_data %>%    group_by(unique_rounds) %>%   mutate(
+    mean_points = mean(points),
+    sd_points = sd(points) ,
+    z = (points - mean_points) / sd_points,
+    gem_cell = cell[match(round_gem_found, trial)],
+    #data_source = 'experiment', 
+    gemlabel = ifelse(gempresent == 0, "gem absent", "gem present")   )   
+  
+
+```
+
+## Demographics
+
+```{r}
+
+```
+
+# Behavior
+
+## Task sanity checks
+
+### n of boxes open
+
+Result 1: adults open slightly more boxes
+
+```{r warning=FALSE, echo=FALSE,  message=FALSE}
+
+boxes_data <- 
+all_data %>% 
+  group_by(round, uniqueID, gempresent, group, demo_type) %>% 
+  summarise(boxes_opened = n_distinct(cells)) 
+
+summary(lmer(boxes_opened ~ group * gempresent + demo_type + (1|uniqueID), data = boxes_data ))
+
+all_data %>%
+  group_by(round, uniqueID, gempresent, gem_found, group) %>%
+  summarise(boxes_opened = n_distinct(cells)) %>%
+  ggplot(aes(x = factor(gempresent), y = boxes_opened)) +
+  geom_boxplot(aes(fill = factor(gem_found))) +
+  scale_fill_brewer(name = "gem found", label = c("no", "yes")) +
+  scale_x_discrete(label = c("no", "yes")) +
+  labs(x = "gem present", y = 'n of different boxes') +
+  theme_bw(base_size = 20) +  facet_grid( ~ group)
+```
+
+people open less boxes when gem is found early\
+also people open fewer boxes when demonstrator finds gem
+
+```{r warning=FALSE, echo=FALSE,  message=FALSE}
+
+all_data %>% 
+  filter(gem_found==1) %>% 
+  group_by(round, uniqueID, gempresent, gem_found, group) %>% 
+  summarise(boxes_opened = n_distinct(cells),
+            round_gem_found=round_gem_found, 
+            demo_type = demo_type) %>% 
+  ggplot(aes(x = factor(round_gem_found), y = boxes_opened, color = demo_type)) +
+  stat_summary()+
+  #scale_fill_brewer(name = "gem found", label = c("no", "yes"))+
+ # scale_x_discrete(label = c("no", "yes")) +
+  labs(x = "trial gem found", y = 'n of different boxes') +
+  theme_bw(base_size = 15) 
+```
+
+## Performance
+
+### Distribution of points scored
+
+```{r warning=FALSE, echo=FALSE,  message=FALSE}
+# absolute points
+
+all_data %>% 
+  group_by(uniqueID, gempresent, points, group) %>% 
+  distinct() %>% 
+  ggplot() +
+  geom_histogram(aes( x = points, y = stat(density), fill = gemlabel), binwidth = 10) +
+  geom_vline(xintercept = 0, lty = 1, size = 1.5, color = 'red') + 
+  #geom_half_point(aes(x = factor(gempresent), y = points), alpha = 0.02) +
+  theme_bw(base_size = 20) +
+  labs(title = 'points scored per click', y = 'proportion') +
+  (facet_grid(~group))
+
+```
+
+### Points score over time
+
+adolescents score more points in gem environments
+
+```{r echo=FALSE, message=FALSE}
+
+all_data %>%
+  group_by(uniqueID, trial) %>%
+  ggplot(aes(x = trial, y = points, color = factor(gem_found), shape = group)) +
+  stat_summary() +
+  theme_minimal(base_size = 15) +
+  scale_color_brewer(type = "qual", palette = 2, name = "gem found", label = c("no", "yes"))+
+  facet_wrap( ~ gemlabel) +
+  labs(title = 'avg points per trial') +
+  theme_bw(base_size = 20) 
+
+
+```
+
+adolescents seem to score more points on average when demonstrators find gems
+
+```{r echo=FALSE, message=FALSE}
+
+all_data %>%
+  filter(gempresent == 1) %>% 
+  group_by(uniqueID, trial) %>%
+  ggplot(aes(x = trial, y = points, color = demo_type, shape = factor(gem_found))) +
+  stat_summary() +
+  theme_minimal(base_size = 15) +
+  scale_color_brewer(type = "qual", palette = 2, name = "demonnstrator type")+
+  facet_wrap( ~ group) +
+  labs(title = 'avg points per trial in gem environments') +
+  theme_bw(base_size = 15)
+
+```
+
+### n of gems found
+
+adults find slightly more gems on average
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+all_data %>% 
+  filter(gempresent == 1) %>% 
+  group_by(uniqueID, round, group) %>% 
+  summarise(gem_found = ifelse(1 %in% gem, 1, 0)) %>% 
+  group_by(uniqueID, group) %>% 
+  summarise(n_gems = sum(gem_found)) %>% 
+  infer::t_test(n_gems ~ group)
+  
+
+# mean_gems_by_groups <- 
+# all_data %>% 
+#   filter(gempresent == 1) %>% 
+#   group_by(uniqueID, round, group) %>% 
+#   summarise(gem_found = ifelse(1 %in% gem, 1, 0)) %>% 
+#   group_by(uniqueID, group) %>% 
+#   summarise(n_gems = sum(gem_found)) %>% 
+#   group_by(group) %>% 
+#   summarise(mean_gems = mean(n_gems))
+# 
+# 
+# 
+# all_data %>% 
+#   filter(gempresent == 1) %>% 
+#   group_by(uniqueID, round, group) %>% 
+#   summarise(gem_found = ifelse(1 %in% gem, 1, 0)) %>% 
+#   group_by(uniqueID, group) %>% 
+#   summarise(n_gems = sum(gem_found)) %>% 
+#   ggplot() +
+#   geom_histogram(aes(x =  n_gems, y =stat(density)), binwidth = 1, fill = "black")+
+#   geom_vline(data = mean_gems_by_groups, aes(xintercept = (mean_gems))) +
+#   theme_bw(base_size = 20) +
+#   labs(x = 'n of environments in which a gem was found') +
+#   facet_wrap(~group)
+# 
+
+all_data %>% 
+  filter(gempresent == 1) %>% 
+  group_by(uniqueID, round, group) %>% 
+  summarise(gem_found = ifelse(1 %in% gem, 1, 0)) %>% 
+  group_by(uniqueID, group) %>% 
+  summarise(n_gems = sum(gem_found)) %>% 
+  ggplot() +
+  geom_boxplot(aes(x =  n_gems/8, y = group, fill = group) ) +
+  stat_summary(aes(x =  n_gems/8, y = group, fill = group)) +
+  labs(title = 'gem found by group', x = 'proportion of gem found') +
+  guides(fill = FALSE)
+
+
+```
+
+most participants find gems in half of the environments that contain them (4 out 8), and some more than that.
+
+## explore exploit after gem or not
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# 
+# 
+# explore_exploit <- 
+
+all_data %>%
+  group_by(uniqueID, group) %>%
+  mutate(exploit = ifelse(lead(cells) == cells, 1, 0),
+         explore = ifelse(lead(cells) != cells, 1, 0)) %>%
+  mutate(out_cat = case_when(points > 150 ~ 1,
+                             points < 0 ~ 3,
+                             TRUE ~ 2)) %>% pivot_longer(cols = c(exploit, explore), names_to = "explore_exploit") %>%
+  ggplot(aes(
+    x = out_cat,
+    y = value,
+    color = explore_exploit,
+    shape = group
+  )) +
+  stat_summary(size = 1) +
+  stat_summary(geom = "line") +
+  scale_y_continuous(name = "proportion") +
+  scale_x_continuous(
+    name = "reward type",
+    breaks = c(1, 2, 3),
+    labels = c("gem", "no gem", "loss")
+  ) +
+  #scale_color_brewer(type = 'qual', palette = 6, name = 'explore/exploit')+
+  scale_color_manual(values = c("#FFC20A", "#0C7BDC"), name = 'explore/exploit' )+
+  theme_bw(15) +
+  facet_wrap(~gemlabel)+
+ # guides(shape = FALSE)+
+    theme(axis.text=element_text(size=20))+
+  labs(title = 'explore or exploit by reward type')
+
+# 
+#   ggsave(filename = 'explore_exploit.png', explore_exploit, width = 12.5,height=6  )
+
+
+    
+```
+
+## Social behavior
+
+also add age here
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+
+all_data %>% 
+  filter(!is.na(demo_type)) %>% 
+  mutate(social_info_use_num = ifelse(social_info_use=="copy", 1, 0)) %>% 
+  group_by(uniqueID, round,group) %>% 
+  mutate(n = sum(social_info_use_num)) %>% 
+  select(unique_rounds, n, demo_type) %>% 
+  distinct() %>% 
+  group_by(uniqueID,demo_type,group) %>% 
+  summarize(mean_copy = mean(n),
+            demo_type = demo_type) %>% 
+  ggplot()+
+  geom_histogram(aes(x=mean_copy, y = stat(density), group = demo_type, fill = demo_type), binwidth = 1) +
+  facet_grid(~demo_type+group) +
+  labs(title = 'average copy per participant in each treatment')+
+  theme_bw(15)
+
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+points_by_treat <- all_data %>% 
+  filter(!is.na(demo_type)) %>% 
+  mutate(social_info_use_num = ifelse(social_info_use=="ignore", 0, 1)) %>% 
+  mutate(n = sum(social_info_use_num)) %>% 
+  ggplot()+
+  stat_summary(aes (x = n, y = tot_points, color = factor(gem_found, levels = c(1,0)), shape = group)) +
+  geom_smooth(aes (x = n, y = tot_points),method = "lm")+
+  facet_wrap(~demo_type, scales = 'free')+  
+  theme_bw(base_size = 15) +
+  scale_color_brewer(type = "qual",palette = 2, name = "gem found", label = c("yes", "no"))+
+  labs(x = 'n of rounds copying social information', y='total points', title = 'total points by frequency of social info use') +
+    theme_bw(15)+
+  theme(axis.text=element_text(size=15))
+
+points_by_treat
+  
+
+# ggsave(filename = 'points_by_treat.png', points_by_treat, width = 14,height=6  )
+
+
+all_data %>%
+  ggplot() +
+  geom_col(aes(x = factor(trial), y = social_info_use, fill = social_info_use))
+
+```
+
+When are gems found
+
+```{r}
+
+  all_data %>%
+  filter(gempresent == 1) %>%
+  ungroup %>%
+  group_by(demo_type, gem_found, group) %>%
+  select(uniqueID, round, gem_found, round_gem_found, gempresent, group) %>%
+  distinct() %>%
+  select(gem_found, round_gem_found, group) %>%
+  summarise(mean_round_found = mean(round_gem_found, na.rm = TRUE),
+            n = n()) %>%
+  ungroup() %>%
+  group_by(demo_type, group) %>%
+  mutate(freq = n / sum(n)) %>%
+  ggplot() +
+  geom_col(aes(
+    x = demo_type,
+    y = freq,
+    fill = factor(gem_found, levels = c(1,0))
+  )) +
+  scale_fill_brewer(
+    type = "qual",
+    palette = 7,
+    name = "",
+    label = c("yes", "no")
+  ) +
+  labs(x = 'social information type', title = 'did players find gems?', y = 'proportion of rounds') +
+    theme_classic(base_size = 15) +
+    theme(axis.text = element_text(size = 10)) +
+    facet_wrap( ~ group)
+  
+
+  #ggsave(filename = 'gem_found.png', gem_found, width = 8,height=6  )
+  
+```
+
+### people don't copy exploit?
+
+```{r merge datasets, warning=FALSE, echo=FALSE, message=FALSE}
+
+  
+  explore_after_gem <-
+  all_data %>%   ungroup() %>%  group_by(unique_rounds) %>%   mutate(
+    remain_gem = case_when(
+      trial > round_gem_found &
+        cell == gem_cell ~ 1,
+      trial > round_gem_found &
+        cell != gem_cell ~ 0,
+      TRUE ~ NaN
+    )
+  ) %>%   ungroup()  
+
+
+problem_data <- explore_after_gem %>%
+  
+  filter(remain_gem != 1) %>%    filter(gem_found == 1 &
+                                          trial > round_gem_found) %>%    ungroup() %>%    group_by(uniqueID, round) %>%    mutate(
+                                            n_explore_after_gem = length(unique(cell)),
+                                            remaining_trials = 25 - round_gem_found,
+                                            n_clicks =  n_explore_after_gem / remaining_trials
+                                          )  
+
+
+problem_data %>%    select(unique_rounds, n_clicks, round_gem_found, demo_type, group) %>%    distinct() %>%    ggplot() +   geom_histogram(aes(x = n_clicks, fill =                                                                                                                                                                                      factor(demo_type)), binwidth = .02) +   geom_vline(aes(xintercept = mean(n_clicks))) +   theme_bw(base_size = 15) +   labs(x = 'proportion of explore clicks after gem',         y = 'n of unique rounds (1 environment)', title = "behavior after gem was found") +    facet_wrap( ~ group)  
+
+
+explore_after_gem %>%    filter(remain_gem != 1) %>%    group_by(unique_rounds, round_gem_found) %>%    summarise(n = n())  
+
+all_data %>%    ungroup() %>%    select(unique_rounds, gempresent, gem_found) %>%    group_by(gempresent, gem_found) %>%    distinct() %>%    summarise(n = n())
+```
+
+# 
