@@ -16,13 +16,13 @@ knitr::opts_knit$set(root.dir = here()) # set root fot the whole file
 This here loads all reasonable models and compares them and then plots some stuff for the winning model and makes simulations
 
 ```{r}
-source('./C_modelfittingCode/learning_models.R')
+source('./C_modelfittingCode/diff_evo/learning_models.R')
 
 ## load functions that perform Maximul Likelihood Estimation
-source("./C_modelfittingCode/models_mle.R")
+source("./C_modelfittingCode/diff_evo/models_mle.R")
 
 ## load functions that initialize the model fit
-source("./C_modelfittingCode/model_fitting_functions_social_bandits.R")
+source("./C_modelfittingCode/diff_evo/model_fitting_functions_social_bandits.R")
 
 ## load behavioral data
 social_data <-  read_csv(file = paste0("./data/social/data_social_all_participants.csv")) %>%#drop_na()

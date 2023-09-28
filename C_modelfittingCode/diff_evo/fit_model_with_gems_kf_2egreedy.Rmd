@@ -45,6 +45,7 @@ social_data%>%group_by(demo_type,player,round,group)%>%
   count(social_info_use)%>%filter(!is.na(social_info_use))%>%filter(social_info_use=="copy")%>%
   brms::brm(n~group*demo_type,data=.,family="poisson",chains=4,cores=4)
 ```
+
 # Fit model
 Either fit the model or load from disk
 
