@@ -7,7 +7,7 @@
 ###########################################################################
 ###########################################################################
 
-pacman::p_load(tidyverse)
+pacman::p_load(tidyverse, jsonlite)
 
 ## create x & y variables
 data_adolescents <-
@@ -46,6 +46,8 @@ when_gem_found <-  data %>%
   ungroup()  %>%
   select(unique_rounds,
          round_gem_found)
+
+##
 
 ## join the datasets
 data <- left_join(data, when_gem_found) %>% 

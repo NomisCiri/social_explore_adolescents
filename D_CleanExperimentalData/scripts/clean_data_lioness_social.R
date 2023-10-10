@@ -9,6 +9,7 @@
 ## packages and source code
 pacman::p_load(tidyverse, readxl)
 source('D_CleanExperimentalData/scripts/readLIONESS.R')
+source('D_CleanExperimentalData/scripts/readPROLIFIC.R')
 
 ## Import adolescents data
 folder_ado <- 'D_CleanExperimentalData/adolescents_data/raw_data/social/lioness/'
@@ -20,15 +21,17 @@ data_adolescents <- readLIONESS(folder_ado, writinglocation_ado, periods)
 folder_adu <- 'D_CleanExperimentalData/adults_data//raw_data/social/lioness/'
 writinglocation_adu <- 'D_CleanExperimentalData/adults_data/raw_data/social/'
 periods <- 12 # how many max periods in this 
-data_adults <- readLIONESS(folder_adu, writinglocation_adu, periods) 
+data_adults <- readLIONESS(folder_adu, writinglocation_adu, periods, prolificID = TRUE) 
 
-## import datasets with demographics for adolescents
-demographics <- read.csv('data/social/clean_data_demographics.csv')
+## import dataset with demographics for adolescents
+demographics_ado <- read.csv('data/social/clean_data_demographics_adolescents.csv')
+
+## import dataset with demographics for adults
+demographics_adu <- read.csv('data/social/clean_data_demographics_adults.csv')
 
 ##---------------------------------------------------------------
 ##               create adolescents long dataset               --
 ##---------------------------------------------------------------
-
 
 ## get match of playerNr and participantNr (saved in externalID)
 linking_data <- read.csv('D_CleanExperimentalData/adolescents_data/raw_data/social/1-session-raw.csv') %>% 
@@ -46,7 +49,7 @@ length(unique(data_with_id$participantNr))
 
 ## Who is missing? 
 finished <- unique(data_with_id$participantNr)
-all <- unique(demographics$participantNr)
+all <- unique(demographics_ado$participantNr)
 not_included <- all[!all %in% finished]
 
 ## find players for whom the ID was not saved automatically and was entered manually during experiment 
@@ -68,7 +71,7 @@ not_included <- all[!all %in% finished]
 ## change ID to participant who made mistake
 data_with_id$participantNr[data_with_id$participantNr == 30523] <- 30623 
 
-data_full_adolescents <-  left_join(data_with_id, demographics, by = "participantNr")
+data_full_adolescents <-  left_join(data_with_id, demographics_ado, by = "participantNr")
 
 ## check if any missing values
 data_full_adolescents %>% 
@@ -184,6 +187,11 @@ write.csv(data_long_adolescents, 'D_CleanExperimentalData/adolescents_data/clean
 ##----------------------------------------------------------------
 ##                  create adults long dataset                  --
 ##----------------------------------------------------------------
+
+## add demographics info
+
+
+
 
 # ## remove rounds where clicked where not saved
 # data_adults <- data_adults %>% 
