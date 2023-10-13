@@ -21,7 +21,8 @@ data_adolescents <- readLIONESS(folder_ado, writinglocation_ado, periods)
 folder_adu <- 'D_CleanExperimentalData/adults_data//raw_data/social/lioness/'
 writinglocation_adu <- 'D_CleanExperimentalData/adults_data/raw_data/social/'
 periods <- 12 # how many max periods in this 
-data_adults <- readLIONESS(folder_adu, writinglocation_adu, periods, prolificID = TRUE) 
+data_adults <- readLIONESS(folder_adu, writinglocation_adu, periods, prolificID = TRUE) %>% 
+  select(-c(age,gender))
 
 ## import dataset with demographics for adolescents
 demographics_ado <- read.csv('data/social/clean_data_demographics_adolescents.csv')
@@ -190,7 +191,14 @@ write.csv(data_long_adolescents, 'D_CleanExperimentalData/adolescents_data/clean
 
 ## add demographics info
 
+demographics_adu <- demographics_adu %>% 
+  select(Participant.id, Age, Sex) %>% 
+  rename(age = Age) %>% 
+  mutate(age = as.integer(age),
+         gender = ifelse(Sex == "Female", 1, ifelse(Sex == "Male", 2, 3)))
 
+
+data_adults <- left_join(data_adults, demographics_adu, by = "Participant.id")
 
 
 # ## remove rounds where clicked where not saved
@@ -240,7 +248,7 @@ for (n in 1:length(unique(data_adults$playerNr))) {
     age <- one_player_data$age[t]
     gender <- one_player_data$gender[t]
     soc_info_round <- one_player_data$thisRound[t]
-    participantNr <- one_player_data$participantNr[t]
+    #participantNr <- one_player_data$participantNr[t]
     
     # save them into temporary data frame
     temp <- data.frame(
@@ -273,7 +281,7 @@ for (n in 1:length(unique(data_adults$playerNr))) {
 
 ## inspect data that comes out with some NAs
 problem_data <- data_long_adults %>% 
-  select(-c(age,gender)) %>% 
+ # select(-c(age,gender)) %>% 
   filter_all(any_vars(is.na(.))) 
 
 ## sanity checks @andrea @simon: think of more?
