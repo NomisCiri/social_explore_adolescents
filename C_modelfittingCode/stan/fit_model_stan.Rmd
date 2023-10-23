@@ -166,3 +166,9 @@ kalman_mod<-stan(
   )
 
 ```
+
+# read stan mod
+
+```{r}
+kalman_mod<-readRDS("./A_GeneratedFiles/modelfits/stan/kalman_psi_mix_adults.rds")
+```

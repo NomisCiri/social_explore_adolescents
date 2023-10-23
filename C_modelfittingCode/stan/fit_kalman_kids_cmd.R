@@ -105,10 +105,10 @@ data_list<-list(
 )
 
 kalman_mod<-stan(
-  file="./C_modelfittingCode/stan/model_code/kalman_nokeeper.stan",
+  file="./C_modelfittingCode/stan/model_code/Q_nokeeper.stan",
   data=data_list,
   pars =c("lr","tau"),
-  #init=1,
+  init=0,
   iter = 2000,
   chains=4,
   cores=4,
@@ -117,7 +117,7 @@ kalman_mod<-stan(
 
 saveRDS(kalman_mod,"./A_GeneratedFiles/modelfits/stan/kalman_psi_mix_kids.rds")
 
-#mod<-readRDS("./A_GeneratedFiles/modelfits/stan/kalman_psi_mix_kids.rds")
+mod<-readRDS("./A_GeneratedFiles/modelfits/stan/kalman_psi_mix_kids.rds")
 # 
 # library(tidybayes)
 # mod%>%tidybayes::spread_draws(lr[ppt],tau[ppt])%>%

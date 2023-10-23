@@ -20,8 +20,8 @@ data {
   real rewards[T_max,R_max,N];
   
   //social info
-  //int<lower=-1,upper=64> social_info[T_max,R_max,N];//index of social info (1:64)
-  //int<lower=-1,upper=R_max> env_rnd[R_max,N];//environment in which round
+  int<lower=-1,upper=64> social_info[T_max,R_max,N];//index of social info (1:64)
+  int<lower=-1,upper=R_max> env_rnd[R_max,N];//environment in which round
   // environments, i think i dont need that here
   // real envs_mean[64,R_max];//12 environments that define mean and varaince of bandit
   //real envs_var[64,R_max];//12 environments that define mean and varaince of bandit
@@ -40,17 +40,17 @@ parameters {
   cholesky_factor_corr[n_params] l_omega;   // prior correlation of parameters
   matrix[n_params,N] scale; // prior scaling for each parameter
   
-  // real<lower=0, upper=1> theta[N];
+  real<lower=0, upper=1> theta[N];
 }
 
 transformed parameters{
   
   //model parameters
   vector<lower=0>[N] lr;//error variance (scales kalman gain)
-  vector<lower=0.1 upper=20>[N] tau;//ucb
+  vector<lower=0>[N] tau;//ucb
   matrix[N, n_params] params_phi;// for non-centered paramatrezation
   
-  // vector[2] contributions[T_max,R_max,N];
+  vector[2] contributions[T_max,R_max,N];
   
   // model variables
   //real var_prior[N];
@@ -60,7 +60,7 @@ transformed parameters{
   //vector[64] utils_soc;
   
   real pe;
-  
+
   simplex[64] ps;
   simplex[64] c_p[T_max,R_max,N];
   
@@ -74,16 +74,15 @@ transformed parameters{
     params_phi = (diag_pre_multiply(sigmas, l_omega) * scale)';
     
     //beta=Phi_approx(mus[1]+params_phi[,1])*10;
-    lr=Phi_approx(mus[1]+params_phi[,1]);
-    tau=0.1+exp(mus[2]+params_phi[,2]);
-   // prior=mus[3]+params_phi[,3];
+    lr=Phi_approx(mus[1]+params_phi[,1])*3;
+    tau=exp(mus[2]+params_phi[,2]);
 
     //belief update
     for (ppt in 1:N){
       for (r in 1:R_subj[ppt]){
         // restart.
         belief_means=rep_vector(0,64);
-        // belief_vars=rep_vector(10,64);
+       // belief_vars=rep_vector(10,64);
         
         for (t in 1:T_max){
           //compute UCBs
@@ -99,12 +98,10 @@ transformed parameters{
           //new means
           belief_means[choices[t,r,ppt]]+=lr[ppt]*pe;
           //new variances
-          // belief_vars[choices[t,r,ppt]]*=(1-k_gain);
+         // belief_vars[choices[t,r,ppt]]*=(1-k_gain);
           
-          
-          //dummycode the mixture in here.
-          // contributions[t,r,ppt][1] = log(theta[ppt]) + categorical_lpmf(choices[t,r,ppt] | c_p[t,r,ppt]);
-          //contributions[t,r,ppt][2] = log1m(theta[ppt]) + categorical_lpmf(choices[t,r,ppt]  | ps);
+          contributions[t,r,ppt][1] = log(theta[ppt]) + categorical_lpmf(choices[t,r,ppt] | c_p[t,r,ppt]);
+          contributions[t,r,ppt][2] = log(1-theta[ppt]) + categorical_lpmf(choices[t,r,ppt]  | ps);
           
         }// end trial
       }// end round
@@ -116,19 +113,18 @@ transformed parameters{
 // 'y' to be normally distributed with mean 'mu'
 // and standard deviation 'sigma'.
 model {
-  mus~normal(0,2);
-  sigmas~gamma(1,0.1);
+  mus~normal(0,1);
+  sigmas~gamma(2,0.1);
   //subject level parameters (can do with colesky decomp later)
   to_vector(scale) ~ std_normal();
   // prior correlation of parameters
-  l_omega~lkj_corr_cholesky(1);   
-  //theta~beta(1,1);
+  l_omega~lkj_corr_cholesky(2);   
+  theta~beta(1,1);
   
   for (ppt in 1:N){
     for (r in 1:R_subj[ppt]){
       for (t in 1:T_max){
-        target += categorical_lpmf(choices[t,r,ppt] | c_p[t,r,ppt]);
-        //target += log_sum_exp(contributions[t,r,ppt][1],contributions[t,r,ppt][2]);      
+        target += log_sum_exp(contributions[t,r,ppt][:]);      
       }
     }
   }

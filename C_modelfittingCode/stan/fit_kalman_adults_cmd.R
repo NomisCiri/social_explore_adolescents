@@ -7,6 +7,48 @@
 ###################################
 library(tidyverse)
 library(rstan)
+library(data.table)
+source("./B_SimulationCode/load_environments_social_experiment.R")
+
+envs<-load_envs_social()
+
+#bootstrap for random null distribution
+
+gem<-envs%>%filter(env==9)
+no_gem<-envs%>%filter(env==4)
+
+bootsraps=1000
+rewards_bt<-NULL
+
+for (bt in 1:bootsraps){
+  rews_1<-NULL
+  for (i in 1:12){
+    for (t in 1:25){
+      idx<-sample(1:64,1)
+      if (i<9){
+        rew=rnorm(mean = gem[idx,]%>%pull(Mean),
+                  sd = gem[idx,]%>%pull(Variance),
+                  n = 1)
+      }else {
+        rew=rnorm(mean = no_gem[idx,]%>%pull(Mean),
+                  sd = no_gem[idx,]%>%pull(Variance),
+                  n = 1)
+      }
+      rews_1<-cbind(rews_1,as.numeric(rew))
+    }
+  }
+  rewards_bt<-rbind(rewards_bt,rews_1)
+}
+
+write_rds(rewards_bt,file = "A_GeneratedFiles/bootstrapped_random_rewards.rds")
+rewards_bt<-read_rds("A_GeneratedFiles/bootstrapped_random_rewards.rds")
+
+points<-data%>%pull(points)
+
+t.test(points,rewards_bt)
+
+social_data%>%group_by(player)%>%
+  mutate(random_test=t.test(points,rewards_bt))
 
 social_data <-  read_csv(file = paste0("./data/social/data_social_all_participants.csv"))
 social_data<-social_data%>%mutate(player=ifelse(group=="adults",player,player+1000))#%>%filter(player %in% 1:50)
@@ -34,7 +76,7 @@ R_subj=social_data%>%group_by(player)%>%summarise(n_r=length(unique(round)))%>%p
 
 #keep<-unique(social_data$player)[R_subj==12]# keep only participants who completed all trials
 # first: cheat and take out "incomplete" cases
-social_data_forfit<-social_data%>%filter(group=="adolescents")
+social_data_forfit<-social_data%>%filter(group=="adults")
 
 keep_forfit<-unique(social_data_forfit$player)#[R_subj==1]# keep only participants who completed all trials
 social_data_forfit<-social_data_forfit%>%filter(player %in% keep_forfit)
@@ -105,19 +147,19 @@ data_list<-list(
 )
 
 kalman_mod<-stan(
-  file="./C_modelfittingCode/stan/model_code/kalman_nokeeper.stan",
+  file="./C_modelfittingCode/stan/model_code/Q_nokeeper.stan",
   data=data_list,
   pars =c("lr","tau"),
-  #init=1,
+  init=0,
   iter = 2000,
   chains=4,
   cores=4,
-  control = list(adapt_delta=0.99)
+  #control = list(adapt_delta=0.99)
 )
 
-saveRDS(kalman_mod,"./A_GeneratedFiles/modelfits/stan/kalman_psi_mix_kids.rds")
+saveRDS(kalman_mod,"./A_GeneratedFiles/modelfits/stan/kalman_psi_mix_adults.rds")
 
-#mod<-readRDS("./A_GeneratedFiles/modelfits/stan/kalman_psi_mix_kids.rds")
+mod<-readRDS("./A_GeneratedFiles/modelfits/stan/kalman_psi_mix_adults.rds")
 # 
 # library(tidybayes)
 # mod%>%tidybayes::spread_draws(lr[ppt],tau[ppt])%>%
@@ -136,7 +178,7 @@ saveRDS(kalman_mod,"./A_GeneratedFiles/modelfits/stan/kalman_psi_mix_kids.rds")
 #   geom_histogram()
 #   
 #   
-  
+
 
 
 # todo: filter out participants with n_eff= supersmall
