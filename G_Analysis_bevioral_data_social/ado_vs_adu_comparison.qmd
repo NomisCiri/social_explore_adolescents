@@ -7,11 +7,7 @@ pacman::p_load(tidyverse, rjson, data.table, gghalves, here, lmerTest, infer)
 
 ```{r load data, echo=FALSE, warning=FALSE, message=FALSE }
 
-explore_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants.csv")) %>% 
-  dplyr::filter(!is.na(points)) %>% 
-  dplyr::filter(!is.na(gempresent)) %>% 
-  dplyr::filter(!is.na(demo_type))
-
+explore_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants.csv")) 
 
 
 all_data <-
@@ -111,7 +107,7 @@ all_data %>%
   stat_summary() +
   theme_minimal(base_size = 15) +
   scale_color_brewer(type = "qual", palette = 2, name = "gem found", label = c("no", "yes"))+
-  facet_wrap( ~ gemlabel) +
+  facet_wrap( ~ gem_found) +
   labs(title = 'avg points per trial') +
   theme_bw(base_size = 20) 
 
@@ -245,7 +241,7 @@ also add age here
 
 all_data %>% 
   filter(!is.na(demo_type)) %>% 
-  mutate(social_info_use_num = ifelse(social_info_use=="copy", 1, 0)) %>% 
+  mutate(social_info_use_num = ifelse(social_info_use == "copy", 1, 0)) %>% 
   group_by(uniqueID, round,group) %>% 
   mutate(n = sum(social_info_use_num)) %>% 
   select(unique_rounds, n, demo_type) %>% 
@@ -253,10 +249,10 @@ all_data %>%
   group_by(uniqueID,demo_type,group) %>% 
   summarize(mean_copy = mean(n),
             demo_type = demo_type) %>% 
-  ggplot()+
+  ggplot() +
   geom_histogram(aes(x=mean_copy, y = stat(density), group = demo_type, fill = demo_type), binwidth = 1) +
   facet_grid(~demo_type+group) +
-  labs(title = 'average copy per participant in each treatment')+
+  labs(title = 'average copy per participant in each treatment') +
   theme_bw(15)
 
 

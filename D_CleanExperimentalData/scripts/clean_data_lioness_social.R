@@ -25,7 +25,8 @@ data_adults <- readLIONESS(folder_adu, writinglocation_adu, periods, prolificID 
   select(-c(age,gender))
 
 ## import dataset with demographics for adolescents
-demographics_ado <- read.csv('data/social/clean_data_demographics_adolescents.csv')
+demographics_ado <- read.csv('data/social/clean_data_demographics_adolescents.csv') %>% 
+  select(-c(playerNr))
 
 ## import dataset with demographics for adults
 demographics_adu <- read.csv('data/social/clean_data_demographics_adults.csv')
@@ -72,7 +73,8 @@ not_included <- all[!all %in% finished]
 ## change ID to participant who made mistake
 data_with_id$participantNr[data_with_id$participantNr == 30523] <- 30623 
 
-data_full_adolescents <-  left_join(data_with_id, demographics_ado, by = "participantNr")
+data_full_adolescents <-  left_join(data_with_id, demographics_ado, by = "participantNr") 
+
 
 ## check if any missing values
 data_full_adolescents %>% 
@@ -85,77 +87,99 @@ data_full_adolescents %>%
 # data_full_adolescents <- data_full_adolescents %>% 
 #   filter(!is.na(clickedCells) & !is.na(socialInfo))
 
-## @andrea: REPLACE WITH APPLY when WILL BECOME BIG
-data_long_adolescents <- data.frame(player = numeric(0),
-                        points = numeric(0),
-                        cells = numeric(0),
-                        social_info = numeric(0),
-                        unique_rounds = numeric(0),
-                        round = numeric(0),
-                        env_number = numeric(0),
-                        gem_present = numeric(0),
-                        tot_points = numeric(0),
-                        age = numeric(0),
-                        gender = numeric(0),
-                        soc_info_round = numeric(0)
-                        )
+## @andrea: REPLACE WITH tidy solution when WILL BECOME BIG
+# data_long_adolescents <- data.frame(player = numeric(0),
+#                         points = numeric(0),
+#                         cells = numeric(0),
+#                         social_info = numeric(0),
+#                         unique_rounds = numeric(0),
+#                         round = numeric(0),
+#                         env_number = numeric(0),
+#                         gem_present = numeric(0),
+#                         tot_points = numeric(0),
+#                         age = numeric(0),
+#                         gender = numeric(0),
+#                         soc_info_round = numeric(0)
+#                         )
+# 
+# for (n in 1:length(unique(data_full_adolescents$playerNr))) {
+#   
+#   # create empty df
+#   playerMat <- data.frame()
+#   
+#   # select current player
+#   one_player_data <- data_full_adolescents %>% 
+#       filter(playerNr == unique(data_full_adolescents$playerNr)[n])
+#   
+# 
+#   for (t in 1:nrow(one_player_data)) {
+# 
+#     # extract relevant variables from data_frame
+#     points <-  as.numeric(unlist(str_split(one_player_data$points[t], ",")))
+#     cells <-  as.numeric(unlist(str_split(one_player_data$clickedCells[t], ",")))
+#     social_info <-  as.numeric(unlist(str_split(one_player_data$socialInfo[t], ",")))
+#     unique_rounds <-  one_player_data$thisRound[t]
+#     env_number <- one_player_data$thisEnv[t]
+#     gempresent <- one_player_data$gemPresent[t]
+#     age <- one_player_data$age[t]
+#     gender <- one_player_data$gender[t]
+#     soc_info_round <- one_player_data$thisRound[t]
+#     participantNr <- one_player_data$participantNr[t]
+# 
+#     # save them into temporary data frame
+#     temp <- data.frame(
+#       player = rep(n, length(points)),
+#       points = points,
+#       cells = cells,
+#       social_info = social_info,
+#       unique_rounds = rep(unique_rounds, length(points)),
+#       env_number = rep(env_number, length(points)),
+#       age = rep(age, length(points)),
+#       gender = rep(gender, length(points)),
+#       soc_info_round = rep(soc_info_round, length(points)),
+#       participantNr = rep(participantNr, length(points)),
+#       gempresent = rep(gempresent, length(points)),
+#       round = rep(t, length(points)),
+#       tot_points = rep(one_player_data$totalPoints[t], length(points))
+#     )
+#     
+#     # if (nrow( temp %>% 
+#     #           filter_all(any_vars(is.na(.))) ) > 0){
+#     #   print(paste('problem with playerNr', temp$player))
+#     # }
+#     # 
+#     # 
+#     
+#     playerMat <- rbind(playerMat, temp)
+#   }
+#   
+#   data_long_adolescents <- rbind(data_long_adolescents, playerMat)
+# }
 
-for (n in 1:length(unique(data_full_adolescents$playerNr.x))) {
+## make long dataset, clean variable names and rename columns
+data_long_adolescents <- separate_longer_delim(data_full_adolescents, c(points, socialInfo, clickedCells), delim = ",") %>% 
+ dplyr::select(playerNr, points, clickedCells, socialInfo, thisRound, thisEnv, totalPoints, gemPresent, age, gender, thisRound, participantNr, refreshTaskCount, orderRounds) %>% 
+  mutate(gem = ifelse(points > 200, 1, 0),
+         points = as.numeric(points),
+         cells = as.numeric(clickedCells),
+         social_info = as.numeric(socialInfo),
+         tot_points = as.numeric(totalPoints)) %>% 
+  dplyr::rename(env_number = thisEnv,
+                soc_info_round = thisRound,
+                order_rounds = orderRounds,
+                gempresent = gemPresent) %>% 
+  group_by(playerNr) %>% 
+  tidyr::fill(order_rounds) %>% 
+  mutate(player = cur_group_id(),
+         round = rep(1:12, each = 25)) %>%
+  group_by(player, round) %>% 
+  mutate(unique_rounds = cur_group_id(),
+         trial = 1:25) %>% 
+  dplyr::select(-c(clickedCells, socialInfo, playerNr, totalPoints)) %>% 
+  replace_na(replace = list(refreshTaskCount = 0))
   
-  # create empty df
-  playerMat <- data.frame()
-  
-  # select current player
-  one_player_data <- data_full_adolescents %>% 
-      filter(playerNr.x == unique(data_full_adolescents$playerNr.x)[n])
-  
-
-  for (t in 1:nrow(one_player_data)) {
-
-    # extract relevant variables from data_frame
-    points <-  as.numeric(unlist(str_split(one_player_data$points[t], ",")))
-    cells <-  as.numeric(unlist(str_split(one_player_data$clickedCells[t], ",")))
-    social_info <-  as.numeric(unlist(str_split(one_player_data$socialInfo[t], ",")))
-    unique_rounds <-  one_player_data$thisRound[t]
-    env_number <- one_player_data$thisEnv[t]
-    gempresent <- one_player_data$gemPresent[t]
-    age <- one_player_data$age[t]
-    gender <- one_player_data$gender[t]
-    soc_info_round <- one_player_data$thisRound[t]
-    participantNr <- one_player_data$participantNr[t]
-
-    # save them into temporary data frame
-    temp <- data.frame(
-      player = rep(n, length(points)),
-      points = points,
-      cells = cells,
-      social_info = social_info,
-      unique_rounds = rep(unique_rounds, length(points)),
-      env_number = rep(env_number, length(points)),
-      age = rep(age, length(points)),
-      gender = rep(gender, length(points)),
-      soc_info_round = rep(soc_info_round, length(points)),
-      participantNr = rep(participantNr, length(points)),
-      gempresent = rep(gempresent, length(points)),
-      round = rep(t, length(points)),
-      tot_points = rep(one_player_data$totalPoints[t], length(points))
-    )
-    
-    # if (nrow( temp %>% 
-    #           filter_all(any_vars(is.na(.))) ) > 0){
-    #   print(paste('problem with playerNr', temp$player))
-    # }
-    # 
-    # 
-    
-    playerMat <- rbind(playerMat, temp)
-  }
-  
-  data_long_adolescents <- rbind(data_long_adolescents, playerMat)
-}
-
 ## inspect data that comes out with some NAs
-problem_data <- data_long_adolescents %>% filter_all(any_vars(is.na(.))) 
+data_with_nas <- data_long_adolescents %>% filter_all(any_vars(is.na(.))) 
 
 ## sanity checks @andrea @simon: think of more?
 ggsave('D_CleanExperimentalData/sanity_plots/points_distribution.png',
@@ -175,13 +199,6 @@ if (sum(data_long_adolescents$gempresent,na.rm = TRUE) == nrow(data_long_adolesc
 # save raw decisions dataset
 write.csv(data_full_adolescents, 'D_CleanExperimentalData/adolescents_data/raw_data/social/raw_data_decisions.csv', row.names = FALSE)
 
-# create unique id rounds
-data_long_adolescents <- data_long_adolescents %>% 
-  mutate(gem = ifelse(points > 200, 1, 0)) %>% 
-  group_by(player, round) %>%
-  mutate(trial = 1:25,
-         unique_rounds = cur_group_id()) 
-
 # save clean dataset
 write.csv(data_long_adolescents, 'D_CleanExperimentalData/adolescents_data/clean_data/social/clean_data.csv', row.names = FALSE)
 
@@ -192,9 +209,9 @@ write.csv(data_long_adolescents, 'D_CleanExperimentalData/adolescents_data/clean
 ## add demographics info
 
 demographics_adu <- demographics_adu %>% 
-  select(Participant.id, Age, Sex) %>% 
-  rename(age = Age) %>% 
-  mutate(age = as.integer(age),
+  dplyr::select(Participant.id, Age, Sex) %>% 
+  dplyr::rename(age = Age) %>% 
+  dplyr::mutate(age = as.integer(age),
          gender = ifelse(Sex == "Female", 1, ifelse(Sex == "Male", 2, 3)))
 
 

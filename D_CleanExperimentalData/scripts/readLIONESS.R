@@ -54,7 +54,7 @@ readLIONESS <- function(folder, writinglocation, periods, prolificID = FALSE) {
     if (prolificID == TRUE) {
       prolificIDs <- raw %>% 
         select(playerNr, externalID) %>%
-        rename(Participant.id = externalID) %>% # rename to match prolific file output
+        dplyr::rename(Participant.id = externalID) %>% # rename to match prolific file output
         dplyr::filter(playerNr %in% player_finished$playerNr)
       
       ## merge with rest of dataset

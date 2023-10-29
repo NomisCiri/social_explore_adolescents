@@ -101,6 +101,11 @@ gem_not_found <- c(1650, 504, 376, 868, 332, 1434)
 gem_found <- c(905, 1625, 1912, 335, 343, 795)
 never_exploit <- c(838, 2195, 1177, 1244, 468, 1639)
 
+
+## is this the problem???
+#never_exploit_gem <- c(1177, 1244, 468, 1639)
+#never_exploit_no_gem <- c(838, 2195)
+
 ## give labels to rounds in the demonstrator data frame
 demonstrators <- demonstrators %>%
   mutate(
@@ -109,6 +114,9 @@ demonstrators <- demonstrators %>%
       player %in% gem_not_found ~ "gem_not_found",
       player %in% gem_found ~ "gem_found",
       player %in% never_exploit ~ "never_exploit"
+      
+    #  player %in% never_exploit_gem ~ "never_exploit_gem",
+     # player %in% never_exploit_no_gem ~ "never_exploit_no_gem"
     ))
 
 
