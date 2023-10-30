@@ -99,12 +99,12 @@ demonstrators %>%
 no_gem <- c(800, 921, 254, 1599, 1899, 408)
 gem_not_found <- c(1650, 504, 376, 868, 332, 1434)
 gem_found <- c(905, 1625, 1912, 335, 343, 795)
-never_exploit <- c(838, 2195, 1177, 1244, 468, 1639)
+#never_exploit <- c(838, 2195, 1177, 1244, 468, 1639)
 
 
 ## is this the problem???
-#never_exploit_gem <- c(1177, 1244, 468, 1639)
-#never_exploit_no_gem <- c(838, 2195)
+never_exploit_gem <- c(1177, 1244, 468, 1639)
+never_exploit_no_gem <- c(838, 2195)
 
 ## give labels to rounds in the demonstrator data frame
 demonstrators <- demonstrators %>%
@@ -113,10 +113,10 @@ demonstrators <- demonstrators %>%
       player %in% no_gem ~ "no_gem",
       player %in% gem_not_found ~ "gem_not_found",
       player %in% gem_found ~ "gem_found",
-      player %in% never_exploit ~ "never_exploit"
+     # player %in% never_exploit ~ "never_exploit"
       
-    #  player %in% never_exploit_gem ~ "never_exploit_gem",
-     # player %in% never_exploit_no_gem ~ "never_exploit_no_gem"
+     player %in% never_exploit_gem ~ "never_exploit_gem",
+     player %in% never_exploit_no_gem ~ "never_exploit_no_gem"
     ))
 
 
@@ -167,7 +167,38 @@ data %>%
   geom_bar(aes(x = factor(env_number), fill = demo_type)) +
   facet_wrap(~gempresent)
 
-## save dataset
+
+## load bootstrapped dataset of participants playing at random
+rewards_bt <-
+  read_rds("A_GeneratedFiles/bootstrapped_random_rewards.rds")
+
+# only take participants who are credibly better than random
+data <- data %>% 
+  ungroup() %>% 
+  group_by(player) %>%
+  mutate(p_value_rand = t.test(points, rewards_bt, alternative = "greater") %>%
+           .$p.value) %>%
+  ungroup() %>%
+  dplyr::filter(p_value_rand < 0.05)
+
+data <-
+  data %>%    group_by(unique_rounds) %>%   mutate(
+    mean_points = mean(points),
+    sd_points = sd(points) ,
+    z = (points - mean_points) / sd_points,
+    gem_cell = cell[match(round_gem_found, trial)],
+    #data_source = 'experiment', 
+    gemlabel = ifelse(gempresent == 0, "gem absent", "gem present")   )   
+
+
+## final exclusion: participants who attempted to refresh task to find where gems are, and 1 round (?) with NAs
+data <- data %>% 
+ dplyr::filter(attempt_refresh <= 0 )
+  dplyr::filter(!is.na(points)) %>% 
+  dplyr::filter(!is.na(gempresent)) %>% 
+  dplyr::filter(!is.na(demo_type))
+
+  ## save dataset
 write.csv(data, "data/social/data_social_all_participants.csv", row.names = FALSE)
 
 

@@ -10,15 +10,6 @@ pacman::p_load(tidyverse, rjson, data.table, gghalves, here, lmerTest, infer)
 explore_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants.csv")) 
 
 
-all_data <-
-  explore_data %>%    group_by(unique_rounds) %>%   mutate(
-    mean_points = mean(points),
-    sd_points = sd(points) ,
-    z = (points - mean_points) / sd_points,
-    gem_cell = cell[match(round_gem_found, trial)],
-    #data_source = 'experiment', 
-    gemlabel = ifelse(gempresent == 0, "gem absent", "gem present")   )   
-  
 
 ```
 

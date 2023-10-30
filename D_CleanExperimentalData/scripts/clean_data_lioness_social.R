@@ -73,8 +73,9 @@ not_included <- all[!all %in% finished]
 ## change ID to participant who made mistake
 data_with_id$participantNr[data_with_id$participantNr == 30523] <- 30623 
 
-data_full_adolescents <-  left_join(data_with_id, demographics_ado, by = "participantNr") 
-
+data_full_adolescents <-  left_join(data_with_id, demographics_ado, by = "participantNr") %>% 
+   replace_na(replace = list(refreshTaskCount = 0))
+  
 
 ## check if any missing values
 data_full_adolescents %>% 
@@ -94,7 +95,8 @@ data_long_adolescents <- data.frame(player = numeric(0),
                                     tot_points = numeric(0),
                                     age = numeric(0),
                                     gender = numeric(0),
-                                    soc_info_round = numeric(0)
+                                    soc_info_round = numeric(0),
+                                    attempt_refresh = numeric(0)
 )
 
 for (n in 1:length(unique(data_full_adolescents$playerNr))) {
@@ -120,6 +122,7 @@ for (n in 1:length(unique(data_full_adolescents$playerNr))) {
     gender <- one_player_data$gender[t]
     soc_info_round <- one_player_data$thisRound[t]
     participantNr <- one_player_data$participantNr[t]
+    attempt_refresh <- one_player_data$refreshTaskCount[t]
 
     # save them into temporary data frame
     temp <- data.frame(
@@ -135,7 +138,9 @@ for (n in 1:length(unique(data_full_adolescents$playerNr))) {
       participantNr = rep(participantNr, length(points)),
       gempresent = rep(gempresent, length(points)),
       round = rep(t, length(points)),
-      tot_points = rep(one_player_data$totalPoints[t], length(points))
+      tot_points = rep(one_player_data$totalPoints[t], length(points)),
+      attempt_refresh = rep(attempt_refresh, length(points))
+      
     )
 
     # if (nrow( temp %>%
@@ -221,7 +226,8 @@ demographics_adu <- demographics_adu %>%
          gender = ifelse(Sex == "Female", 1, ifelse(Sex == "Male", 2, 3)))
 
 
-data_adults <- left_join(data_adults, demographics_adu, by = "Participant.id")
+data_adults <- left_join(data_adults, demographics_adu, by = "Participant.id") %>% 
+  replace_na(replace = list(refreshTaskCount = 0))
 
 
 # ## remove rounds where clicked where not saved
@@ -240,7 +246,9 @@ data_long_adults <- data.frame(player = numeric(0),
                                     tot_points = numeric(0),
                                     age = numeric(0),
                                     gender = numeric(0),
-                                    soc_info_round = numeric(0)
+                                    soc_info_round = numeric(0),
+                                    attempt_refresh = numeric(0)
+                               
 )
 
 # create unique IDs
@@ -271,6 +279,7 @@ for (n in 1:length(unique(data_adults$playerNr))) {
     age <- one_player_data$age[t]
     gender <- one_player_data$gender[t]
     soc_info_round <- one_player_data$thisRound[t]
+    attempt_refresh <- one_player_data$refreshTaskCount[t]
     #participantNr <- one_player_data$participantNr[t]
     
     # save them into temporary data frame
@@ -286,7 +295,9 @@ for (n in 1:length(unique(data_adults$playerNr))) {
       soc_info_round = rep(soc_info_round, length(points)),
       gempresent = rep(gempresent, length(points)),
       round = rep(t, length(points)),
-      tot_points = rep(one_player_data$totalPoints[t], length(points))
+      tot_points = rep(one_player_data$totalPoints[t], length(points)),
+      attempt_refresh = rep(attempt_refresh, length(points))
+      
     )
     
     # if (nrow( temp %>% 
