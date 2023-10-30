@@ -7,7 +7,7 @@ pacman::p_load(tidyverse, rjson, data.table, gghalves, here, lmerTest, infer)
 
 ```{r load data, echo=FALSE, warning=FALSE, message=FALSE }
 
-explore_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants.csv")) 
+all_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants.csv")) 
 
 
 
@@ -34,7 +34,7 @@ all_data %>%
   group_by(round, uniqueID, gempresent, group, demo_type) %>% 
   summarise(boxes_opened = n_distinct(cells)) 
 
-summary(lmer(boxes_opened ~ group * gempresent + demo_type + (1|uniqueID), data = boxes_data ))
+summary(lmer(boxes_opened ~ group * demo_type + (1|uniqueID), data = boxes_data ))
 
 all_data %>%
   group_by(round, uniqueID, gempresent, gem_found, group) %>%
@@ -47,7 +47,29 @@ all_data %>%
   theme_bw(base_size = 20) +  facet_grid( ~ group)
 ```
 
-people open less boxes when gem is found early\
+
+When do adults find gems?
+
+later then adolescents
+
+```{r}
+
+all_data %>% 
+  filter(gem_present==1) %>% 
+  group_by(uniqueID, group, demo_type) %>% 
+  summarise(round_gem_found = mean(round_gem_found)) %>% 
+  ggplot()+
+  geom_boxplot(aes(x = group, y = round_gem_found, fill = demo_type))
+
+
+summary(lmer(round_gem_found ~ group * demo_type  + (1|player), data = all_data))
+
+
+```
+
+
+
+people open less boxes when gem is found early
 also people open fewer boxes when demonstrator finds gem
 
 ```{r warning=FALSE, echo=FALSE,  message=FALSE}
@@ -63,8 +85,10 @@ all_data %>%
   #scale_fill_brewer(name = "gem found", label = c("no", "yes"))+
  # scale_x_discrete(label = c("no", "yes")) +
   labs(x = "trial gem found", y = 'n of different boxes') +
-  theme_bw(base_size = 15) 
-```
+  theme_bw(base_size = 15) +
+  facet_wrap(~group)
+  
+  ```
 
 ## Performance
 
@@ -270,10 +294,17 @@ points_by_treat
 
 # ggsave(filename = 'points_by_treat.png', points_by_treat, width = 14,height=6  )
 
+```
+
+do adults use more social info?
+
+```{r}
+
 
 all_data %>%
   ggplot() +
-  geom_col(aes(x = factor(trial), y = social_info_use, fill = social_info_use))
+  geom_bar(aes(x = factor(trial),  fill = social_info_use), position = "fill")+
+  facet_grid(~group)
 
 ```
 

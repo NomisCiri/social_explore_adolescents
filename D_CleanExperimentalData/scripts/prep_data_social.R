@@ -191,11 +191,11 @@ data <-
     gemlabel = ifelse(gempresent == 0, "gem absent", "gem present")   )   
 
 
-## final exclusion: participants who attempted to refresh task to find where gems are, and 1 round (?) with NAs
-data <- data %>% 
- dplyr::filter(attempt_refresh <= 0 )
-  dplyr::filter(!is.na(points)) %>% 
-  dplyr::filter(!is.na(gempresent)) %>% 
+# final exclusion: participants who attempted to refresh task to find where gems are, and 1 round (?) with NAs
+data <- data %>%
+ dplyr::filter(attempt_refresh <= 0 ) %>%
+  dplyr::filter(!is.na(points)) %>%
+  dplyr::filter(!is.na(gempresent)) %>%
   dplyr::filter(!is.na(demo_type))
 
   ## save dataset
