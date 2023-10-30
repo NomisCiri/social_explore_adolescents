@@ -9,8 +9,6 @@ pacman::p_load(tidyverse, rjson, data.table, gghalves, here, lmerTest, infer)
 
 all_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants.csv")) 
 
-
-
 ```
 
 ## Demographics
@@ -55,14 +53,14 @@ later then adolescents
 ```{r}
 
 all_data %>% 
-  filter(gem_present==1) %>% 
+  filter(gem_found == 1) %>% 
   group_by(uniqueID, group, demo_type) %>% 
-  summarise(round_gem_found = mean(round_gem_found)) %>% 
+  summarise(round_gem_found = mean(round_gem_found, na.omit = TRUE)) %>% 
   ggplot()+
   geom_boxplot(aes(x = group, y = round_gem_found, fill = demo_type))
 
 
-summary(lmer(round_gem_found ~ group * demo_type  + (1|player), data = all_data))
+summary(lmer(round_gem_found ~ group * demo_type  + (1|player), data =))
 
 
 ```
@@ -308,6 +306,9 @@ all_data %>%
 
 ```
 
+
+
+
 When are gems found
 
 ```{r}
@@ -345,6 +346,49 @@ When are gems found
   #ggsave(filename = 'gem_found.png', gem_found, width = 8,height=6  )
   
 ```
+
+
+copy frequency by treatment and succes
+
+
+```{r}
+
+ all_data %>% 
+  mutate(social_info_use_num = ifelse(social_info_use == "copy", 1, 0)) %>% 
+  group_by(unique_rounds) %>% 
+  mutate(n = sum(social_info_use_num)) %>% 
+  ungroup() %>% 
+  select(uniqueID, n, demo_type, gem_found, group) %>% 
+  distinct() %>% 
+  group_by(uniqueID,demo_type,group, gem_found) %>% 
+#  reframe(mean_copy = mean(n)) %>% 
+ # distinct() %>% 
+  ggplot() +
+  stat_summary(aes(x = demo_type, y = n, color = group)) +
+  facet_wrap(~gem_found)
+
+
+all_data %>% group_by(demo_type, uniqueID, round, group, gem_found, age) %>%
+filter(social_info_use == "copy") %>%
+  count(social_info_use) %>%
+  ggplot(aes(
+    x = demo_type,
+    y = n,
+    shape = social_info_use,
+    color = group
+  )) +
+  stat_summary() +
+  geom_hline(yintercept = 25 / 64,
+             linetype = "dotted",
+             color = "red") +
+  # facet_wrap(.~group)+
+  theme_minimal(14) +
+  facet_wrap(. ~ gem_found, labeller = label_both) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+```
+
 
 ### people don't copy exploit?
 
