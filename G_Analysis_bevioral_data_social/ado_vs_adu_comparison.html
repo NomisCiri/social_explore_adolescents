@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.3.353">
+<meta name="generator" content="quarto-1.3.433">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -93,51 +93,145 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="cell-output cell-output-stdout">
 <pre><code>Linear mixed model fit by REML. t-tests use Satterthwaite's method [
 lmerModLmerTest]
-Formula: boxes_opened ~ group * gempresent + demo_type + (1 | uniqueID)
+Formula: boxes_opened ~ group * demo_type + (1 | uniqueID)
    Data: boxes_data
 
-REML criterion at convergence: 22092
+REML criterion at convergence: 19974.5
 
 Scaled residuals: 
     Min      1Q  Median      3Q     Max 
--3.7336 -0.5951  0.0304  0.5677  3.6551 
+-3.6475 -0.6244  0.0047  0.5765  3.6158 
 
 Random effects:
  Groups   Name        Variance Std.Dev.
- uniqueID (Intercept) 31.7     5.63    
- Residual             25.0     5.00    
-Number of obs: 3513, groups:  uniqueID, 294
+ uniqueID (Intercept) 28.42    5.331   
+ Residual             25.27    5.027   
+Number of obs: 3174, groups:  uniqueID, 275
 
 Fixed effects:
-                        Estimate Std. Error        df t value Pr(&gt;|t|)    
-(Intercept)              12.4247     0.5904  925.3115  21.046  &lt; 2e-16 ***
-groupadults               2.0264     0.7351  367.7682   2.757  0.00613 ** 
-gempresent               -0.7052     0.3860 3214.1267  -1.827  0.06782 .  
-demo_typegem_not_found    0.4237     0.2387 3214.1281   1.775  0.07595 .  
-demo_typenever_exploit    0.7791     0.2675 3214.1855   2.913  0.00360 ** 
-demo_typeno_gem           1.3457     0.4301 3214.0439   3.129  0.00177 ** 
-groupadults:gempresent    0.4769     0.3657 3214.0266   1.304  0.19229    
+                                           Estimate Std. Error        df
+(Intercept)                                 10.5323     0.4755  403.6347
+groupadults                                  3.4157     0.7509  401.7668
+demo_typegem_not_found                       0.8332     0.3274 2892.8830
+demo_typenever_exploit_gem                   0.9792     0.3697 2893.5409
+demo_typenever_exploit_no_gem                2.3191     0.4607 2892.4911
+demo_typeno_gem                              2.4279     0.3281 2892.9630
+groupadults:demo_typegem_not_found          -0.7667     0.5145 2892.4162
+groupadults:demo_typenever_exploit_gem      -0.5162     0.5784 2892.7909
+groupadults:demo_typenever_exploit_no_gem   -1.7560     0.7286 2892.5095
+groupadults:demo_typeno_gem                 -0.8518     0.5147 2892.4098
+                                          t value Pr(&gt;|t|)    
+(Intercept)                                22.151  &lt; 2e-16 ***
+groupadults                                 4.549 7.15e-06 ***
+demo_typegem_not_found                      2.545  0.01098 *  
+demo_typenever_exploit_gem                  2.648  0.00813 ** 
+demo_typenever_exploit_no_gem               5.034 5.11e-07 ***
+demo_typeno_gem                             7.400 1.77e-13 ***
+groupadults:demo_typegem_not_found         -1.490  0.13631    
+groupadults:demo_typenever_exploit_gem     -0.892  0.37226    
+groupadults:demo_typenever_exploit_no_gem  -2.410  0.01602 *  
+groupadults:demo_typeno_gem                -1.655  0.09809 .  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Correlation of Fixed Effects:
-            (Intr) grpdlt gmprsn dm_t__ dm_typnv_ dm_typn_g
-groupadults -0.491                                         
-gempresent  -0.623  0.124                                  
-dm_typgm_n_ -0.203  0.000  0.000                           
-dm_typnvr_x -0.453  0.000  0.417  0.447                    
-dem_typn_gm -0.617  0.000  0.771  0.278  0.622             
-grpdlts:gmp  0.163 -0.331 -0.375  0.001 -0.001     0.000   </code></pre>
+                  (Intr) grpdlt dm_typg__ dm_typn__ dm____ dm_ty_
+groupadults       -0.633                                         
+dm_typgm_n_       -0.346  0.219                                  
+dm_typnvr__       -0.307  0.194  0.445                           
+dm_typnv___       -0.246  0.156  0.357     0.316                 
+dem_typn_gm       -0.345  0.219  0.502     0.444     0.356       
+grpdlts:dm_typg__  0.220 -0.345 -0.636    -0.283    -0.227 -0.319
+grpdlts:dm_typn__  0.196 -0.307 -0.285    -0.639    -0.202 -0.284
+grpdlt:____        0.156 -0.244 -0.226    -0.200    -0.632 -0.225
+grpdlts:d__        0.220 -0.345 -0.320    -0.283    -0.227 -0.637
+                  grpdlts:dm_typg__ grpdlts:dm_typn__ g:____
+groupadults                                                 
+dm_typgm_n_                                                 
+dm_typnvr__                                                 
+dm_typnv___                                                 
+dem_typn_gm                                                 
+grpdlts:dm_typg__                                           
+grpdlts:dm_typn__  0.448                                    
+grpdlt:____        0.356             0.316                  
+grpdlts:d__        0.503             0.448             0.356</code></pre>
 </div>
 <div class="cell-output-display">
 <p><img src="ado_vs_adu_comparison_files/figure-html/unnamed-chunk-3-1.png" class="img-fluid" width="672"></p>
 </div>
+<div class="cell-output-display">
+<p><img src="ado_vs_adu_comparison_files/figure-html/unnamed-chunk-3-2.png" class="img-fluid" width="672"></p>
 </div>
-<p>people open less boxes when gem is found early<br>
-also people open fewer boxes when demonstrator finds gem</p>
+<div class="cell-output cell-output-stdout">
+<pre><code>Linear mixed model fit by REML. t-tests use Satterthwaite's method [
+lmerModLmerTest]
+Formula: boxes_opened ~ group * round * gem_found + (1 | uniqueID)
+   Data: .
+
+REML criterion at convergence: 19875.2
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-3.6380 -0.6223  0.0041  0.6107  3.4079 
+
+Random effects:
+ Groups   Name        Variance Std.Dev.
+ uniqueID (Intercept) 29.74    5.454   
+ Residual             24.18    4.918   
+Number of obs: 3174, groups:  uniqueID, 275
+
+Fixed effects:
+                              Estimate Std. Error         df t value Pr(&gt;|t|)
+(Intercept)                   13.33020    0.52613  548.53745  25.336  &lt; 2e-16
+groupadults                    3.35395    0.83340  552.27706   4.024 6.51e-05
+round                         -0.14182    0.04164 2906.00179  -3.406 0.000669
+gem_found                     -0.14376    0.58396 2932.02441  -0.246 0.805565
+groupadults:round             -0.12529    0.06680 2908.66210  -1.876 0.060804
+groupadults:gem_found         -0.45821    0.88039 2930.70176  -0.520 0.602778
+round:gem_found               -0.29620    0.07676 2928.48221  -3.859 0.000116
+groupadults:round:gem_found    0.20962    0.11708 2932.58906   1.791 0.073474
+                               
+(Intercept)                 ***
+groupadults                 ***
+round                       ***
+gem_found                      
+groupadults:round           .  
+groupadults:gem_found          
+round:gem_found             ***
+groupadults:round:gem_found .  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Correlation of Fixed Effects:
+            (Intr) grpdlt round  gm_fnd grpdl: grpd:_ rnd:g_
+groupadults -0.631                                          
+round       -0.529  0.334                                   
+gem_found   -0.334  0.211  0.504                            
+grpdlts:rnd  0.330 -0.529 -0.623 -0.314                     
+grpdlts:gm_  0.222 -0.352 -0.334 -0.663  0.531              
+rond:gm_fnd  0.304 -0.192 -0.573 -0.897  0.357  0.595       
+grpdlts:r:_ -0.199  0.320  0.376  0.588 -0.606 -0.894 -0.656</code></pre>
+</div>
+</div>
+<p>When do adults find gems?</p>
+<p>later then adolescents</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="co"># all_data %&gt;% </span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="co">#   filter(gem_found == 1) %&gt;% </span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co">#   group_by(uniqueID, group, demo_type) %&gt;% </span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="co">#   summarise(round_gem_found = mean(round_gem_found, na.omit = TRUE)) %&gt;% </span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="co">#   ggplot()+</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="co">#   geom_boxplot(aes(x = group, y = round_gem_found, fill = demo_type))</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="co"># summary(lmer(round_gem_found ~ group * demo_type  + (1|player), data =))</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>people open less boxes when gem is found early also people open fewer boxes when demonstrator finds gem</p>
 <div class="cell">
 <div class="cell-output-display">
-<p><img src="ado_vs_adu_comparison_files/figure-html/unnamed-chunk-4-1.png" class="img-fluid" width="672"></p>
+<p><img src="ado_vs_adu_comparison_files/figure-html/unnamed-chunk-5-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
 </section>
@@ -148,7 +242,7 @@ also people open fewer boxes when demonstrator finds gem</p>
 <h3 class="anchored" data-anchor-id="distribution-of-points-scored">Distribution of points scored</h3>
 <div class="cell">
 <div class="cell-output-display">
-<p><img src="ado_vs_adu_comparison_files/figure-html/unnamed-chunk-5-1.png" class="img-fluid" width="672"></p>
+<p><img src="ado_vs_adu_comparison_files/figure-html/unnamed-chunk-6-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
 </section>
@@ -157,13 +251,13 @@ also people open fewer boxes when demonstrator finds gem</p>
 <p>adolescents score more points in gem environments</p>
 <div class="cell">
 <div class="cell-output-display">
-<p><img src="ado_vs_adu_comparison_files/figure-html/unnamed-chunk-6-1.png" class="img-fluid" width="672"></p>
+<p><img src="ado_vs_adu_comparison_files/figure-html/unnamed-chunk-7-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
 <p>adolescents seem to score more points on average when demonstrators find gems</p>
 <div class="cell">
 <div class="cell-output-display">
-<p><img src="ado_vs_adu_comparison_files/figure-html/unnamed-chunk-7-1.png" class="img-fluid" width="672"></p>
+<p><img src="ado_vs_adu_comparison_files/figure-html/unnamed-chunk-8-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
 </section>
@@ -175,10 +269,10 @@ also people open fewer boxes when demonstrator finds gem</p>
 <pre><code># A tibble: 1 × 7
   statistic  t_df p_value alternative estimate lower_ci upper_ci
       &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt; &lt;chr&gt;          &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;
-1     -3.00  263. 0.00295 two.sided     -0.604    -1.00   -0.208</code></pre>
+1     -3.33  247. 0.00101 two.sided     -0.673    -1.07   -0.274</code></pre>
 </div>
 <div class="cell-output-display">
-<p><img src="ado_vs_adu_comparison_files/figure-html/unnamed-chunk-8-1.png" class="img-fluid" width="672"></p>
+<p><img src="ado_vs_adu_comparison_files/figure-html/unnamed-chunk-9-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
 <p>most participants find gems in half of the environments that contain them (4 out 8), and some more than that.</p>
@@ -188,7 +282,7 @@ also people open fewer boxes when demonstrator finds gem</p>
 <h2 class="anchored" data-anchor-id="explore-exploit-after-gem-or-not">explore exploit after gem or not</h2>
 <div class="cell">
 <div class="cell-output-display">
-<p><img src="ado_vs_adu_comparison_files/figure-html/unnamed-chunk-9-1.png" class="img-fluid" width="672"></p>
+<p><img src="ado_vs_adu_comparison_files/figure-html/unnamed-chunk-10-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
 </section>
@@ -197,47 +291,54 @@ also people open fewer boxes when demonstrator finds gem</p>
 <p>also add age here</p>
 <div class="cell">
 <div class="cell-output-display">
-<p><img src="ado_vs_adu_comparison_files/figure-html/unnamed-chunk-10-1.png" class="img-fluid" width="672"></p>
+<p><img src="ado_vs_adu_comparison_files/figure-html/unnamed-chunk-11-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
 <div class="cell">
 <div class="cell-output-display">
-<p><img src="ado_vs_adu_comparison_files/figure-html/unnamed-chunk-11-1.png" class="img-fluid" width="672"></p>
+<p><img src="ado_vs_adu_comparison_files/figure-html/unnamed-chunk-12-1.png" class="img-fluid" width="672"></p>
 </div>
+</div>
+<p>do adults use more social info?</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>all_data <span class="sc">%&gt;%</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_bar</span>(<span class="fu">aes</span>(<span class="at">x =</span> <span class="fu">factor</span>(trial),  <span class="at">fill =</span> social_info_use), <span class="at">position =</span> <span class="st">"fill"</span>)<span class="sc">+</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_grid</span>(<span class="sc">~</span>group)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
-<p><img src="ado_vs_adu_comparison_files/figure-html/unnamed-chunk-11-2.png" class="img-fluid" width="672"></p>
+<p><img src="ado_vs_adu_comparison_files/figure-html/unnamed-chunk-13-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
 <p>When are gems found</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>  all_data <span class="sc">%&gt;%</span></span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(gempresent <span class="sc">==</span> <span class="dv">1</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  ungroup <span class="sc">%&gt;%</span></span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(demo_type, gem_found, group) <span class="sc">%&gt;%</span></span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(uniqueID, round, gem_found, round_gem_found, gempresent, group) <span class="sc">%&gt;%</span></span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">distinct</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(gem_found, round_gem_found, group) <span class="sc">%&gt;%</span></span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">mean_round_found =</span> <span class="fu">mean</span>(round_gem_found, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>            <span class="at">n =</span> <span class="fu">n</span>()) <span class="sc">%&gt;%</span></span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(demo_type, group) <span class="sc">%&gt;%</span></span>
-<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">freq =</span> n <span class="sc">/</span> <span class="fu">sum</span>(n)) <span class="sc">%&gt;%</span></span>
-<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>() <span class="sc">+</span></span>
-<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>(<span class="fu">aes</span>(</span>
-<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> demo_type,</span>
-<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> freq,</span>
-<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>    <span class="at">fill =</span> <span class="fu">factor</span>(gem_found, <span class="at">levels =</span> <span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">0</span>))</span>
-<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>  )) <span class="sc">+</span></span>
-<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_brewer</span>(</span>
-<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">type =</span> <span class="st">"qual"</span>,</span>
-<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">palette =</span> <span class="dv">7</span>,</span>
-<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">name =</span> <span class="st">""</span>,</span>
-<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>    <span class="at">label =</span> <span class="fu">c</span>(<span class="st">"yes"</span>, <span class="st">"no"</span>)</span>
-<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
-<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">'social information type'</span>, <span class="at">title =</span> <span class="st">'did players find gems?'</span>, <span class="at">y =</span> <span class="st">'proportion of rounds'</span>) <span class="sc">+</span></span>
-<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme_classic</span>(<span class="at">base_size =</span> <span class="dv">15</span>) <span class="sc">+</span></span>
-<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">axis.text =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">10</span>)) <span class="sc">+</span></span>
-<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a>    <span class="fu">facet_wrap</span>( <span class="sc">~</span> group)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>  all_data <span class="sc">%&gt;%</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(gempresent <span class="sc">==</span> <span class="dv">1</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  ungroup <span class="sc">%&gt;%</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(demo_type, gem_found, group) <span class="sc">%&gt;%</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(uniqueID, round, gem_found, round_gem_found, gempresent, group) <span class="sc">%&gt;%</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">distinct</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(gem_found, round_gem_found, group) <span class="sc">%&gt;%</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">mean_round_found =</span> <span class="fu">mean</span>(round_gem_found, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>            <span class="at">n =</span> <span class="fu">n</span>()) <span class="sc">%&gt;%</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(demo_type, group) <span class="sc">%&gt;%</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">freq =</span> n <span class="sc">/</span> <span class="fu">sum</span>(n)) <span class="sc">%&gt;%</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>(<span class="fu">aes</span>(</span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> demo_type,</span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> freq,</span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>    <span class="at">fill =</span> <span class="fu">factor</span>(gem_found, <span class="at">levels =</span> <span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">0</span>))</span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>  )) <span class="sc">+</span></span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_brewer</span>(</span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">type =</span> <span class="st">"qual"</span>,</span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">palette =</span> <span class="dv">7</span>,</span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">name =</span> <span class="st">""</span>,</span>
+<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a>    <span class="at">label =</span> <span class="fu">c</span>(<span class="st">"yes"</span>, <span class="st">"no"</span>)</span>
+<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">'social information type'</span>, <span class="at">title =</span> <span class="st">'did players find gems?'</span>, <span class="at">y =</span> <span class="st">'proportion of rounds'</span>) <span class="sc">+</span></span>
+<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme_classic</span>(<span class="at">base_size =</span> <span class="dv">15</span>) <span class="sc">+</span></span>
+<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">axis.text =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">10</span>)) <span class="sc">+</span></span>
+<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a>    <span class="fu">facet_wrap</span>( <span class="sc">~</span> group)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>Adding missing grouping variables: `demo_type`
 Adding missing grouping variables: `demo_type`
@@ -245,10 +346,131 @@ Adding missing grouping variables: `demo_type`
 using the `.groups` argument.</code></pre>
 </div>
 <div class="cell-output-display">
-<p><img src="ado_vs_adu_comparison_files/figure-html/unnamed-chunk-12-1.png" class="img-fluid" width="672"></p>
+<p><img src="ado_vs_adu_comparison_files/figure-html/unnamed-chunk-14-1.png" class="img-fluid" width="672"></p>
 </div>
-<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>  <span class="co">#ggsave(filename = 'gem_found.png', gem_found, width = 8,height=6  )</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>  <span class="co">#ggsave(filename = 'gem_found.png', gem_found, width = 8,height=6  )</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
+<p>copy frequency by treatment and succes</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a> all_data <span class="sc">%&gt;%</span> </span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">social_info_use_num =</span> <span class="fu">ifelse</span>(social_info_use <span class="sc">==</span> <span class="st">"copy"</span>, <span class="dv">1</span>, <span class="dv">0</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(unique_rounds) <span class="sc">%&gt;%</span> </span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">n =</span> <span class="fu">sum</span>(social_info_use_num)) <span class="sc">%&gt;%</span> </span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span> </span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(uniqueID, n, demo_type, gem_found, group) <span class="sc">%&gt;%</span> </span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">distinct</span>() <span class="sc">%&gt;%</span> </span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(uniqueID,demo_type,group, gem_found) <span class="sc">%&gt;%</span> </span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a><span class="co">#  reframe(mean_copy = mean(n)) %&gt;% </span></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a> <span class="co"># distinct() %&gt;% </span></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stat_summary</span>(<span class="fu">aes</span>(<span class="at">x =</span> demo_type, <span class="at">y =</span> n, <span class="at">color =</span> group)) <span class="sc">+</span></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>gem_found)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>No summary function supplied, defaulting to `mean_se()`
+No summary function supplied, defaulting to `mean_se()`</code></pre>
+</div>
+<div class="cell-output-display">
+<p><img src="ado_vs_adu_comparison_files/figure-html/unnamed-chunk-15-1.png" class="img-fluid" width="672"></p>
+</div>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>all_data <span class="sc">%&gt;%</span> <span class="fu">group_by</span>(demo_type, uniqueID, round, group, gem_found, age) <span class="sc">%&gt;%</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="fu">filter</span>(social_info_use <span class="sc">==</span> <span class="st">"copy"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(social_info_use) <span class="sc">%&gt;%</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> demo_type,</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> n,</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">shape =</span> social_info_use,</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">color =</span> group</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>  )) <span class="sc">+</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stat_summary</span>() <span class="sc">+</span></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_hline</span>(<span class="at">yintercept =</span> <span class="dv">25</span> <span class="sc">/</span> <span class="dv">64</span>,</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>             <span class="at">linetype =</span> <span class="st">"dotted"</span>,</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>             <span class="at">color =</span> <span class="st">"red"</span>) <span class="sc">+</span></span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>  <span class="co"># facet_wrap(.~group)+</span></span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="dv">14</span>) <span class="sc">+</span></span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(. <span class="sc">~</span> gem_found, <span class="at">labeller =</span> label_both) <span class="sc">+</span></span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">axis.text.x =</span> <span class="fu">element_text</span>(<span class="at">angle =</span> <span class="dv">45</span>, <span class="at">hjust =</span> <span class="dv">1</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>No summary function supplied, defaulting to `mean_se()`
+No summary function supplied, defaulting to `mean_se()`</code></pre>
+</div>
+<div class="cell-output-display">
+<p><img src="ado_vs_adu_comparison_files/figure-html/unnamed-chunk-15-2.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<section id="when-are-gem-found" class="level3">
+<h3 class="anchored" data-anchor-id="when-are-gem-found">when are gem found</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(all_data<span class="sc">$</span>round_gem_found)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="ado_vs_adu_comparison_files/figure-html/unnamed-chunk-16-1.png" class="img-fluid" width="672"></p>
+</div>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>all_data <span class="sc">%&gt;%</span> </span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(gem_found<span class="sc">==</span><span class="dv">1</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(round_gem_found, group, demo_type) <span class="sc">%&gt;%</span> </span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> group, <span class="at">y =</span> round_gem_found, <span class="at">fill =</span> group)) <span class="sc">+</span> </span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_half_boxplot</span>()<span class="sc">+</span></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_half_point</span>(<span class="at">alpha =</span> <span class="fl">0.1</span>)<span class="sc">+</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stat_summary</span>(<span class="at">color =</span> <span class="st">'red'</span>)<span class="sc">+</span></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>demo_type)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>No summary function supplied, defaulting to `mean_se()`
+No summary function supplied, defaulting to `mean_se()`
+No summary function supplied, defaulting to `mean_se()`</code></pre>
+</div>
+<div class="cell-output-display">
+<p><img src="ado_vs_adu_comparison_files/figure-html/unnamed-chunk-16-2.png" class="img-fluid" width="672"></p>
+</div>
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>all_data <span class="sc">%&gt;%</span> </span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(gem_found<span class="sc">==</span><span class="dv">1</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">lmer</span>(round_gem_found <span class="sc">~</span> group <span class="sc">*</span> demo_type <span class="sc">+</span> (<span class="dv">1</span><span class="sc">|</span>player), <span class="at">data =</span> .) <span class="ot">-&gt;</span> model_when_gem</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(model_when_gem)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Linear mixed model fit by REML. t-tests use Satterthwaite's method [
+lmerModLmerTest]
+Formula: round_gem_found ~ group * demo_type + (1 | player)
+   Data: .
+
+REML criterion at convergence: 168683.8
+
+Scaled residuals: 
+     Min       1Q   Median       3Q      Max 
+-2.54236 -0.80716 -0.07316  0.77809  2.81849 
+
+Random effects:
+ Groups   Name        Variance Std.Dev.
+ player   (Intercept)  8.996   2.999   
+ Residual             37.851   6.152   
+Number of obs: 25975, groups:  player, 164
+
+Fixed effects:
+                                         Estimate Std. Error         df t value
+(Intercept)                               11.9781     0.2453   176.4314  48.836
+groupadults                                0.6629     0.1147 25933.6320   5.780
+demo_typegem_not_found                    -2.1732     0.1259 25964.0453 -17.256
+demo_typenever_exploit_gem                -1.9478     0.1562 25961.7471 -12.470
+groupadults:demo_typegem_not_found        -0.5854     0.1873 25954.1291  -3.125
+groupadults:demo_typenever_exploit_gem     0.6064     0.2231 25932.6310   2.718
+                                       Pr(&gt;|t|)    
+(Intercept)                             &lt; 2e-16 ***
+groupadults                            7.57e-09 ***
+demo_typegem_not_found                  &lt; 2e-16 ***
+demo_typenever_exploit_gem              &lt; 2e-16 ***
+groupadults:demo_typegem_not_found      0.00178 ** 
+groupadults:demo_typenever_exploit_gem  0.00658 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Correlation of Fixed Effects:
+                  (Intr) grpdlt dm_typg__ dm_typn__ grpdlts:dm_typg__
+groupadults       -0.186                                             
+dm_typgm_n_       -0.169  0.365                                      
+dm_typnvr__       -0.131  0.287  0.276                               
+grpdlts:dm_typg__  0.113 -0.542 -0.669    -0.183                     
+grpdlts:dm_typn__  0.091 -0.454 -0.198    -0.692     0.297           </code></pre>
+</div>
+</div>
+</section>
 <section id="people-dont-copy-exploit" class="level3">
 <h3 class="anchored" data-anchor-id="people-dont-copy-exploit">people don’t copy exploit?</h3>
 <div class="cell">
@@ -256,8 +478,8 @@ using the `.groups` argument.</code></pre>
 <p><img src="ado_vs_adu_comparison_files/figure-html/merge%20datasets-1.png" class="img-fluid" width="672"></p>
 </div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 550 × 3
-# Groups:   unique_rounds [550]
+<pre><code># A tibble: 448 × 3
+# Groups:   unique_rounds [448]
    unique_rounds round_gem_found     n
            &lt;dbl&gt;           &lt;dbl&gt; &lt;int&gt;
  1             1               4    21
@@ -270,16 +492,16 @@ using the `.groups` argument.</code></pre>
  8            75              13     9
  9            78               9    15
 10            81               2    23
-# ℹ 540 more rows</code></pre>
+# ℹ 438 more rows</code></pre>
 </div>
 <div class="cell-output cell-output-stdout">
 <pre><code># A tibble: 3 × 3
 # Groups:   gempresent [2]
   gempresent gem_found     n
        &lt;dbl&gt;     &lt;dbl&gt; &lt;int&gt;
-1          0         0  1175
-2          1         0  1191
-3          1         1  1147</code></pre>
+1          0         0  1063
+2          1         0  1072
+3          1         1  1039</code></pre>
 </div>
 </div>
 </section>
