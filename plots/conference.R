@@ -1,5 +1,7 @@
 ### conference short summary main plots
 
+library(ggthemes)
+
 all_data %>%
   group_by(uniqueID, trial, group) %>%
   ggplot(aes(x = trial, y = points, color = factor(gem_found), shape = group)) +
@@ -8,7 +10,7 @@ all_data %>%
   scale_color_brewer(type = "qual", palette = 2, name = "gem found", label = c("no", "yes"))+
   # facet_wrap( ~ gem_found) +
   labs(title = 'average points per trial') +
-  theme_bw(base_size = 20) 
+  theme_classic(base_size = 20) 
 
 
 
@@ -24,7 +26,7 @@ all_data %>%
   # facet_grid( ~ demo_quality) +
   labs(title = 'Adolescents score more points than adults',
        y = 'average points per round') +
-  theme_bw(base_size = 20) 
+  theme_classic(base_size = 20) 
 
 
 all_data %>%
@@ -53,11 +55,11 @@ all_data %>%
   labs(title = 'Adolescents score more points than adults',
        #subtitle = 'especially g',
        y = 'average points per round') +
-  theme_bw(base_size = 20)+
+  theme_base(base_size = 20)+
   # facet_grid( ~ demo_quality) +
   guides(shape = FALSE)
 
-ggsave("plots/points_difference.png",plot = last_plot())
+ggsave("plots/points_difference.png",plot = last_plot(), height = 6, width = 6)
 
 
 
@@ -94,12 +96,12 @@ all_data %>%
     type = "qual",
     palette = 2) +
   labs(title = '',
-       y = 'Clicks before gem is found') +
+       y = 'clicks before gem is found') +
 #facet_wrap(~demo_type) +
-  theme_bw(base_size = 20) +
+  theme_base(base_size = 20) +
   guides(color = FALSE, fill = FALSE)
 
-ggsave("plots/gem_found_when.png",plot = last_plot())
+ggsave("plots/gem_found_when.png",plot = last_plot(), width = 6, heigh =6)
   
 
 all_data %>% 
@@ -115,20 +117,37 @@ summary(model_when_gem)
 
 
 all_data %>% group_by(demo_type, uniqueID, round, group, gem_found, age, demo_quality) %>%
-  filter(social_info_use == "copy" & gem_found_how != 'alone' ) %>%
+  filter(social_info_use == "copy"  ) %>%
   count(social_info_use) %>%
   ggplot(aes(
-    x = factor(gem_found),
+    x = factor(demo_quality),
     y = n,
-    shape = social_info_use,
-    color = group
+    shape = group,
+    color = demo_quality
   )) +
-  stat_summary() +
-  geom_hline(yintercept = 25 / 64,
-             linetype = "dotted",
-             color = "red") +
-  # facet_wrap(.~group)+
-  theme_minimal(14) +
- # facet_wrap(. ~ gem_found, labeller = label_both) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  stat_summary(position = position_dodge(width =.5)) +
+ # geom_hline(yintercept = 25 / 64,
+  #           linetype = "dotted",
+  #          color = "red") +
+  labs(y='average number of copy per round',
+       x= 'treatment (quality of demonstrator)')+
+  scale_color_brewer(
+    type = "qual",
+    palette = 2,
+    name = "demonstrator:",
+    label = c("finds a gem", "settles for a positive option", "explores until the end")
+  ) +
+  scale_x_discrete(labels=c("high", "medium", "low")) +
+ # facet_wrap(.~gem_found) +
+  theme_base(20)
+ # guides(color = FALSE)
+ggsave("plots/social_info_use.png",plot = last_plot(), width = 6, heigh =6)
 
+
+
+all_data %>% group_by(demo_type, uniqueID, round, group, gem_found, age, demo_quality) %>%
+  filter(social_info_use == "copy" ) %>%
+  count(social_info_use) %>% 
+  lmer(n ~ demo_quality * group + (1|uniqueID), data = .) -> a
+
+summary(a)

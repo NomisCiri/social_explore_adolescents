@@ -188,8 +188,8 @@ all_data %>%
   stat_summary() +
   theme_minimal(base_size = 15) +
   scale_color_brewer(type = "qual", palette = 2, name = "gem found", label = c("no", "yes"))+
-  facet_wrap( ~ gem_found) +
-  labs(title = 'avg points per trial') +
+ # facet_wrap( ~ gem_found) +
+  labs(title = 'average points per trial') +
   theme_bw(base_size = 20) 
 
 all_data %>%
@@ -199,7 +199,7 @@ all_data %>%
   theme_minimal(base_size = 15) +
   #scale_color_brewer(type = "qual", palette = 2, name = "gem found", label = c("no", "yes"))+
   facet_grid( ~ demo_type) +
-  labs(title = 'avg points per environment') +
+  labs(title = 'average points per environment') +
   theme_bw(base_size = 20) 
 
 
