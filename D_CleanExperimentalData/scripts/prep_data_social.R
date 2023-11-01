@@ -9,6 +9,10 @@
 
 pacman::p_load(tidyverse, jsonlite)
 
+## function to select something that IS NOT in a array/dataframe etc.
+'%!in%' <- function(x,y)!('%in%'(x,y))
+
+
 ## create x & y variables
 data_adolescents <-
   as_tibble(read.csv('D_CleanExperimentalData/adolescents_data/clean_data/social/clean_data.csv')) %>% 
@@ -54,7 +58,8 @@ data <- left_join(data, when_gem_found) %>%
   group_by(unique_rounds) %>% 
   fill(round_gem_found, .direction = "updown") %>% 
   mutate(gem_found = ifelse(round_gem_found > 0, 1, 0),
-         social_info_use = ifelse(cell == social_info, "copy", "ignore"))
+         social_info_use = ifelse(cell == social_info, "copy", "ignore"),
+         )
 
 data$gem_found[is.na(data$gem_found)] <- 0
 
@@ -197,6 +202,72 @@ data <- data %>%
   dplyr::filter(!is.na(points)) %>%
   dplyr::filter(!is.na(gempresent)) %>%
   dplyr::filter(!is.na(demo_type))
+
+
+### move this to cleaning script
+
+data <-
+  data %>%   ungroup() %>%
+  group_by(unique_rounds) %>% 
+  mutate(remain_gem = case_when(
+    trial > round_gem_found &
+      cell == gem_cell ~ 1,
+    trial > round_gem_found &
+      cell != gem_cell ~ 0,
+    TRUE ~ NA
+  )
+  ) %>%   ungroup()  
+
+
+## exclude rounds in which participants explored more than 3 rounds after finding the gem
+
+problem_data <- data %>%
+  #filter(remain_gem != 1) %>%  
+  filter(gem_found == 1 & trial > round_gem_found) %>%
+  ungroup() %>% 
+  group_by(uniqueID, round) %>% 
+  mutate(n_explore_after_gem = length(unique(cell)),                                            remaining_trials = 25 - round_gem_found,
+         n_clicks =  n_explore_after_gem )
+
+problem_people <- problem_data %>% 
+  select(uniqueID, group, round, n_explore_after_gem) %>% 
+  filter(n_explore_after_gem > 3) %>% 
+  distinct() %>% 
+  group_by(uniqueID, group) %>% 
+  summarise(n = n())
+
+problem_adults <- problem_people %>% 
+  filter(group == 'adults') 
+
+problem_data %>%
+  select(unique_rounds, group, n_explore_after_gem) %>% 
+  filter(n_explore_after_gem > 3) %>% 
+  distinct() %>% 
+  select(unique_rounds) %>% 
+  pull() -> problem_rounds
+
+
+data <- data %>% 
+  ungroup() %>% 
+  group_by(soc_info_round) %>% 
+  mutate(gem_found_social_info = ifelse(soc_info_round == 335, 11,
+                                        ifelse(soc_info_round == 795, 16,
+                                               ifelse(soc_info_round == 1625, 6,
+                                                      ifelse(soc_info_round == 1912, 14,
+                                                             ifelse(soc_info_round == 905, 8,
+                                                                    ifelse(soc_info_round == 343, 17, NA)))))),
+         gem_found_how = ifelse(is.na(round_gem_found), 'not_found',
+                                ifelse( round_gem_found < gem_found_social_info,
+           'alone',
+           ifelse(
+             round_gem_found >= gem_found_social_info,
+             'copier', ""
+           )
+         ))) %>%
+  filter(unique_rounds %!in% problem_rounds) %>% 
+  mutate(demo_quality = if_else(demo_type == "gem_found", "best",
+                                ifelse((demo_type == "gem_not_found" | demo_type == "no_gem"), "medium", "worst"))) 
+
 
   ## save dataset
 write.csv(data, "data/social/data_social_all_participants.csv", row.names = FALSE)
