@@ -11,7 +11,7 @@
 pacman::p_load(tidyverse, readxl)
 
 ## function takes the folder path and the number of periods expected from complete participants as input
-readLIONESS <- function(folder, writinglocation, periods) {
+readLIONESS <- function(folder, writinglocation, periods, prolificID = FALSE) {
   merged_data <- data.frame()
 
   ## how many raw files are in the folder?
@@ -36,19 +36,30 @@ readLIONESS <- function(folder, writinglocation, periods) {
       write_csv(paste0(writinglocation, n, "-decisions-raw.csv"))
     
     ## save session sheet
-    openxlsx::read.xlsx(xlsxFile = filename,
+    raw <- openxlsx::read.xlsx(xlsxFile = filename,
                sheet = "session") %>%
       write_csv(paste0(writinglocation, n, "-session-raw.csv"))
     
     ## which players completed the experiment
     player_finished <- core %>%
-      filter(period == periods & onPage == "end") %>%
-      select(playerNr)
+      dplyr::filter(period == periods & onPage == "end") %>%
+      select(playerNr, )
 
     ## exclude incomplete participants
     decisions <- decisions %>%
-      filter(playerNr %in% player_finished$playerNr) %>% 
+      dplyr::filter(playerNr %in% player_finished$playerNr) %>% 
       mutate(file_nr = n)
+    
+    ## add prolific ID if specified
+    if (prolificID == TRUE) {
+      prolificIDs <- raw %>% 
+        select(playerNr, externalID) %>%
+        dplyr::rename(Participant.id = externalID) %>% # rename to match prolific file output
+        dplyr::filter(playerNr %in% player_finished$playerNr)
+      
+      ## merge with rest of dataset
+      decisions <- left_join(decisions, prolificIDs, by = "playerNr")
+    }
 
     ## append to other batches (if existing)
     merged_data <-
