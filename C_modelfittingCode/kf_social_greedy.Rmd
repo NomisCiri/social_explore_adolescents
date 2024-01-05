@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-pacman::p_load(tidyverse, rjson, DEoptim, doParallel, here,data.table,jsonlite,lme4,nnet,brms)
+pacman::p_load(tidyverse, rjson, DEoptim, doParallel, here,data.table,jsonlite,lme4,nnet)
 knitr::opts_knit$set(root.dir = here()) # set root fot the whole file
 refit=T
 ```
@@ -18,7 +18,7 @@ First, lets load some data.
 
 ## load behavioral data
 social_data <-  read_csv(file = paste0("./data/social/data_social_all_participants.csv")) %>%#drop_na()
-  filter(tot_points>0 & !is.na(demo_type))%>%#filter(player<30)%>%# get a sub-sample of both adults and adolescents 
+  filter(!is.na(demo_type))%>%#filter(player<30)%>%# get a sub-sample of both adults and adolescents 
   mutate(soctype=case_when(
     demo_type=="gem_found"~1,# i need that to index the different social weight parameters
     demo_type=="gem_not_found"~2,
@@ -28,23 +28,16 @@ social_data <-  read_csv(file = paste0("./data/social/data_social_all_participan
 ```
 
 # Fit model to social data
-
 This function fits the model specified in models_mle and stores the parameter estimates as well as the fit index (lower is better)
 alongside the participant data in long format. In the future we want to modify this to fit different models.
 
-There is a credible interaction between SI use and agegroup
+
 ```{r}
 social_data%>%group_by(demo_type,player,round,group)%>%
-  count(social_info_use)%>%filter(!is.na(social_info_use))%>%
-  ggplot(aes(x=demo_type,y=n,shape=social_info_use,color=group))+
-  stat_summary()+
- # facet_wrap(.~group)+
+  count(social_info_use)%>%filter(social_info_use=="copy")%>%
+  ggplot(aes(x=group,y=n,color=group))+
+  stat_boxplot()+
   theme_minimal()
-
-
-# social_data%>%group_by(demo_type,player,round,group)%>%
-#   count(social_info_use)%>%filter(!is.na(social_info_use))%>%filter(social_info_use=="copy")%>%
-#   brms::brm(n~group*demo_type,data=.,family="poisson",chains=4,cores=4)
 ```
 # Fit model
 Either fit the model or load from disk
@@ -78,7 +71,7 @@ if (refit){
     d1 <- social_data %>% filter(uniqueID == player_nr) %>%
       # filter(gempresent == 0) %>%  # for now only have rounds without gems 
       group_by(round) %>%
-      mutate(z = points, #(points - mean(points)) / sd(points), ventually figure out what is the best outcome for this
+      mutate(z =points, #(points - mean(points)) / sd(points), #ventually figure out what is the best outcome for this
              social_info = social_info,
              choices = cells
       ) %>% rowwise() %>%
@@ -86,46 +79,42 @@ if (refit){
       ungroup()
     
     rounds <- unique(d1$round)
-    cv<-rep(NA,10)
+    cv<-rep(NA,7)
     ####
     #### crossvalidation
     #### leaves out one round and fits model on the other rounds. 
     #### then evaluates the modelfit on the held out data
-  #  for (r in rounds) { # loop through rounds in roundList
-      cv_one<-fit_bmt_ucb_softmax_egreedy(d1 = d1,leaveoutindex = NA)
+   # for (r in rounds) { # loop through rounds in roundList
+      cv_one<-fit_bmt_social_egreedy(d1 = d1,leaveoutindex = NA)
       cv <-rbind(cv,cv_one) # only try one sub
-   # }
+    #}
     # collect fit indices and compute mean
     d1$fit <- mean(cv[,2],na.rm=T)
+    d1$error_var <- mean(cv[,3],na.rm=T)#%>%exp()
+    d1$epsilon <- mean(cv[,4],na.rm=T)#%>%exp()
+    d1$tau <- mean(cv[,5],na.rm=T)#%>%exp()
+    d1$soc_w <- mean(cv[,6],na.rm=T)#%>%exp()
     
-    d1$error_var <- mean(cv[,3],na.rm=T)
-    d1$beta <- mean(cv[,4],na.rm=T)
-    
-    d1$tau <- mean(cv[,5],na.rm=T)
-    d1$epsilon_gem <- mean(cv[,6],na.rm=T)
-  
-    #d1$prior<-unlist(cv[5])
-    saveRDS(cv, file = paste0("./A_GeneratedFiles/modelfits/social_models/all_envs/kalman_ucb_softmax_egreedy/fit", player_nr, ".rds"))
-    
-    saveRDS(d1, file = paste0("./A_GeneratedFiles/modelfits/social_models/all_envs/kalman_ucb_softmax_egreedy/data_fit", player_nr, ".rds"))
     return(d1)
   }
 } else{#read from disk if refit is false
-  # fits_path<-"A_GeneratedFiles/modelfits/social_models/all_envs/kalman_ucb_softmax_egreedy/"
+   fits_path<-"A_GeneratedFiles/modelfits/social_models/all_envs/kalman_ucb_sw_softmax_egreedy/"
   
-  # social_fits<-list.files(fits_path)%>%
-  #   purrr::map_dfr(.,~{
-  #     d1<-readRDS(paste0(fits_path,.))%>%tibble()
-  #     return(d1)
-  #   })
- social_fits<- read_csv(file = "A_GeneratedFiles/modelfits/social_models/all_envs/kalman_ucb_softmax_egreedy/bmt_ucb_fits.csv")
+  social_fits<-list.files(
+      paste0(
+        fits_path
+      )
+    )%>%
+    purrr::map_dfr(.,~{
+      d1<-readRDS(paste0(fits_path,.))%>%tibble()
+      return(d1)
+    })
 }
 
 #write_csv(social_fits,file = "A_GeneratedFiles/modelfits/social_models/all_envs/kalman_ucb_softmax_egreedy/bmt_ucb_fits.csv")
 ```
 
 # Evaluate fit 
-
 
 ```{r}
 
@@ -193,6 +182,21 @@ social_fits%>%select(tau,group,player)%>%unique()%>%
 lm(tau~group,data = .)%>%anova()
 
 
+# check greedy difference in kids and adults 
+social_fits %>%
+  dplyr::select(player, group, soc_w) %>%
+  distinct() %>%
+  #mutate(asymmetry_index = (lr_p-lr_n)/(lr_p + lr_n)) %>%
+  ggplot(aes(y = soc_w, x=group, color = group)) +
+  #geom_line(aes(group=index))+
+  stat_boxplot()+
+  theme_minimal()
+
+#tau makes a difference
+social_fits%>%select(soc_w,group,player)%>%unique()%>%
+lm(soc_w~group,data = .)%>%anova()
+
+
 ```
 
 
@@ -245,12 +249,13 @@ for (player_nr in unique(social_fits_dNa$uniqueID)) {
   estimates <- c(unique(d1$error_var),
                  unique(d1$beta),
                  unique(d1$tau),
-                 unique(d1$epsilon_gem)
+                 unique(d1$epsilon_gem),
+                 unique(d1$soc_w)
      
   )
   ####
   #for (r in rounds) { # loop through rounds in roundList
-  cv <- simualte_bmt_ucb_softmax_egreedy(
+  cv <- simulate_bmt_ucb_softmax_egreedy_socw(
     par = estimates,
     learning_model_fun = bayesianMeanTracker,
     acquisition_fun = ucb,
@@ -317,6 +322,6 @@ simsub_dat%>%
   theme_bw() -> comp_plot
 
 
-
+comp_plot
 ```
 

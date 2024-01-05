@@ -253,7 +253,7 @@ ungroup() %>%
 summary(aov(tot_points ~ demo_quality  * group , data = interaction_data ))
 
 
-brms::brm(tot_points ~ demo_quality * group + (1|uniqueID), data = interaction_data )
+interaction<-brms::brm(tot_points ~ demo_quality * group + (1|uniqueID), data = interaction_data )
 
 summary(interaction)
 

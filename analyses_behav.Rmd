@@ -7,8 +7,9 @@ output: html_document
 
 ```{r setup, include=FALSE}
 pacman::p_load(tidyverse, rjson, DEoptim, doParallel, here,data.table,jsonlite,lme4,nnet,brms)
-knitr::opts_knit$set(root.dir = here()) # set root fot the whole file
-refit=T
+#knitr::opts_knit$set(root.dir = here()) # set root fot the whole file
+refit = T
+here::i_am("analyses_behav.Rmd")
 ```
 
 In this document, we will fit learning model to the "social bandit" task that Andrea and I developed. 
@@ -19,11 +20,11 @@ First, lets load some data.
 ## load behavioral data
 social_data <-  read_csv(file = paste0("./data/social/data_social_all_participants.csv")) %>%#drop_na()
   filter(tot_points>0 & !is.na(demo_type))%>%#filter(player<30)%>%# get a sub-sample of both adults and adolescents 
-  mutate(soctype=case_when(
-    demo_type=="gem_found"~1,# i need that to index the different social weight parameters
-    demo_type=="gem_not_found"~2,
-    demo_type=="never_exploit"~3,
-    demo_type=="no_gem"~4)
+  mutate(soctype = case_when(
+    demo_type == "gem_found" ~ 1,# i need that to index the different social weight parameters
+    demo_type == "gem_not_found" ~ 2,
+    demo_type == "never_exploit" ~ 3,
+    demo_type == "no_gem" ~ 4)
   )
 ```
 

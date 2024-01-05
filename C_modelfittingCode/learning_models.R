@@ -51,7 +51,7 @@ bayesianMeanTracker_soc <- function(x, y, theta,soc_w, prevPost = NULL, mu0Par, 
   # Which of the 121 options were chosen at time?
   alloptrials <- expand.grid(0:7, 0:7)
   chosen <- x# which(alloptrials$Var1 == x[1] & alloptrials$Var2 == x[2])
-  conf<-as.numeric(chosen==soc_ch)# is one if chosen opion equals social info, 0 otherwise
+  conf<-as.numeric(chosen==soc_ch)# is one if chosen option equals social info, 0 otherwise
   # Kalman gain
   kGain <- predictions$sig[chosen] / (predictions$sig[chosen] + vare) # feed the uncertainty in here.
   # update mean

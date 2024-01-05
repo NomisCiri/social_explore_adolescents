@@ -71,7 +71,7 @@ if (refit){
     d1 <- social_data %>% filter(uniqueID == player_nr) %>%
       # filter(gempresent == 0) %>%  # for now only have rounds without gems 
       group_by(round) %>%
-      mutate(z = points, #(points - mean(points)) / sd(points), ventually figure out what is the best outcome for this
+      mutate(z =points, #(points - mean(points)) / sd(points), #ventually figure out what is the best outcome for this
              social_info = social_info,
              choices = cells
       ) %>% rowwise() %>%
@@ -255,12 +255,13 @@ for (player_nr in unique(social_fits_dNa$uniqueID)) {
   estimates <- c(unique(d1$error_var),
                  unique(d1$beta),
                  unique(d1$tau),
-                 unique(d1$epsilon_gem)
+                 unique(d1$epsilon_gem),
+                 unique(d1$soc_w)
      
   )
   ####
   #for (r in rounds) { # loop through rounds in roundList
-  cv <- simumalte_bmt_ucb_softmax_egreedy(
+  cv <- simulate_bmt_ucb_softmax_egreedy_socw(
     par = estimates,
     learning_model_fun = bayesianMeanTracker,
     acquisition_fun = ucb,
