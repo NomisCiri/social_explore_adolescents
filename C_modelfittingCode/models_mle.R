@@ -186,7 +186,6 @@ KF_epsilon_greedy <- function(out, epsilon=0.1,tau=0.1,ucb=0,zeta=0,y,t,social_c
 
 KF_social_greedy <- function(out, epsilon=1,maximize=1,zeta=1,y,t,social_choices){
   #out is data frame
-  #browser()
   n <- length(out$mu)
   #softmaxing probs
   vals<-c(exp(epsilon),exp(maximize),exp(zeta))/sum(c(exp(epsilon),exp(maximize),exp(zeta)))
@@ -203,6 +202,30 @@ KF_social_greedy <- function(out, epsilon=1,maximize=1,zeta=1,y,t,social_choices
   return(p)
 }
 
+
+KF_social_greedy_2probs <- function(out, epsilon=1,maximize=1,zeta=1,epsilon_gem=1,maximize_gem=1,zeta_gem=1,y,t,social_choices){
+  #out is data frame
+  #browser()
+  n <- length(out$mu)
+  #softmaxing probs
+  if(max(y>150)){
+  vals<-c(exp(epsilon),exp(maximize),exp(zeta))/sum(c(exp(epsilon),exp(maximize),exp(zeta)))
+  # compute utilities
+  }else {
+    vals<-c(exp(epsilon_gem),exp(maximize_gem),exp(zeta_gem))/sum(c(exp(epsilon_gem),exp(maximize_gem),exp(zeta_gem)))
+  }
+  
+  utility_vec <- out$mu #+(ucb *sqrt(out$sig))
+  # assign probabilites
+  p <- rep(1/n*vals[1], n)#all opts get explore probability
+  p[which.is.max(utility_vec)] <- vals[2]
+  p[social_choices[t]] <- vals[3]
+  #simply add explore and copy probability
+  if(which.is.max(utility_vec)==social_choices[t]){
+    p[which.is.max(utility_vec)] <- vals[2]+vals[3]# add copy and maximizing probability
+  }
+  return(p)
+}
 #next: argmax with some prob after gem, otherwise do value based exploration.
 
 ##-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-
@@ -1275,14 +1298,14 @@ kalman_social_greedy <- function(par, dat) {
         #reset on the first trial
         out=NULL
       }
-      out <- bayesianMeanTracker(chosen[t], y[t], theta = theta, prevPost = NULL, mu0Par = mu0,var0Par = var0)
+      out <- bayesianMeanTracker(chosen[t], y[t], theta = theta, prevPost = out, mu0Par = mu0,var0Par = var0)
       ps_t<-KF_social_greedy(out,epsilon,maximize,zeta,y=y[1:t],t,social_choices)
       p<-rbind(p, t(ps_t))
       # browser()
     }
     #handle overflow
-    p <- (pmax(p, 0.00000000001))
-    p <- (pmin(p, 0.99999999999))
+    p <- (pmax(p, 0.00000001))
+    p <- (pmin(p, 0.99999999))
     # add loglik nasty way of checking the predicted choice probability a the item that was chosen
     nLL[which(unique(dat$round) == r)] <- -2*sum(log(p[cbind(c(1:(trials-1)), chosen[2:length(chosen)] )]))
     #browser()
@@ -1298,5 +1321,72 @@ kalman_social_greedy <- function(par, dat) {
   }
 }
 
+
+##------------------------------------------------------------------------
+## Copy 2probablity mixture model--
+##------------------------------------------------------------------------
+
+kalman_social_greedy_2_probs <- function(par, dat) {
+  # unpack
+  theta <- par[1]# "learningrate"
+  epsilon<-par[2]# exploration prob
+  maximize<-par[3]# maximize prob
+  zeta<-par[4]# copy prob
+  
+  epsilon_gem<-par[5]# exploration prob
+  maximize_gem<-par[6]# maximize prob
+  zeta_gem<-par[7]# copy prob
+  mu0 <- 0# par[4] # exploration bonus
+  var0<-10
+  # create a parameter vector
+  # preallocate negative log likelihood
+  nLL <- rep(0, 12)
+  for (r in unique(dat$round)){
+    # collect choices for current round
+    round_df <- subset(dat, round == r)
+    trials <- nrow(round_df)
+    # Observations of subject choice behavior
+    chosen <- round_df$choices
+    y <- round_df$z[0:(trials - 1)] # trim off the last observation, because it was not used to inform a choice (round already over)
+    # social information
+    social_choices<-round_df$social_info
+    soctype<-unique(round_df$soctype)
+    # create observation matrix
+    p <- NULL
+    prevPost <- NULL # set the previous posterior computation to NULL for qlearning
+    pMat <- NULL
+    #here, too
+    for (t in 1:(trials-1)) {
+      #learn
+      if (t == 1) {
+        #reset on the first trial
+        out <- NULL
+      }
+      out <- bayesianMeanTracker(chosen[t], y[t], theta = theta, prevPost = out, mu0Par = mu0,var0Par = var0)
+      if(max(y[1:t])>150){
+        ps_t<-KF_social_greedy(out,epsilon_gem,maximize_gem,zeta_gem,y=y[1:t],t,social_choices)
+      } else{
+        ps_t<-KF_social_greedy(out,epsilon,maximize,zeta,y=y[1:t],t,social_choices)
+      }
+      p<-rbind(p, t(ps_t))
+      # browser()
+    }
+    #handle overflow
+    p <- (pmax(p, 0.00000001))
+    p <- (pmin(p, 0.99999999))
+    # add loglik nasty way of checking the predicted choice probability a the item that was chosen
+    nLL[which(unique(dat$round) == r)] <- -2*sum(log(p[cbind(c(1:(trials-1)), chosen[2:length(chosen)] )]))
+    #browser()
+  }
+  #avoid nan or na in objective function
+  if(any(is.nan(sum(nLL))) | any(is.na(sum(nLL))))
+  { 
+    return(10 ^ 30)
+    
+  }else
+  {
+    return(sum(nLL))
+  }
+}
 
 

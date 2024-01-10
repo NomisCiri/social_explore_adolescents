@@ -686,6 +686,56 @@ fit_bmt_social_egreedy <- function(d1,leaveoutindex) {
 
 
 
+##------------------------------------------------------------------------
+##  2 e-greedy BMT model with ucb and social weight --
+##------------------------------------------------------------------------
+fit_bmt_social_egreedy_2ps <- function(d1,leaveoutindex) {
+  # subselect participant, horizon and rounds not left out
+  #which rounds to use
+  output_catched<-tryCatch({#if sth crashes
+    
+    rounds <- unique(d1$round)
+    trainingSet <- rounds[!rounds == leaveoutindex] # remove round specified by leaveoutindex
+    # test set
+    testrialset <- leaveoutindex
+    
+    if(is.na(leaveoutindex)){
+      trainingSet <- rounds # remove round specified by leaveoutindex
+      # test set
+      testrialset <- rounds
+    }
+    # Set upper and lower bounds based on nParams
+    # Set upper and lower bounds based on nParams
+    lbound <- c(0.00000001,0.00000001,0.00000001,0.00000001,0.00000001,0.00000001,0.00000001) # "theta (variance)",tau, beta greedy,soc_w
+    ubound <- c(100,10,10,10,10,10,10)                       # "theta (variance)",tau, beta greedy,soc_w
+    
+    #####
+    # Begin cross validation routine
+    # TRAINING SET
+    fit <- DEoptim(
+      kalman_social_greedy_2_probs, 
+      lower = lbound, 
+      upper = ubound, 
+      dat = d1%>%filter(round %in% trainingSet)
+     # DEoptim.control(itermax = 100)
+    )
+    paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
+    # TEST SET
+    predict <- kalman_social_greedy_2_probs(
+      par = paramEstimates, 
+      dat = d1%>%filter(round %in% testrialset)
+    )
+    output <- c(leaveoutindex,predict, fit$optim$bestmem) # leaveoutindex, nLL, prameters....
+    return(output)
+  },
+  error = function(e) {
+    output<-rep(NA,length(lbound+2))#cv index & fit index
+    # TEST SET
+    return(output)
+  }
+  )
+  return(output_catched)
+}
 
 
 
