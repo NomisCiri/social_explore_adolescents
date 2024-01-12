@@ -393,7 +393,7 @@ fit_bmt_ucb_softmax_egreedy <- function(d1,leaveoutindex) {
     }
     # Set upper and lower bounds based on nParams
     lbound <- c(0.00000001,0,0.00000001,0.00000001) # "noise",tau, beta greedy
-    ubound <- c(100,20,20,0.99999999)                       # "noise",beta,tau, greedy
+    ubound <- c(100,20,20,0.99999999)               # "noise",beta,tau, greedy
     
     #####
     # Begin cross validation routine
@@ -402,8 +402,7 @@ fit_bmt_ucb_softmax_egreedy <- function(d1,leaveoutindex) {
       kalman_ucb_softmax_egreedy, 
       lower = lbound, 
       upper = ubound, 
-      dat = d1%>%filter(round %in% trainingSet),
-      DEoptim.control(itermax = 100,NP=10)
+      dat = d1%>%filter(round %in% trainingSet)
     )
     paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
     # TEST SET
@@ -444,8 +443,8 @@ fit_bmt_ucb_sw_softmax_egreedy <- function(d1,leaveoutindex) {
     }
     # Set upper and lower bounds based on nParams
     # Set upper and lower bounds based on nParams
-    lbound <- c(0.00000001,0,0.00000001,0.00000001,0) # "theta (variance)",tau, beta greedy,soc_w
-    ubound <- c(100,20,20,1,50)                       # "noise",beta,tau, greedy
+    lbound <- c(0.00000001,0,0.00000001,0.00000001,0) # "theta (variance)",beta, tau, greedy, soc_w
+    ubound <- c(100,20,20,1,50)                       # "theta (variance)",beta, tau, greedy, soc_w
     
     #####
     # Begin cross validation routine
@@ -454,8 +453,8 @@ fit_bmt_ucb_sw_softmax_egreedy <- function(d1,leaveoutindex) {
       kalman_ucb_sw_softmax_egreedy, 
       lower = lbound, 
       upper = ubound, 
-      dat = d1%>%filter(round %in% trainingSet),
-      DEoptim.control(itermax = 100,NP=10)
+      dat = d1%>%filter(round %in% trainingSet)
+     # DEoptim.control(itermax = 100,NP=10)
     )
     paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
     # TEST SET
@@ -662,8 +661,8 @@ fit_bmt_social_egreedy <- function(d1,leaveoutindex) {
       kalman_social_greedy, 
       lower = lbound, 
       upper = ubound, 
-      dat = d1%>%filter(round %in% trainingSet),
-      DEoptim.control(itermax = 100)
+      dat = d1%>%filter(round %in% trainingSet)#,
+      #DEoptim.control(itermax = 100)
     )
     paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
     # TEST SET
@@ -707,7 +706,7 @@ fit_bmt_social_egreedy_2ps <- function(d1,leaveoutindex) {
     # Set upper and lower bounds based on nParams
     # Set upper and lower bounds based on nParams
     lbound <- c(0.00000001,0.00000001,0.00000001,0.00000001,0.00000001,0.00000001,0.00000001) # "theta (variance)",tau, beta greedy,soc_w
-    ubound <- c(100,10,10,10,10,10,10)                       # "theta (variance)",tau, beta greedy,soc_w
+    ubound <- c(100,2,2,2,2,2,2)                       # "theta (variance)",tau, beta greedy,soc_w
     
     #####
     # Begin cross validation routine
@@ -716,8 +715,8 @@ fit_bmt_social_egreedy_2ps <- function(d1,leaveoutindex) {
       kalman_social_greedy_2_probs, 
       lower = lbound, 
       upper = ubound, 
-      dat = d1%>%filter(round %in% trainingSet)
-     # DEoptim.control(itermax = 100)
+      dat = d1%>%filter(round %in% trainingSet),
+      DEoptim.control(itermax = 100)
     )
     paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
     # TEST SET

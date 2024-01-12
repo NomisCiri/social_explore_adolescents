@@ -92,7 +92,7 @@ if (refit){
     #### leaves out one round and fits model on the other rounds. 
     #### then evaluates the modelfit on the held out data
   #  for (r in rounds) { # loop through rounds in roundList
-      cv_one<-fit_bmt_ucb_softmax_egreedy(d1 = d1,leaveoutindex = NA)
+      cv_one<-fit_bmt_ucb_sw_softmax_egreedy(d1 = d1,leaveoutindex = NA)
       cv <-rbind(cv,cv_one) # only try one sub
    # }
     # collect fit indices and compute mean
@@ -103,13 +103,15 @@ if (refit){
     
     d1$tau <- mean(cv[,5],na.rm=T)
     d1$epsilon_gem <- mean(cv[,6],na.rm=T)
+    d1$soc_w <- mean(cv[,7],na.rm=T)
+
   
     return(d1)
   }
 } else{#read from disk if refit is false
- social_fits<- read_csv(file = "A_GeneratedFiles/modelfits/kf_softmax_greedy.csv")
+ social_fits<- read_csv(file = "A_GeneratedFiles/modelfits/kf_sw_softmax_greedy.csv")
 }
-write_csv(social_fits,file = "A_GeneratedFiles/modelfits/kf_softmax_greedy.csv")
+write_csv(social_fits,file = "A_GeneratedFiles/modelfits/kf_sw_softmax_greedy.csv")
 ```
 
 # Evaluate fit 

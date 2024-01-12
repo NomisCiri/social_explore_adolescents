@@ -76,10 +76,16 @@ if (refit){
     # how many rounds per ppt
     rounds <- unique(d1$round)
     ####
-    #### actually fit the model
-    cv<-fit_bmt_social_egreedy(d1 = d1,leaveoutindex = NA)
+     cv<-rep(NA,9)
     ####
-    ####
+    #### crossvalidation
+    #### leaves out one round and fits model on the other rounds. 
+    #### then evaluates the modelfit on the held out data
+    #  for (r in rounds) { # loop through rounds in roundList
+      cv_one<-fit_bmt_social_egreedy(d1 = d1,leaveoutindex = NA)
+      cv <-rbind(cv,cv_one) # only try one sub
+   # }
+    # collect fit indices and compute mean
     
     #collect
     d1$fit <- mean(cv[,2],na.rm=T)
@@ -91,17 +97,8 @@ if (refit){
     return(d1)
   }
 } else{#read from disk if refit is false
-   fits_path<-"A_GeneratedFiles/modelfits/social_models/all_envs/kalman_ucb_sw_softmax_egreedy/"
-  
-  social_fits<-list.files(
-      paste0(
-        fits_path
-      )
-    )%>%
-    purrr::map_dfr(.,~{
-      d1<-readRDS(paste0(fits_path,.))%>%tibble()
-      return(d1)
-    })
+     social_fits_p<-read_csv(file = "A_GeneratedFiles/modelfits/kf_p_greedy_social.csv")
+
 }
 
 social_fits_p<-social_fits%>%rowwise()%>%
@@ -110,7 +107,7 @@ social_fits_p<-social_fits%>%rowwise()%>%
          soc_w_p=exp(soc_w)/sum(exp(epsilon),exp(soc_w),exp(tau)),
          )
 
-write_csv(social_fits_p,file = "A_GeneratedFiles/modelfits/social_models/kf_p_greedy_social.csv")
+write_csv(social_fits_p,file = "A_GeneratedFiles/modelfits/kf_p_greedy_social.csv")
 ```
 
 # Evaluate fit 

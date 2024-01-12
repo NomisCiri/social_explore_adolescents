@@ -196,9 +196,9 @@ KF_social_greedy <- function(out, epsilon=1,maximize=1,zeta=1,y,t,social_choices
   p[which.is.max(utility_vec)] <- vals[2]
   p[social_choices[t]] <- vals[3]
   #simply add explore and copy probability
-  if(which.is.max(utility_vec)==social_choices[t]){
-    p[which.is.max(utility_vec)] <- vals[2]+vals[3]# add copy and maximizing probability
-  }
+  #if(which.is.max(utility_vec)==social_choices[t]){
+  #  p[which.is.max(utility_vec)] <- vals[2]+vals[3]# add copy and maximizing probability
+  #}
   return(p)
 }
 
@@ -208,7 +208,7 @@ KF_social_greedy_2probs <- function(out, epsilon=1,maximize=1,zeta=1,epsilon_gem
   #browser()
   n <- length(out$mu)
   #softmaxing probs
-  if(max(y>150)){
+  if(max(y<150)){
   vals<-c(exp(epsilon),exp(maximize),exp(zeta))/sum(c(exp(epsilon),exp(maximize),exp(zeta)))
   # compute utilities
   }else {
@@ -221,9 +221,9 @@ KF_social_greedy_2probs <- function(out, epsilon=1,maximize=1,zeta=1,epsilon_gem
   p[which.is.max(utility_vec)] <- vals[2]
   p[social_choices[t]] <- vals[3]
   #simply add explore and copy probability
-  if(which.is.max(utility_vec)==social_choices[t]){
-    p[which.is.max(utility_vec)] <- vals[2]+vals[3]# add copy and maximizing probability
-  }
+  #if(which.is.max(utility_vec)==social_choices[t]){
+  #  p[which.is.max(utility_vec)] <- vals[2]+vals[3]# add copy and maximizing probability
+  #}
   return(p)
 }
 #next: argmax with some prob after gem, otherwise do value based exploration.
@@ -821,7 +821,7 @@ kalman_ucb_softmax_egreedy <- function(par, dat) {
   tau<-par[3]
   epsilon <- par[4] #  "random" exploration
   mu0 <- 0# par[4] # exploration bonus
-  var0<-40
+  var0<-10
   # create a parameter vector
   # preallocate negative log likelihood
   nLL <- rep(0, 12)
@@ -862,7 +862,7 @@ kalman_ucb_softmax_egreedy <- function(par, dat) {
     p <- (pmax(p, 0.00001))
     p <- (pmin(p, 0.99999))
     # add loglik nasty way of checking the predicted choice probability a the item that was chosen
-    nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials-1)), chosen[2:length(chosen)] )]))
+    nLL[which(unique(dat$round) == r)] <- -2* sum(log(p[cbind(c(1:(trials-1)), chosen[2:length(chosen)] )]))
     #browser()
   }
   #avoid nan or na in objective function
@@ -932,7 +932,7 @@ kalman_ucb_sw_softmax_egreedy <- function(par, dat) {
     p <- (pmax(p, 0.00001))
     p <- (pmin(p, 0.99999))
     # add loglik nasty way of checking the predicted choice probability a the item that was chosen
-    nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials-1)), chosen[2:length(chosen)] )]))
+    nLL[which(unique(dat$round) == r)] <- -2*sum(log(p[cbind(c(1:(trials-1)), chosen[2:length(chosen)] )]))
     #browser()
   }
   #avoid nan or na in objective function

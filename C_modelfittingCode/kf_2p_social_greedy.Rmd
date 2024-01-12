@@ -89,6 +89,7 @@ if (refit){
     #collect
     d1$fit <- mean(cv[,2],na.rm=T)
     d1$error_var <- mean(cv[,3],na.rm=T)#%>%exp()
+    
     d1$epsilon <- mean(cv[,4],na.rm=T)#%>%exp()
     d1$tau <- mean(cv[,5],na.rm=T)#%>%exp()
     d1$soc_w <- mean(cv[,6],na.rm=T)#%>%exp()
@@ -100,7 +101,7 @@ if (refit){
   }
 } else{
   #read from disk if refit is false
-   social_fits_p<-read_csv(file = "A_GeneratedFiles/modelfits/social_models/kf_2p_greedy_social.csv")
+   social_fits_p<-read_csv(file = "A_GeneratedFiles/modelfits/kf_2p_greedy_social.csv")
 }
 
 social_fits_p<-social_fits%>%rowwise()%>%
@@ -112,7 +113,7 @@ social_fits_p<-social_fits%>%rowwise()%>%
          soc_w_gem_p=exp(soc_w_gem)/sum(exp(epsilon_gem),exp(soc_w_gem),exp(tau_gem))
          )
 
-write_csv(social_fits_p,file = "A_GeneratedFiles/modelfits/social_models/kf_2p_greedy_social.csv")
+write_csv(social_fits_p,file = "A_GeneratedFiles/modelfits/kf_2p_greedy_social.csv")
 ```
 
 # Evaluate fit 
@@ -200,13 +201,27 @@ social_fits_p %>%
   #mutate(asymmetry_index = (lr_p-lr_n)/(lr_p + lr_n)) %>%
   ggplot(aes(y = soc_w_gem_p, x=group, color = group)) +
   #geom_line(aes(group=index))+
-  stat_boxplot()+
+  stat_summary()+
   theme_minimal()
 
 #tau makes a difference
 social_fits_p%>%select(soc_w_gem_p,group,player)%>%unique()%>%
 lm(soc_w_gem_p~group,data = .)%>%anova()
 
+
+# check greedy difference in kids and adults 
+social_fits_p %>%
+  dplyr::select(player, group, soc_w_p) %>%
+  distinct() %>%
+  #mutate(asymmetry_index = (lr_p-lr_n)/(lr_p + lr_n)) %>%
+  ggplot(aes(y = soc_w_p, x=group, color = group)) +
+  #geom_line(aes(group=index))+
+  stat_boxplot()+
+  theme_minimal()
+
+#tau makes a difference
+social_fits_p%>%select(soc_w_p,group,player)%>%unique()%>%
+lm(soc_w_p~group,data = .)%>%anova()
 
 ```
 
