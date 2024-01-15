@@ -138,7 +138,7 @@ social_fits %>%
   theme_minimal()
 
   social_fits%>%select(error_var,group,player)%>%unique()%>%
-  lm(error_var~group,data = .)%>%anova()
+  lm(log(error_var)~group,data = .)%>%anova()
 
 
 social_fits %>%
@@ -150,7 +150,7 @@ social_fits %>%
   theme_minimal()
 
 social_fits%>%select(beta,group,player)%>%unique()%>%
-  lm(beta~group,data = .)%>%anova()
+  lm(log(beta)~group,data = .)%>%anova()
 
 
 # check greedy difference in kids and adults 
@@ -183,6 +183,22 @@ social_fits%>%select(tau,group,player)%>%unique()%>%
 lm(tau~group,data = .)%>%anova()
 
 
+
+
+# check greedy difference in kids and adults 
+social_fits %>%
+  dplyr::select(player, group, soc_w,age) %>%
+  distinct() %>%
+  #mutate(asymmetry_index = (lr_p-lr_n)/(lr_p + lr_n)) %>%
+  ggplot(aes(y = soc_w, x=age, color = group)) +
+  #geom_line(aes(group=index))+
+  stat_summary()+
+  scale_y_log10()+
+  theme_minimal()
+
+#tau makes a difference
+social_fits%>%select(soc_w,group,player,age)%>%unique()%>%
+lm(soc_w~age,data = .)%>%anova()
 ```
 
 

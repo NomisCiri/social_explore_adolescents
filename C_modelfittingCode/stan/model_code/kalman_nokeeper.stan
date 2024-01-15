@@ -31,11 +31,15 @@ data {
 transformed data{
   int n_params=2;
   
+  simplex[64] ps;
+  ps = rep_vector(1.0/64.0,64);
+  //complicated matrix that contains choice probabilites
 }
 // The parameters accepted by the model. Our model
 // accepts two parameters 'mu' and 'sigma'.
 parameters {
   vector[n_params] mus;
+  
   vector<lower=0>[n_params] sigmas;
   cholesky_factor_corr[n_params] l_omega;   // prior correlation of parameters
   matrix[n_params,N] scale; // prior scaling for each parameter
@@ -47,7 +51,7 @@ transformed parameters{
   
   //model parameters
   vector<lower=0>[N] lr;//error variance (scales kalman gain)
-  vector<lower=0.1 upper=20>[N] tau;//ucb
+  vector<lower=0.1>[N] tau;//ucb
   matrix[N, n_params] params_phi;// for non-centered paramatrezation
   
   // vector[2] contributions[T_max,R_max,N];
@@ -60,14 +64,8 @@ transformed parameters{
   //vector[64] utils_soc;
   
   real pe;
-  
-  simplex[64] ps;
   simplex[64] c_p[T_max,R_max,N];
-  
-  ps = rep_vector(1.0/64.0,64);
-  c_p=rep_array(ps,T_max,R_max,N);
-  
-  
+
   // noncentered paramtetrization
   
   // for (ppt in 1:N){
@@ -100,8 +98,6 @@ transformed parameters{
           belief_means[choices[t,r,ppt]]+=lr[ppt]*pe;
           //new variances
           // belief_vars[choices[t,r,ppt]]*=(1-k_gain);
-          
-          
           //dummycode the mixture in here.
           // contributions[t,r,ppt][1] = log(theta[ppt]) + categorical_lpmf(choices[t,r,ppt] | c_p[t,r,ppt]);
           //contributions[t,r,ppt][2] = log1m(theta[ppt]) + categorical_lpmf(choices[t,r,ppt]  | ps);
@@ -109,8 +105,6 @@ transformed parameters{
         }// end trial
       }// end round
     }//end ppt
-    
-    
 }
 // The model to be estimated. We model the output
 // 'y' to be normally distributed with mean 'mu'
@@ -123,7 +117,6 @@ model {
   // prior correlation of parameters
   l_omega~lkj_corr_cholesky(1);   
   //theta~beta(1,1);
-  
   for (ppt in 1:N){
     for (r in 1:R_subj[ppt]){
       for (t in 1:T_max){
