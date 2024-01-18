@@ -120,6 +120,7 @@ social_fits_p %>%
   distinct() %>% 
   ggplot(aes(x = group, y = fit, color = group)) +
   #geom_line(aes(group=index))+
+  coord_cartesian(ylim=c(0,2500))+
   stat_boxplot()+
   theme_minimal()
 
@@ -133,7 +134,7 @@ social_fits_p %>%
   stat_boxplot()+
   theme_minimal()
 
-  social_fits%>%select(error_var,group,player)%>%unique()%>%
+  social_fits_p%>%select(error_var,group,player)%>%unique()%>%
   lm(error_var~group,data = .)%>%anova()
 
 

@@ -123,7 +123,7 @@ social_fits %>%
   dplyr::select(uniqueID, group, fit) %>% 
   distinct() %>% 
   ggplot(aes(x = group, y = fit, color = group)) +
-  #geom_line(aes(group=index))+
+  coord_cartesian(ylim=c(0,2500))+
   stat_boxplot()+
   theme_minimal()
 
@@ -187,18 +187,17 @@ lm(tau~group,data = .)%>%anova()
 
 # check greedy difference in kids and adults 
 social_fits %>%
-  dplyr::select(player, group, soc_w,age) %>%
+  dplyr::select(player, group, soc_w,group) %>%
   distinct() %>%
   #mutate(asymmetry_index = (lr_p-lr_n)/(lr_p + lr_n)) %>%
-  ggplot(aes(y = soc_w, x=age, color = group)) +
+  ggplot(aes(y = soc_w, x=group, color = group)) +
   #geom_line(aes(group=index))+
-  stat_summary()+
-  scale_y_log10()+
+  stat_boxplot()+
   theme_minimal()
 
 #tau makes a difference
 social_fits%>%select(soc_w,group,player,age)%>%unique()%>%
-lm(soc_w~age,data = .)%>%anova()
+lm(soc_w~group,data = .)%>%anova()
 ```
 
 

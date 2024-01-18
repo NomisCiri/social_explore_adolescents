@@ -44,7 +44,7 @@ Either fit the model or load from disk
 
 ```{r}
 # 
-refit=T
+refit=F
 if (refit){
   cl <- makeCluster(detectCores(), type = 'PSOCK')
   registerDoParallel(cl)
@@ -140,7 +140,7 @@ social_fits_p %>%
   stat_boxplot()+
   theme_minimal()
 
-  social_fits%>%select(error_var,group,player)%>%unique()%>%
+  social_fits_p%>%select(error_var,group,player)%>%unique()%>%
   lm(error_var~group,data = .)%>%anova()
 
 

@@ -26,13 +26,13 @@ social_data<-social_data%>%filter(!(player %in% nans))
 R_subj=social_data%>%group_by(player)%>%summarise(n_r=length(unique(round)))%>%pull(n_r)
 
 
- social_data<-social_data%>%#drop_na()
+social_data<-social_data%>%#drop_na()
   filter(!is.na(demo_type) & !is.na(cells))%>%#filter(player<30)%>%# get a sub-sample of both adults and adolescents 
   mutate(soctype=case_when(
     demo_type=="gem_found"~1,# i need that to index the different social weight parameters
     demo_type=="gem_not_found" | demo_type=="no_gem"~2,
     str_detect(demo_type,"never_exploit") ~ 3
-    )
+  )
   )
 #give kids a unqiquely numbered indx
 social_data<-social_data%>%mutate(player=ifelse(group=="adults",player,player+1000))
@@ -135,7 +135,7 @@ for (ppt in 1:N){
         player==keep_forfit[ppt]
       )%>%pull(social_info)
       
-       # get demonstrator
+      # get demonstrator
       demo_type_dat[t,r,ppt]<-social_data_forfit%>%filter(
         trial==t,
         round==R_subj[[ppt]][r],
@@ -146,7 +146,101 @@ for (ppt in 1:N){
   }
 }
 
-data_list<-list(
+data_list_adolescents<-list(
+  N=N,
+  T_max=T_max,
+  R_max=R_max,
+  R_subj=use_rounds,
+  choices=choice,
+  rewards=reward,#/80,#just rescaled
+  social_info=social_info,
+  demo_type=demo_type_dat,
+  env_rnd=env_rnd
+)
+#its/social_models/all_envs/kalman_ucb_softmax_egreedy/bmt_ucb_fits.csv")
+```
+
+
+
+# adults model
+
+In this document, we will fit learning model to the "social bandit" task that Andrea and I developed. 
+First, lets load some data.
+
+
+# Prepare aduls data
+
+
+prepare data to be passed to stan.
+
+```{r}
+# first: cheat and take out "incomplete" cases
+social_data_forfit<-social_data%>%filter(player<1000)
+R_subj<-social_data_forfit%>%group_by(player)%>%summarise(n_r=list(unique(round)))%>%pull(n_r)#%>%length()
+
+keep_forfit<-unique(social_data_forfit$player)#[R_subj==12]# keep only participants who completed all trials
+social_data_forfit<-social_data_forfit%>%filter(player %in% keep_forfit)
+
+#make it a list of round numbers
+
+# experiment specs
+T_max<-25
+R_max<-social_data_forfit%>%group_by(player)%>%summarize(env=length(unique(env_number)))%>%pull()%>%max()
+# number of participants
+N<-length(unique(social_data_forfit$player))
+
+#put relevant data into lists
+choice=array(-1,c(T_max,R_max,N))
+reward=array(-1,c(T_max,R_max,N))
+social_info=array(-1,c(T_max,R_max,N))
+demo_type_dat=array(-1,c(T_max,R_max,N))
+env_rnd=array(-1,c(R_max,N))
+
+use_rounds<-rep(-1,N)
+
+for (ppt in 1:N){
+  use_rounds[ppt]<-length(R_subj[[ppt]])
+  for (r in 1:use_rounds[ppt]){  #loops throug unique round indices per participant
+    
+    env_rnd[r,ppt]<- social_data_forfit%>%filter(
+      round==R_subj[[ppt]][r] ,
+      player==keep_forfit[ppt]
+    )%>%pull(env_number)%>%unique()
+    
+    for (t in 1:T_max){
+      # get choices
+      choice[t,r,ppt]<- social_data_forfit%>%filter(
+        trial==t ,
+        round==R_subj[[ppt]][r] ,
+        player==keep_forfit[ppt]
+      )%>%pull(cells)
+      
+      # get points
+      reward[t,r,ppt]<-  social_data_forfit%>%filter(
+        trial==t,
+        round==R_subj[[ppt]][r],
+        player==keep_forfit[ppt]
+      )%>%pull(points)
+      
+      # get demonstrator
+      social_info[t,r,ppt]<-social_data_forfit%>%filter(
+        trial==t,
+        round==R_subj[[ppt]][r],
+        player==keep_forfit[ppt]
+      )%>%pull(social_info)
+      
+      # get demonstrator
+      demo_type_dat[t,r,ppt]<-social_data_forfit%>%filter(
+        trial==t,
+        round==R_subj[[ppt]][r],
+        player==keep_forfit[ppt]
+      )%>%pull(soctype)
+      
+    }
+  }
+}
+
+data_list_adults<-list(
   N=N,
   T_max=T_max,
   R_max=R_max,
@@ -166,18 +260,77 @@ data_list<-list(
 
 Q_mod_adol<-stan(
   file="./C_modelfittingCode/stan/model_code/Q_nokeeper_sw.stan",
-  data=data_list,
-  pars =c("lr","tau","sw"),
- # init=1,
+  data=data_list_adolescents,
+  pars =c("lr","tau","sw","log_lik"),
+  # init=1,
   iter = 1000,
   chains=2,
   cores=2
-  )
+)
+
+saveRDS(object = Q_mod_adol,file = "./A_GeneratedFiles/modelfits/Q_sw_stan_adolescents.rds")
+#Q_mod_adol<-readRDS(file = "./A_GeneratedFiles/modelfits/Q_sw_stan_adolescents.rds")
+```
+
+```{r}
+
+Q_mod_adul<-stan(
+  file="./C_modelfittingCode/stan/model_code/Q_nokeeper_sw.stan",
+  data=data_list_adults,
+  pars =c("lr","tau","sw","log_lik"),
+  # init=1,
+  iter = 1000,
+  chains=2,
+  cores=2
+)
+
+saveRDS(object = Q_mod_adul,file = "./A_GeneratedFiles/modelfits/Q_sw_stan_adults.rds")
+#Q_mod_adul<-readRDS(file = "./A_GeneratedFiles/modelfits/Q_sw_stan_adults.rds")
 
 ```
 
-# read stan mod
+# join posterior draws
+```{r}
+adults<-Q_mod_adul%>%
+  tidybayes::gather_draws(lr[participant],tau[participant],sw[participant,type])%>%
+  mutate(group="adults")
+
+
+
+adolescents<-Q_mod_adol%>%
+  tidybayes::gather_draws(lr[participant],tau[participant],sw[participant,type])%>%
+  mutate(group="adolescents")
+
+all_draws<-rbind(adults,adolescents)
+```
 
 ```{r}
-kalman_mod<-readRDS("./A_GeneratedFiles/modelfits/stan/kalman_psi_mix_adults.rds")
+library("tidybayes")
+all_draws%>%group_by(participant,group,type,.variable)%>%
+  dplyr::summarise(m_value=mean(.value))%>%
+  ggplot(aes(x=group,y=m_value,color=as.factor(type)))+
+  #geom_point(position=position_dodge(0.9),alpha=0.1)+
+  stat_summary(position=position_dodge(0.9))+
+  scale_color_discrete()
+facet_wrap(.~ .variable,scales="free")
+
+
+
+all_draws%>%group_by(participant,group,type,.variable)%>%
+  dplyr::summarise(m_value=mean(.value))%>%
+  group_by(type,.variable)%>%#group_split()%>%
+  do(
+    lm(m_value ~ group, data = .)%>%broom::tidy()
+  )%>%filter(term=="groupadults")%>%mutate(var=case_when(
+    type==1~"sw_gem_found",
+    type==2~"sw_no_gem",
+    type==3~"sw_never_exploit",
+    is.na(type)~.variable
+  )
+  )%>%
+  ggplot(aes(x=estimate,y=var,color=p.value<0.01))+
+  geom_point()+
+  scale_x_continuous(name=expression("age effect ("* beta*" adults)"))+
+  scale_y_discrete(name="parameter")+
+  theme_bw(14)
 ```
