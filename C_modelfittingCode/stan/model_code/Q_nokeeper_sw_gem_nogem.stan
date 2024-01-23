@@ -19,12 +19,13 @@ data {
   int<lower=-1,upper=64> choices[T_max,R_max,N];
   int<lower=-1,upper=64> social_info[T_max,R_max,N];
   int<lower=-1,upper=4>  demo_type[T_max,R_max,N];
+  int<lower=-1,upper=64> gem_found[T_max,R_max,N];
   
   real rewards[T_max,R_max,N];
 }
 
 transformed data{
-  int  n_params=3;
+  int  n_params=3*2;
 }
 // accepts two parameters 'mu' and 'sigma'.
 parameters {
@@ -38,18 +39,20 @@ parameters {
 transformed parameters{
   
   //model parameters
-  vector<lower=0>[N] lr;//error variance (scales kalman gain)
-  vector<lower=0.001>[N] tau;//ucb
-  vector<lower=0>[N] sw;//social weight
+  matrix<lower=0>[N,2] lr;//error variance (scales kalman gain)
+  matrix<lower=0.001>[N,2] tau;//ucb
+  matrix<lower=0>[N,2] sw;//social weight
   
   matrix[N, n_params] params_phi;// for non-centered paramatrezation
   
   params_phi = (diag_pre_multiply(sigmas, l_omega) * scale)';
-  lr=Phi_approx(mus[1]+params_phi[,1]);
-  sw=Phi_approx(mus[2]+params_phi[,2])*20;
+  lr[,1]=Phi_approx(mus[1]+params_phi[,1]);
+  sw[,1]=Phi_approx(mus[2]+params_phi[,2])*30;
+  tau[,1]=exp(mus[3]+params_phi[,3]);
   
-  
-  tau=exp(mus[3]+params_phi[,3]);
+  lr[,2]=Phi_approx(mus[4]+params_phi[,4]);
+  sw[,2]=Phi_approx(mus[5]+params_phi[,5])*30;
+  tau[,2]=exp(mus[6]+params_phi[,6]);
 }
 
 model {
@@ -73,12 +76,12 @@ model {
         //compute UCBs
         pe = rewards[t,r,ppt] - belief_means[choices[t,r,ppt]];
         //update
-        belief_means[choices[t,r,ppt]]+=lr[ppt]*pe;
+        belief_means[choices[t,r,ppt]]+=lr[ppt,gem_found[t,r,ppt]]*pe;
         
         belief_means_sw = belief_means;
-        belief_means_sw[social_info[t,r,ppt]] += sw[ppt];
+        belief_means_sw[social_info[t,r,ppt]] += sw[ppt,gem_found[t,r,ppt]];
         // increment log probabiltiy
-        choices[t,r,ppt] ~ categorical_logit(belief_means_sw/tau[ppt]);
+        choices[t,r,ppt] ~ categorical_logit(belief_means_sw/tau[ppt,gem_found[t,r,ppt]]);
       }
     }
   }
@@ -107,12 +110,12 @@ generated quantities{
       for (t in 1:T_max){
         pe = rewards[t,r,ppt] - belief_means[choices[t,r,ppt]];
         //update
-        belief_means[choices[t,r,ppt]]+=lr[ppt]*pe;
+        belief_means[choices[t,r,ppt]]+=lr[ppt,gem_found[t,r,ppt]]*pe;
         
         belief_means_sw = belief_means;
-        belief_means_sw[social_info[t,r,ppt]] += sw[ppt];
+        belief_means_sw[social_info[t,r,ppt]] += sw[ppt,gem_found[t,r,ppt]];
         // increment log probabiltiy
-        log_lik[t,r,ppt] = categorical_logit_lpmf(choices[t,r,ppt] | belief_means_sw/tau[ppt]);
+        log_lik[t,r,ppt] = categorical_logit_lpmf(choices[t,r,ppt] | belief_means_sw/tau[ppt,gem_found[t,r,ppt]]);
       }
     }
   }

@@ -7,10 +7,10 @@ load_envs_social <- function(path = "A_GeneratedFiles/") {
   ## load the experimental data
   ## load the generated environments
   envs_no_gems_list <-
-    rjson::fromJSON(file = paste0(path, "experiment/env_no_gems.json")) # max gem value: 250; variance: 25
+    rjson::fromJSON(file = paste0(path, "/env_no_gems.json")) # max gem value: 250; variance: 25
   
   envs_gems_list <-
-    rjson::fromJSON(file = paste0(path, "experiment/env_gems.json")) # max gem value: 250; variance: 25
+    rjson::fromJSON(file = paste0(path, "/env_gems.json")) # max gem value: 250; variance: 25
   
   ## merge environments together and add identifier
   envs_no_gems <- map(envs_no_gems_list, as.data.table)
