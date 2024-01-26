@@ -1,4 +1,4 @@
-load_envs<-function(path="../A_GeneratedFiles/"){
+load_envs<-function(path="A_GeneratedFiles/"){
   # load the experimental data
   # load the generated environments
   envs_no_gems_list <-
