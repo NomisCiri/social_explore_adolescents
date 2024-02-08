@@ -51,7 +51,6 @@ all_data %>%
   # ) +
   # facet_grid( ~ gem_found) +
   #ylim(c(500,1400))+
-  
   labs(title = 'Adolescents score more points than adults',
        #subtitle = 'especially g',
        y = 'average points per round') +
@@ -71,11 +70,12 @@ interaction_data <- all_data %>%
 
 summary(lmer(tot_points ~ gem_found  * group + (1|uniqueID) , data = interaction_data ))
 
+summary(lmer(tot_points ~ group + (1|uniqueID) , data = interaction_data ))
 
 
 
 all_data %>% 
-  filter(gem_found==1 & gem_found_how == 'copier') %>% 
+  filter(gem_found == 1 & gem_found_how == 'copier') %>% 
   select(round_gem_found, group, demo_type, uniqueID) %>% 
   group_by(uniqueID) %>% 
   distinct() %>% 
@@ -97,11 +97,11 @@ all_data %>%
     palette = 2) +
   labs(title = '',
        y = 'clicks before gem is found') +
-#facet_wrap(~demo_type) +
+facet_wrap(~demo_type) +
   theme_base(base_size = 20) +
   guides(color = FALSE, fill = FALSE)
 
-ggsave("plots/gem_found_when.png",plot = last_plot(), width = 6, heigh =6)
+ggsave("plots/gem_found_when.png",plot = last_plot(), width = 6, heigh = 6)
   
 
 all_data %>% 
@@ -117,7 +117,7 @@ summary(model_when_gem)
 
 
 all_data %>% group_by(demo_type, uniqueID, round, group, gem_found, age, demo_quality) %>%
-  filter(social_info_use == "copy"  ) %>%
+  filter(social_info_use == "copy"  & gempresent ==1) %>%
   count(social_info_use) %>%
   ggplot(aes(
     x = factor(demo_quality),
@@ -141,13 +141,30 @@ all_data %>% group_by(demo_type, uniqueID, round, group, gem_found, age, demo_qu
  # facet_wrap(.~gem_found) +
   theme_base(20)
  # guides(color = FALSE)
-ggsave("plots/social_info_use.png",plot = last_plot(), width = 6, heigh =6)
+ggsave("plots/social_info_use.png",plot = last_plot(), width = 6, heigh = 6)
 
 
 
+## difference in copy by group and treatment
 all_data %>% group_by(demo_type, uniqueID, round, group, gem_found, age, demo_quality) %>%
-  filter(social_info_use == "copy" ) %>%
+  filter(social_info_use == "copy") %>%
+  count(social_info_use) %>% 
+  lmer(n ~ demo_quality * group + (1|uniqueID), data = .) -> c
+
+summary(c)
+
+## condition on gem being present
+all_data %>% group_by(demo_type, uniqueID, round, group, gem_found, age, demo_quality) %>%
+  filter(social_info_use == "copy" & gempresent == 1 ) %>%
   count(social_info_use) %>% 
   lmer(n ~ demo_quality * group + (1|uniqueID), data = .) -> a
 
 summary(a)
+
+## bayesian model
+all_data %>% group_by(demo_type, uniqueID, round, group, gem_found, age, demo_quality) %>%
+  filter(social_info_use == "copy" & gempresent == 1 ) %>%
+  count(social_info_use) %>% 
+  brms::brm(n ~ demo_quality * group + (1|uniqueID), data = .) -> b
+
+summary(b)
