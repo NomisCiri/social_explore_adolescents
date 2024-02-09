@@ -88,7 +88,7 @@ b <-
              linetype = "dotted",
              color = "red") +
   labs(y = 'N of "copy" per round',
-       x = 'treatment (quality of demonstrator)') +
+       x = "Quality of social information") +
   scale_color_brewer(
     type = "qual",
     palette =
@@ -112,7 +112,7 @@ b <-
     )
   ) +
   
-  scale_x_discrete(labels = c("high", "medium", "low")) +
+  scale_x_discrete(labels = c("High (Gem)", "Medium", "Low")) +
   scale_shape_manual(values = c(21, 23)) +
   
   # facet_wrap(.~gem_found) +
@@ -177,10 +177,10 @@ b <-
      )
    ) +
    scale_shape_manual(values = c(21, 23)) +
-      scale_x_discrete(labels = c("High (Gem)", "Medium", "Low")) +
+   scale_x_discrete(labels = c("High (Gem)", "Medium", "Low")) +
    labs(
      x = "Quality of social information",
-     y = 'Number of clicks until gem is found (max = 25)') +
+     y = 'N of clicks until gem is found (max = 25)') +
    #facet_wrap(~demo_type) +
    theme_base(base_size = 15) +
    guides( fill = FALSE)+

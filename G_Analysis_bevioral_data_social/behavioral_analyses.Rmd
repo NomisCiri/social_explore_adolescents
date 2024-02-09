@@ -63,7 +63,7 @@ all_data %>%
 
 Result 1: adults open slightly more boxes
 
-```{r explorative behavior, warning=FALSE, echo=FALSE,  message=FALSE}
+```{r explorative-behavior, warning=FALSE, echo=FALSE,  message=FALSE}
 
 ## create dataset
 boxes_data <- 
@@ -90,9 +90,31 @@ all_data %>%
 
 ```
 
+### boxes open by round
+
+people open less boxes when gem is found early also people open fewer boxes when demonstrator finds gem
+
+```{r warning=FALSE, echo=FALSE,  message=FALSE}
+
+all_data %>% 
+  filter(gem_found==1) %>% 
+  group_by(round, uniqueID, gempresent, gem_found, group) %>% 
+  summarise(boxes_opened = n_distinct(cells),
+            round_gem_found=round_gem_found, 
+            demo_type = demo_type) %>% 
+  ggplot(aes(x = factor(round_gem_found), y = boxes_opened, color = demo_type)) +
+  stat_summary()+
+  #scale_fill_brewer(name = "gem found", label = c("no", "yes"))+
+ # scale_x_discrete(label = c("no", "yes")) +
+  labs(x = "trial gem found", y = 'n of different boxes') +
+  theme_base(base_size = 15) +
+  facet_wrap(~group)
+  
+```
+
 ### Does exploration decrease over time?
 
-```{r task fatigue}
+```{r task fatigue, warning=FALSE, message=FALSE}
 
 ## does exploration decrease over rounds?
 all_data %>%
@@ -117,7 +139,7 @@ tab_model(regression_fatigue)
 
 ### social info sanity check, at what rounds are gem found by demonstrator
 
-```{r n of round by condition}
+```{r n of rounds by condition, warning=FALSE, message=FALSE}
 
 ## plot how many final round for any treatment (i.e. type of demonstrator) were there after cleaning the data
 all_data %>% 
@@ -127,22 +149,21 @@ all_data %>%
 
 ```
 
-When do adults find gems?
+When do adults find gems? later then adolescents
 
-later then adolescents
+```{r, warning=FALSE, message=FALSE}
 
-```{r}
-
-# 
+## basic plot
 all_data %>%
   filter(gem_found == 1) %>%
   group_by(uniqueID, group, demo_type) %>%
   summarise(round_gem_found = mean(round_gem_found, na.omit = TRUE)) %>%
   ggplot()+
-  geom_boxplot(aes(x = group, y = round_gem_found, fill = demo_type))
+  geom_boxplot(aes(x = group, y = round_gem_found, fill = demo_type)) + 
+  theme_base(base_size = 15)
 
-
-summary(lmer(round_gem_found ~ group * demo_type  + (1|player), data = all_data))
+## poisson regression: round when gem was found by group and treatment (demonstrator type)
+tab_model(glmer(round_gem_found ~ group * demo_type  + (1|player), family = poisson(), data = all_data))
 
 
 ## condition on round where demonstrator finds the gem first
@@ -178,28 +199,6 @@ facet_wrap(~demo_type) +
 
 How do people find gems
 
-### boxes open by round
-
-people open less boxes when gem is found early also people open fewer boxes when demonstrator finds gem
-
-```{r warning=FALSE, echo=FALSE,  message=FALSE}
-
-all_data %>% 
-  filter(gem_found==1) %>% 
-  group_by(round, uniqueID, gempresent, gem_found, group) %>% 
-  summarise(boxes_opened = n_distinct(cells),
-            round_gem_found=round_gem_found, 
-            demo_type = demo_type) %>% 
-  ggplot(aes(x = factor(round_gem_found), y = boxes_opened, color = demo_type)) +
-  stat_summary()+
-  #scale_fill_brewer(name = "gem found", label = c("no", "yes"))+
- # scale_x_discrete(label = c("no", "yes")) +
-  labs(x = "trial gem found", y = 'n of different boxes') +
-  theme_bw(base_size = 15) +
-  facet_wrap(~group)
-  
-```
-
 ## Performance
 
 ### Distribution of points scored
@@ -222,9 +221,9 @@ all_data %>%
 
 ```
 
-### Total points score
+### Total points scored
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 all_data %>%
   group_by(uniqueID, group) %>%
   select(uniqueID, group, demo_quality, tot_points, gem_found) %>%
@@ -258,7 +257,7 @@ all_data %>%
 
 ### How are gem found?
 
-3/4 times, by copying, some times independentely
+3/4 times, by copying, some times independently
 
 ```{r}
 
@@ -519,7 +518,7 @@ When are gems found
 ```{r}
 
   all_data %>%
-  filter(gempresent == 1 ) %>%
+  filter(gempresent == 1 &gem_found_how=='copier' )%>%
   ungroup %>%
   group_by(demo_type, gem_found, group) %>%
   select(uniqueID, round, gem_found, round_gem_found, gempresent, group) %>%
