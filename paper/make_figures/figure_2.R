@@ -16,7 +16,6 @@ all_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_partici
 
 
 ## panel A
-
 a <- 
   all_data %>%
   group_by(uniqueID, group) %>%
@@ -49,38 +48,8 @@ a <-
 
 
 
-## panel B
-b <- 
-  all_data %>% 
-  filter(gem_found == 1 & gem_found_how == 'copier') %>% 
-  select(round_gem_found, group, demo_type, uniqueID) %>% 
-  group_by(uniqueID) %>% 
-  distinct() %>% 
-  ggplot(aes(x = group, y = round_gem_found, fill = group)) + 
-  geom_half_boxplot(errorbar.draw = FALSE)+
-  geom_half_point(aes(color = group), alpha = 0.2,
-  )+
-  stat_summary(   geom = "point",
-                  shape =23,
-                  size = 2,
-                  stroke = 1,
-                  color = "black",
-                  fill = "white")+
-  scale_color_brewer(
-    type = "qual",
-    palette = 2) +
-  scale_fill_brewer(
-    type = "qual",
-    palette = 2) +
-  labs(
-       y = 'clicks before gem is found') +
-  #facet_wrap(~demo_type) +
-  theme_base(base_size = 15) +
-  guides(color = FALSE, fill = FALSE)+
-  theme(plot.background = element_blank())
-
 ## panel C
- c <- all_data %>% group_by(demo_type, uniqueID, round, group, gem_found, age, demo_quality) %>%
+ b <- all_data %>% group_by(demo_type, uniqueID, round, group, gem_found, age, demo_quality) %>%
   filter(social_info_use == "copy"  & gempresent ==1) %>%
   count(social_info_use) %>%
   ggplot(aes(
@@ -108,6 +77,39 @@ b <-
   theme_base(15) +
   theme(legend.position = "none" ,
         plot.background = element_blank())
+ 
+ 
+ ## panel C
+ 
+ ## re filter
+ c <- 
+   all_data %>% 
+   filter(gem_found == 1) %>% 
+   select(round_gem_found, group, demo_type, uniqueID) %>% 
+   group_by(uniqueID) %>% 
+   distinct() %>% 
+   ggplot(aes(x = group, y = round_gem_found, fill = group)) + 
+   geom_half_boxplot(errorbar.draw = FALSE)+
+   geom_half_point(aes(color = group), alpha = 0.2,
+   )+
+   stat_summary(   geom = "point",
+                   shape =23,
+                   size = 2,
+                   stroke = 1,
+                   color = "black",
+                   fill = "white")+
+   scale_color_brewer(
+     type = "qual",
+     palette = 2) +
+   scale_fill_brewer(
+     type = "qual",
+     palette = 2) +
+   labs(
+     y = 'clicks before gem is found') +
+   #facet_wrap(~demo_type) +
+   theme_base(base_size = 15) +
+   guides(color = FALSE, fill = FALSE)+
+   theme(plot.background = element_blank())
 
 ## combine panels
 figure2 <- 
@@ -115,8 +117,8 @@ figure2 <-
     a,b,c,
     labels = c("a","b","c"),
     #align = "H",
-    nrow = 1,
-    rel_widths =  c(.6, .6, .76)
+    nrow = 2,
+    rel_widths =  c(.6, .6, 1)
   )
 
 figure2
