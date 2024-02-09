@@ -6,8 +6,10 @@
 ```{r echo=FALSE, warning=FALSE}
 
 ## load packages @andrea implement pck_mgmt script
-pacman::p_load(tidyverse, rjson, data.table, gghalves, here, lmerTest, infer, ggthemes)
+pacman::p_load(tidyverse, rjson, data.table, gghalves, here, lmerTest, broom.mixed, infer, ggthemes)
 '%!in%' <- function(x,y)!('%in%'(x,y))
+
+options(scipen=10)
 ```
 
 ```{r load data, echo=FALSE, warning=FALSE, message=FALSE }
@@ -21,7 +23,7 @@ all_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_partici
 
 sample size and age distribution
 
-```{r}
+```{r sample}
 
 ## age distribution
 all_data %>% 
@@ -31,6 +33,7 @@ all_data %>%
   ggplot() +
   geom_histogram(aes(x = age), binwidth = 1)
 
+## count by group
 all_data %>% 
   ungroup() %>% 
   select(uniqueID, group) %>% 
@@ -45,19 +48,29 @@ all_data %>%
 
 ## Task sanity checks
 
-### n of boxes open
+### exploration: n of boxes open
 
 Result 1: adults open slightly more boxes
 
-```{r warning=FALSE, echo=FALSE,  message=FALSE}
+```{r explorative behavior, warning=FALSE, echo=FALSE,  message=FALSE}
 
+## create dataset
 boxes_data <- 
 all_data %>% 
   group_by(round, uniqueID, gempresent, group, demo_type) %>% 
-  summarise(boxes_opened = n_distinct(cells)) 
+  summarise(boxes_opened = n_distinct(cells)) ## n of unique cells = n of different boxes opened
 
-summary(lmer(boxes_opened ~ group * demo_type + (1|uniqueID), data = boxes_data ))
+## quick regression if n of boxes opened ~ group and demo type
+## @andrea: turn this into poisson regression
+htmlTable::htmlTable(broom.mixed::tidy(lmer(boxes_opened ~ group * demo_type + (1|uniqueID), data = boxes_data ))).
 
+## poisson reg non random intercept
+broom::tidy(glmer(boxes_opened ~ group * demo_type + (1|uniqueID), family = poisson, data = boxes_data))
+
+## poisson regression with random intercept
+broom::tidy(glmmTMB(boxes_opened ~ group * demo_type, family = poisson, data = boxes_data))
+
+## plot: n unique boxes by group and gem condition
 all_data %>%
   group_by(round, uniqueID, gempresent, gem_found, group) %>%
   summarise(boxes_opened = n_distinct(cells)) %>%
@@ -67,9 +80,12 @@ all_data %>%
   scale_x_discrete(label = c("no", "yes")) +
   labs(x = "gem present", y = 'n of different boxes') +
   theme_bw(base_size = 20) +  facet_grid( ~ group)
+```
 
+### Does exploration decrease over time?
+```{r task fatigue}
 
-
+## does exploration decrease over rounds?
 all_data %>%
   group_by(round, uniqueID, gempresent, gem_found, group) %>%
   summarise(boxes_opened = n_distinct(cells)) %>%
@@ -80,20 +96,21 @@ all_data %>%
   labs(x = "gem present", y = 'n of different boxes') +
   theme_bw(base_size = 20) +  facet_grid( ~ group+gempresent)
 
+## regression
 all_data %>%
   group_by(round, uniqueID, gempresent, gem_found, group) %>%
   summarise(boxes_opened = n_distinct(cells)) %>% 
-lmer(boxes_opened ~ group * round * gem_found+ (1|uniqueID), data = .) -> reg
+glm(boxes_opened ~ group * round * gem_found, family = poisson, data = .) -> regression_fatigue
 
-summary(reg)
-
-
+broom::tidy(regression_fatigue)
 
 ```
 
 ### social info sanity check, at what rounds are gem found by demonstrator
 
-```{r}  
+```{r n of round by condition}  
+
+## plot how many final round for any treatment (i.e. type of demonstrator) were there after cleaning the data
 all_data %>% 
   filter(demo_type == "gem_found") %>% 
   ggplot(aes(x = gem_found_social_info, fill = factor(soc_info_round))) + 
