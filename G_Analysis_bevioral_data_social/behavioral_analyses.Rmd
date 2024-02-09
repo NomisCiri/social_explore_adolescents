@@ -1,15 +1,27 @@
-#################################################################
-##               Behavioral analyses main script               ##
-#################################################################
+################################################################# 
 
+## Behavioral analyses main script
 
-```{r echo=FALSE, warning=FALSE}
+################################################################# 
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, echo=FALSE}
 
 ## load packages @andrea implement pck_mgmt script
-pacman::p_load(tidyverse, rjson, data.table, gghalves, here, lmerTest, broom.mixed, infer, ggthemes)
+pacman::p_load(tidyverse,
+               rjson,
+               data.table,
+               gghalves,
+               here,
+               lme4,
+               lmerTest,
+               broom.mixed,
+               infer,
+               ggthemes,
+               sjPlot)
+
 '%!in%' <- function(x,y)!('%in%'(x,y))
 
-options(scipen=10)
+options ( scipen = 999,digits = 4 )
 ```
 
 ```{r load data, echo=FALSE, warning=FALSE, message=FALSE }
@@ -23,7 +35,7 @@ all_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_partici
 
 sample size and age distribution
 
-```{r sample}
+```{r sample, warning=FALSE, message=FALSE}
 
 ## age distribution
 all_data %>% 
@@ -43,7 +55,6 @@ all_data %>%
 
 ```
 
-
 # Behavior
 
 ## Task sanity checks
@@ -61,14 +72,7 @@ all_data %>%
   summarise(boxes_opened = n_distinct(cells)) ## n of unique cells = n of different boxes opened
 
 ## quick regression if n of boxes opened ~ group and demo type
-## @andrea: turn this into poisson regression
-htmlTable::htmlTable(broom.mixed::tidy(lmer(boxes_opened ~ group * demo_type + (1|uniqueID), data = boxes_data ))).
-
-## poisson reg non random intercept
-broom::tidy(glmer(boxes_opened ~ group * demo_type + (1|uniqueID), family = poisson, data = boxes_data))
-
-## poisson regression with random intercept
-broom::tidy(glmmTMB(boxes_opened ~ group * demo_type, family = poisson, data = boxes_data))
+sjPlot::tab_model(glmer(boxes_opened ~ group * demo_type + (1|uniqueID), family = poisson, data = boxes_data))
 
 ## plot: n unique boxes by group and gem condition
 all_data %>%
@@ -80,9 +84,14 @@ all_data %>%
   scale_x_discrete(label = c("no", "yes")) +
   labs(x = "gem present", y = 'n of different boxes') +
   theme_bw(base_size = 20) +  facet_grid( ~ group)
+
+## plot mean boxes open before and after finding gem
+
+
 ```
 
 ### Does exploration decrease over time?
+
 ```{r task fatigue}
 
 ## does exploration decrease over rounds?
@@ -102,13 +111,13 @@ all_data %>%
   summarise(boxes_opened = n_distinct(cells)) %>% 
 glm(boxes_opened ~ group * round * gem_found, family = poisson, data = .) -> regression_fatigue
 
-broom::tidy(regression_fatigue)
+tab_model(regression_fatigue)
 
 ```
 
 ### social info sanity check, at what rounds are gem found by demonstrator
 
-```{r n of round by condition}  
+```{r n of round by condition}
 
 ## plot how many final round for any treatment (i.e. type of demonstrator) were there after cleaning the data
 all_data %>% 
@@ -123,6 +132,7 @@ When do adults find gems?
 later then adolescents
 
 ```{r}
+
 # 
 all_data %>%
   filter(gem_found == 1) %>%
@@ -136,7 +146,6 @@ summary(lmer(round_gem_found ~ group * demo_type  + (1|player), data = all_data)
 
 
 ## condition on round where demonstrator finds the gem first
-
 all_data %>% 
   filter(gem_found == 1 & gem_found_how == 'copier') %>% 
   select(round_gem_found, group, demo_type, uniqueID) %>% 
@@ -167,13 +176,11 @@ facet_wrap(~demo_type) +
 
 ```
 
-
 How do people find gems
 
 ### boxes open by round
 
-people open less boxes when gem is found early
-also people open fewer boxes when demonstrator finds gem
+people open less boxes when gem is found early also people open fewer boxes when demonstrator finds gem
 
 ```{r warning=FALSE, echo=FALSE,  message=FALSE}
 
@@ -249,8 +256,6 @@ all_data %>%
 
 ```
 
-
-
 ### How are gem found?
 
 3/4 times, by copying, some times independentely
@@ -265,7 +270,6 @@ all_data %>%
   geom_bar(aes(x = gem_found_how))
 
 ```
-
 
 ### Points score over time
 
@@ -313,7 +317,6 @@ all_data %>%
 
 ```
 
-
 ```{r}
 
 all_data %>% 
@@ -351,7 +354,6 @@ summary(interaction)
 
 
 ```
-
 
 ### n of gems found
 
@@ -512,7 +514,6 @@ all_data %>%
 
 ```
 
-
 When are gems found
 
 ```{r}
@@ -551,9 +552,7 @@ When are gems found
   
 ```
 
-
 copy frequency by treatment and succes
-
 
 ```{r}
 
