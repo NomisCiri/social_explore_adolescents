@@ -24,16 +24,24 @@ n of point searned vs. expected points (better than chance)
 
 ```{r load data, echo=FALSE, warning=FALSE, message=FALSE }
 
-explore_data <- read_csv(file = paste0(here(), "/data/data_coord.csv"))
- 
-explore_data <- explore_data %>% 
-  filter(player != 188) %>% 
-  group_by(player, round) %>% 
-    mutate(trial = 1:25,
-           unique_rounds = cur_group_id())
+explore_data <- read_csv(file = paste0(here(), "/data/solo/data_coord.csv"))
+
+explore_data <- explore_data %>%
+  filter(player != 188) %>%
+  group_by(player, round) %>%
+  mutate(trial = 1:25,
+         unique_rounds = cur_group_id())
+
+
+explore_data %>%
+  filter(unique_rounds %in% c(1639 ,
+                              1177 ,
+                              1244 ,         
+                              468)) %>%
+  ggplot() +
+  geom_histogram(aes(x = points))
   
-  
-#nogems <- subset(explore_data, gempresent == 0)
+#nogems <- subset(explopoints#nogems <- subset(explore_data, gempresent == 0)
 
 
 

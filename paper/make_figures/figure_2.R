@@ -33,9 +33,7 @@ a <-
              y = tot_points,
              #color = group,
              shape = group)) +
-  geom_half_boxplot(size = .7,
-                    alpha = .2,
-                    notch = TRUE) +
+  geom_half_boxplot(errorbar.draw = FALSE, notch = TRUE) +
   geom_half_point(alpha = .4) +
   
   # geom_signif(
@@ -46,20 +44,20 @@ a <-
     size = 2,
     stroke = 1,
     color = "black",
-    fill = "red",
+    fill = "orange",
     position = position_dodge(width = -1)
   ) +
-  scale_shape_manual(values = c(2, 23)) +
+  scale_shape_manual(values = c(21, 23)) +
   facet_wrap(~ gem_found, labeller = as_labeller(labels_a), scales = "free_y") +
   #ylim(c(500,1400))+
   labs(#subtitle = 'especially g',
-    y = 'Points per round') +
+    y = 'Points per round',
+    tag = "A") +
   theme_base(base_size = 15) +
   guides(color = FALSE,
          shape = FALSE) +
   theme(legend.position = "none",
         plot.background = element_blank())
-
 a
 
 ## panel C## panel Cgempresent
@@ -76,7 +74,7 @@ b <-
   )) +
   
   geom_half_point(alpha = .1) +
-  geom_half_boxplot(alpha = .1) +
+  geom_half_boxplot(errorbar.draw = FALSE, notch = TRUE, alpha = .2)+
   stat_summary(
     geom = "point",
     size = 2,
@@ -88,7 +86,8 @@ b <-
              linetype = "dotted",
              color = "red") +
   labs(y = 'N of "copy" per round',
-       x = "Quality of social information") +
+       x = "Quality of social information",
+       tag = "B") +
   scale_color_brewer(
     type = "qual",
     palette =
@@ -126,7 +125,7 @@ b <-
  upper <- 
    cowplot::plot_grid(
      a,b,
-     labels = c("a","b"),
+     #labels = c("a","b"),
      #align = "H",
      nrow = 1,
      rel_widths =  c(.6, .6)
@@ -136,13 +135,19 @@ b <-
  ## panel C
  
  ## re filter each treatment
- c <- 
-   all_data %>% 
-   filter(gem_found == 1) %>% 
-   select(round_gem_found, group, demo_type, uniqueID) %>% 
-   group_by(uniqueID) %>% 
-   distinct() %>% 
-   
+ 
+
+ dataset1 <- all_data %>% 
+   filter(gem_found_how == "copier" & demo_type == "gem_found")
+ 
+ dataset2 <- all_data %>% 
+   filter(demo_type != "gem_found" & gem_found==1)
+
+c <-
+   bind_rows(dataset1, dataset2) %>% 
+   select(round_gem_found, group, demo_type, uniqueID) %>%
+   group_by(uniqueID) %>%
+   distinct() %>%
    ggplot(aes(
      x = demo_type,
      y = round_gem_found,
@@ -150,40 +155,49 @@ b <-
      color = demo_type,
      fill = demo_type
    )) +
-   geom_half_boxplot(errorbar.draw = FALSE, notch = TRUE, alpha = .2)+
-   geom_half_point( alpha = 0.2,
+   geom_half_boxplot(
+     errorbar.draw = FALSE,
+     notch = TRUE,
+     alpha = .2,
+     show.legend = FALSE
    ) +
+   geom_half_point(alpha = 0.2) +
    stat_summary(
      geom = "point",
      size = 2,
      stroke = 1,
      color = "black",
-    # fill = "red",
-    position = position_dodge(width = .75)
+     position = position_dodge(width = .75)
    ) +
-   
-  scale_color_brewer(
-     type = "qual",
-     palette = 6) +
+   scale_color_brewer(type = "qual", palette = 6) +
    scale_fill_brewer(
      type = "qual",
      palette =
        6,
-     name = "demonstrator:",
+     name = "Quality of social information",
      label = c(
-       "finds a gem",
-       "settles for a positive option",
-       "explores until the end"
+       "High: Finds a gem",
+       "Medium: Exploits a non-gem",
+       "Low: Explores until the end"
      )
    ) +
    scale_shape_manual(values = c(21, 23)) +
    scale_x_discrete(labels = c("High (Gem)", "Medium", "Low")) +
-   labs(
-     x = "Quality of social information",
-     y = 'N of clicks until gem is found (max = 25)') +
+   labs(x = "Quality of social information",
+        y = 'N of clicks to find a gem',
+        tag = "C") +
    #facet_wrap(~demo_type) +
    theme_base(base_size = 15) +
-   guides( fill = FALSE)+
+   guides(
+     color = FALSE,
+     fill = guide_legend(override.aes = list(
+       alpha = .5,
+       shape = 21,
+       size  =
+         4,
+       fill = c("#e41a1c", "#377eb8", "#4daf4a"))),
+     shape = guide_legend(override.aes = list(size = 4))
+   ) +
    theme(plot.background = element_blank())
  
  c
@@ -192,13 +206,13 @@ b <-
 figure2 <- 
   cowplot::plot_grid(
     upper, c,
-    labels = c("","c"),
+   # labels = c("","c"),
     #align = "H",
     nrow = 2,
-    rel_widths =  c(.6, .6, 1)
+    rel_widths =  c(.6, .6, .8)
   )
 
 figure2
 
 ## save figure
-ggsave("plots/figure2.png", figure2, width = 10)
+ggsave("plots/figure2.png", figure2, height = 7, width = 10)

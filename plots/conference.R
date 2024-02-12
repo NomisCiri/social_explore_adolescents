@@ -75,7 +75,7 @@ summary(lmer(tot_points ~ group + (1|uniqueID) , data = interaction_data ))
 
 
 all_data %>% 
-  filter(gem_found == 1 & gem_found_how == 'copier') %>% 
+  filter(gem_found == 1) %>% 
   select(round_gem_found, group, demo_type, uniqueID) %>% 
   group_by(uniqueID) %>% 
   distinct() %>% 
