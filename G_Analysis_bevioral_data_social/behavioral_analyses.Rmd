@@ -40,10 +40,11 @@ sample size and age distribution
 ## age distribution
 all_data %>% 
   ungroup() %>% 
-  select(age, uniqueID) %>% 
+  select(age, uniqueID, group) %>% 
   distinct() %>% 
   ggplot() +
-  geom_histogram(aes(x = age), binwidth = 1)
+  geom_histogram(aes(x = age, fill = group), binwidth = 1) +
+  theme_base(base_size = 15)
 
 ## count by group
 all_data %>% 
