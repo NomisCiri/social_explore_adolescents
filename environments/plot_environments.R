@@ -44,7 +44,9 @@ ggplot() +
         axis.title.y = element_blank(),
         aspect.ratio = 1)
 
-ggsave(environments, filename = "plots/environments.png")
+ggsave(environments, filename = "plots/environments.png")\
+
+
 
 ## plot environments one by one
 for (e in unique(envs$env)) {
@@ -64,8 +66,7 @@ for (e in unique(envs$env)) {
           axis.text.y = element_blank(),
           axis.title.x = element_blank(),
           axis.title.y = element_blank(),
-          aspect.ratio = 1) +
-    guides(fill = FALSE)
+          aspect.ratio = 1)
   
   ## save plot
   ggsave(plot, filename = paste0("plots/environment", e, ".png"))

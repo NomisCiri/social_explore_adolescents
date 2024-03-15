@@ -601,12 +601,22 @@ all_data %>%
 
 summary(r)
 
+poisson_reg_copy <- 
+all_data %>%
+  group_by(demo_type, uniqueID, round, group, gem_found, age, demo_quality) %>%
+  filter(social_info_use == "copy" & gem_found_how != 'alone') %>%
+  count(social_info_use) %>% 
+  glmer(n ~ demo_quality * group + (1 | uniqueID), data = ., family = poisson())
+
+summary(poisson_reg_copy)
+
+
 ```
 
 ## different options
 
-```{r}
-ll_data %>% group_by(demo_type, uniqueID, round, group, gem_found, age, demo_quality) %>%
+```{r differences in social info use}
+all_data %>% group_by(demo_type, uniqueID, round, group, gem_found, age, demo_quality) %>%
   filter(social_info_use == "copy"  & gempresent ==1) %>%
   count(social_info_use) %>%
   ggplot(aes(
@@ -658,6 +668,21 @@ all_data %>% group_by(demo_type, uniqueID, round, group, gem_found, age, demo_qu
   brms::brm(n ~ demo_quality * group + (1|uniqueID), data = .) -> b
 
 summary(b)
+
+
+poisson_reg_copy_bayseian <- 
+all_data %>%
+  group_by(demo_type, uniqueID, round, group, gem_found, age, demo_quality) %>%
+  filter(social_info_use == "copy" & gem_found_how != 'alone') %>%
+  count(social_info_use) %>% 
+  brms::brm(n ~ demo_quality * group + (1 | uniqueID), data = ., family = poisson())
+
+summary(poisson_reg_copy_bayseian)
+
+
+tab_model(poisson_reg_copy_bayseian)
+plot_model(poisson_reg_copy_bayseian, axis.lim = c(.2,2)) +
+  tidybayes::theme_tidybayes()
 
 ```
 

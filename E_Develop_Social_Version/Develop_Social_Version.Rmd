@@ -32,7 +32,7 @@ explore_data <- explore_data %>%
   mutate(trial = 1:25,
          unique_rounds = cur_group_id())
 
-
+## 
 explore_data %>%
   filter(unique_rounds %in% c(1639 ,
                               1177 ,
