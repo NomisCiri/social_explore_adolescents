@@ -3,7 +3,7 @@
 // that is a kalman filter value maximizer in combination with a "trembling hand" error
 // over 64 options. Reward expectations are scaled by uncertainty (UCB) and social 
 // informaiton
-// © Simon Ciranka 2023
+// © Simon Ciranka 2024
 
 
 // The input data is a vector 'y' of length 'N'.
@@ -39,16 +39,14 @@ transformed parameters{
   
   //model parameters
   vector<lower=0>[N] lr;//error variance (scales kalman gain)
-  vector<lower=0.001>[N] tau;//ucb
+  vector<lower=0>[N] tau;//ucb
   vector<lower=0>[N] sw;//social weight
   
   matrix[N, n_params] params_phi;// for non-centered paramatrezation
   
   params_phi = (diag_pre_multiply(sigmas, l_omega) * scale)';
-  lr=Phi_approx(mus[1]+params_phi[,1]);
+  lr=Phi_approx(mus[1]+params_phi[,1])*0.3;
   sw=Phi_approx(mus[2]+params_phi[,2])*20;
-  
-  
   tau=exp(mus[3]+params_phi[,3]);
 }
 

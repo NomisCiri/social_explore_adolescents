@@ -46,13 +46,16 @@ transformed parameters{
   matrix[N, n_params] params_phi;// for non-centered paramatrezation
   
   params_phi = (diag_pre_multiply(sigmas, l_omega) * scale)';
-  lr[,1]=Phi_approx(mus[1]+params_phi[,1]);
-  sw[,1]=Phi_approx(mus[2]+params_phi[,2])*30;
-  tau[,1]=exp(mus[3]+params_phi[,3]);
+  lr[,1]=Phi_approx(mus[1]+params_phi[,1])*2;
+  lr[,2]=Phi_approx(mus[2]+params_phi[,2])*2;
   
-  lr[,2]=Phi_approx(mus[4]+params_phi[,4]);
-  sw[,2]=Phi_approx(mus[5]+params_phi[,5])*30;
-  tau[,2]=exp(mus[6]+params_phi[,6]);
+  tau[,1]=exp(mus[3]+params_phi[,3]);
+  tau[,2]=exp(mus[4]+params_phi[,4]);
+  
+  sw[,1]=Phi_approx(mus[5]+params_phi[,5])*30;
+  sw[,2]=Phi_approx(mus[6]+params_phi[,6])*30;
+
+
 }
 
 model {
