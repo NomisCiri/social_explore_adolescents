@@ -1,8 +1,5 @@
 //
-// This Stan program defines a mixture model, 
-// that is a kalman filter value maximizer in combination with a "trembling hand" error
-// over 64 options. Reward expectations are scaled by uncertainty (UCB) and social 
-// informaiton
+
 // © Simon Ciranka 2023
 
 
@@ -26,6 +23,7 @@ data {
 
 transformed data{
   int  n_params=3*2;
+  
 }
 // accepts two parameters 'mu' and 'sigma'.
 parameters {
@@ -40,31 +38,31 @@ transformed parameters{
   
   //model parameters
   matrix<lower=0>[N,2] lr;//error variance (scales kalman gain)
-  matrix<lower=0.001>[N,2] tau;//ucb
+  matrix<lower=0>[N,2] tau;//ucb
   matrix<lower=0>[N,2] sw;//social weight
   
   matrix[N, n_params] params_phi;// for non-centered paramatrezation
   
   params_phi = (diag_pre_multiply(sigmas, l_omega) * scale)';
-  lr[,1]=Phi_approx(mus[1]+params_phi[,1]);
-  lr[,2]=Phi_approx(mus[2]+params_phi[,2]);
+  lr[,1]=Phi_approx(mus[1]+params_phi[,1])*2;
+  lr[,2]=Phi_approx(mus[2]+params_phi[,2])*2;
   
-  tau[,1]=exp(mus[3]+params_phi[,3])*2;
-  tau[,2]=exp(mus[4]+params_phi[,4])*2;
+  tau[,1]=Phi_approx(mus[3]+params_phi[,3])*5;
+  tau[,2]=Phi_approx(mus[4]+params_phi[,4])*5;
+  
   
   sw[,1]=Phi_approx(mus[5]+params_phi[,5]);
-  sw[,2]=Phi_approx(mus[6]+params_phi[,6]);
-
+  sw[,2]=Phi_approx(mus[4]+params_phi[,6]);
+  
 }
 
 model {
   // beliefs after si
   real pe;
-  vector[64] belief_means_sw;
   vector[64] belief_means;
   
   mus~normal(0,2);
-  sigmas~gamma(2,1);
+  sigmas~cauchy(1,1);
   //subject level parameters (can do with colesky decomp later)
   to_vector(scale) ~ std_normal();
   // prior correlation of parameters
@@ -73,17 +71,28 @@ model {
   
   for (ppt in 1:N){  
     for (r in 1:R_subj[ppt]){
+      //first trial (no social info and rescaling not necessary)
       belief_means=rep_vector(0,64);
-      for (t in 1:T_max){
-        //compute UCBs
+      pe = rewards[1,r,ppt] - belief_means[choices[1,r,ppt]];
+      //update
+      belief_means[choices[1,r,ppt]]+=lr[ppt,gem_found[1,r,ppt]]*pe;
+      
+      choices[1,r,ppt] ~ categorical_logit(belief_means/tau[ppt,gem_found[1,r,ppt]]);// turn into softmax again
+      //after probability vector, add probability bonus to epsilon greedy, but epsilon is p to copy.
+      for (t in 2:T_max){
+        if ((gem_found[t,r,ppt] - gem_found[t-1,r,ppt])!=0){
+          //rescale beleif means only once after gem was found
+          belief_means*=0.002754821;
+        }
+        //reward_scaled=rewards[t,r,ppt]/norm_const[gem_found[t,r,ppt]];
         pe = rewards[t,r,ppt] - belief_means[choices[t,r,ppt]];
         //update
-        belief_means[choices[t,r,ppt]]+=lr[ppt,gem_found[t,r,ppt]]*pe;
-        
-        belief_means_sw = belief_means;
-        belief_means_sw[social_info[t,r,ppt]] += sw[ppt,gem_found[t,r,ppt]];
+        belief_means[choices[t,r,ppt]] += lr[ppt,gem_found[t,r,ppt]]*pe;
+        belief_means[social_info[t,r,ppt]] += sw[ppt,gem_found[t,r,ppt]];
         // increment log probabiltiy
-        choices[t,r,ppt] ~ categorical_logit(belief_means_sw/tau[ppt,gem_found[t,r,ppt]]);// turn into softmax again
+        choices[t,r,ppt] ~ categorical_logit(belief_means/tau[ppt,gem_found[t,r,ppt]]);// turn into softmax again
+        
+        belief_means[social_info[t,r,ppt]] += -1*sw[ppt,gem_found[t,r,ppt]];//social bonus gone
         //after probability vector, add probability bonus to epsilon greedy, but epsilon is p to copy.
       }
     }
@@ -94,7 +103,6 @@ generated quantities{
   
   real log_lik[T_max, R_max, N];
   real pe;
-  vector[64] belief_means_sw;
   vector[64] belief_means;
   // fill log liks
   for (ppt in 1:N){  
@@ -109,16 +117,27 @@ generated quantities{
   for (ppt in 1:N){  
     for (r in 1:R_subj[ppt]){
       belief_means=rep_vector(0,64);
+      //first trial (no social info and rescaling not necessary)
+      pe = rewards[1,r,ppt] - belief_means[choices[1,r,ppt]];
+      belief_means[choices[1,r,ppt]]+=lr[ppt,gem_found[1,r,ppt]]*pe;
+      // increment log probabiltiy
+      log_lik[1,r,ppt] = categorical_logit_lpmf(choices[1,r,ppt] | belief_means/tau[ppt,gem_found[1,r,ppt]]);
       
-      for (t in 1:T_max){
+      for (t in 2:T_max){
+        if ((gem_found[t,r,ppt] - gem_found[t-1,r,ppt])!=0){
+          //rescale beleif means only once after gem was found
+          belief_means*=0.002754821;
+        }
+        //reward_scaled=rewards[t,r,ppt]/norm_const[gem_found[t,r,ppt]];
         pe = rewards[t,r,ppt] - belief_means[choices[t,r,ppt]];
         //update
         belief_means[choices[t,r,ppt]]+=lr[ppt,gem_found[t,r,ppt]]*pe;
-        
-        belief_means_sw = belief_means;
-        belief_means_sw[social_info[t,r,ppt]] += sw[ppt,gem_found[t,r,ppt]];
+        //social info
+        belief_means[social_info[t,r,ppt]] += sw[ppt,gem_found[t,r,ppt]];
         // increment log probabiltiy
-        log_lik[t,r,ppt] = categorical_logit_lpmf(choices[t,r,ppt] | belief_means_sw/tau[ppt,gem_found[t,r,ppt]]);
+        log_lik[t,r,ppt] = categorical_logit_lpmf(choices[t,r,ppt] | belief_means/tau[ppt,gem_found[t,r,ppt]]);
+        
+        belief_means[social_info[t,r,ppt]] += -1*sw[ppt,gem_found[t,r,ppt]];//social bonus gone
       }
     }
   }

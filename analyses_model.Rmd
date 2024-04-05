@@ -265,6 +265,9 @@ labeller_gem=c(
 ```
 
 ```{r}
+
+
+
 simsub_dat%>%
   ggplot(aes(x = trial, y = m_rew, color = group,linetype=pats_or_sim)) +
   ggtitle("Simulations") +
@@ -291,10 +294,7 @@ what_is_this%>%ggplot(aes(x=trial,y =points, color = group.x)) +
   facet_grid(soctype~gemlabel,labeller=labeller(soctype=soc_labs_2))+
   theme_bw()
 
-#sim_and_dat
-soc_labs_2=c("3" = "SI Quality high",
-           "2"="SI Quality medium",
-           "1"="SI Quality low")
+
 
 what_is_this%>%ggplot(aes(x=trial,y =z.x, color = group.x)) +
   ggtitle("Simulations") +

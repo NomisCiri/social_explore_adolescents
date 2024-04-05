@@ -133,6 +133,233 @@ KF_mix_2softmax_sw<- function(out,tau=c(0.1,0.1),beta=0,y,t){
 }
 
 
+##----------------------------------------------------------------
+##              Model: Q-learning no social weight              --
+##----------------------------------------------------------------
+
+sim_range_1lr <- function(par, learning_model_fun, acquisition_fun, data, envs) {
+  # unpack
+  #par<-exp(par)#parameters are defined in logspace, we exponentiate them here
+  lr <- par[1]# "learningrate"
+  mu0 <-  0
+  
+  mu=list()
+  all_choices <- NULL
+  dummy <- NULL
+  #look up samples
+  dat=expand.grid(x1=0:7,x2=0:7)
+  plot_dat=list()
+  chosen=NULL
+  all_choices<-NULL
+  
+  for (r in unique(data$round)){
+    # collect choices for current round
+    round_df <- data%>%filter(round == r)
+    # get the right environment to sample from
+    env=envs%>%filter(env==unique(round_df$env_number))#
+    trials <- nrow(round_df)
+    # social information
+    social_choices<-round_df$social_info
+    # Utilties of each choice
+    out<-rep(mu0,64)
+    #here, too
+    ind <- round_df$choices[1]
+    X <- as.matrix(dat[ind, 1:2]) # generate a new vector of Xs
+    y <- as.matrix(rnorm(1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))
+    y_scaled<-rep(0,length(y))
+    # store first choice of round
+    # store first choice of round
+    round_choices<-data.frame(
+      trial = 1, 
+      x = as.numeric(X[1, 1]), 
+      y = as.numeric(X[1, 2]),
+      z = as.numeric(y[1]),
+      index=ind,
+      social_info=NA,
+      round=r,
+      util_list=NA,# there are no utilities yet
+      p_list=I(list(rep(1/64,64))),
+      env_idx=unique(round_df$env_number),
+      demo_quality=unique(round_df$soc_info_round)
+    )
+    
+    #did you see the gem for the first time?
+    first=TRUE
+    
+    # loop over trials
+    for (t in 1:(trials-1)) {
+      #range adaptation
+      if(max(y[1:t])<120){
+        tau <- par[2] #  "random" exploration
+        
+        y_scaled[t] = (y[t]+75)/150#range normalization rule: (x-rmin)/(rmax-rmin)
+      }else {# when there is a gem. 
+        #crucial: rescale q-values to gem range first time we saw the gem
+        if(first){
+          tau <- par[1] #  "random" exploration
+          
+          out<-out/4.84# (this is: out/((rmax_gem-rmin)/(rmax_non_gem-rmin))
+          first=FALSE
+        }
+        # reward value of the new range
+        y_scaled[t] = (y[t]+75)/(363)#range normalization rule for gems: (x-rmin)/(rmax-rmin)
+      }
+      
+      out <- RW_Q(ind, y_scaled[t], theta = lr, prevPost = out, mu0Par = mu0)
+      utilityVec <- out
+      utilityVec[social_choices[t]]<-utilityVec[social_choices[t]]# social update of utility
+      
+      # softmaximization
+      p <- exp(utilityVec / tau)
+      # probabilities
+      p <- p / sum(p)
+      # numerical overflow
+      p <- (pmax(p, 0.00001))
+      p <- (pmin(p, 0.99999))
+      ind <- sample(1:64, 1, prob = p) # choice index
+      # collect x y coordinate of choice
+      X <- rbind(X, as.matrix(dat[ind, 1:2]))
+      # sample from environment
+      y <- rbind(y, as.matrix(rnorm(n = 1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))) 
+      # write it to the next trial index because choice has already been made, learning will happen in next round
+      one_trial_choices <- data.frame(
+        trial = t + 1,
+        x = as.numeric(X[t + 1, 1]),
+        y = as.numeric(X[t + 1, 2]),
+        z = as.numeric(y[t + 1]),
+        index = ind,
+        social_info = social_choices[t + 1],
+        round = r,
+        util_list = I(list(utilityVec)),
+        p_list = I(list(p)),
+        env_idx=unique(round_df$env_number),
+        demo_quality=unique(round_df$soc_info_round)
+      )
+      
+      
+      # concat round choices
+      round_choices <- rbind(round_choices, one_trial_choices)
+    }
+    all_choices<-rbind(all_choices,round_choices)
+  }# end rounds
+  return(all_choices)
+}
+
+
+##----------------------------------------------------------------
+##              Model: Q-learning no social weight              --
+##----------------------------------------------------------------
+
+sim_range_1lr_sws <- function(par, learning_model_fun, acquisition_fun, data, envs) {
+  # unpack
+  #par<-exp(par)#parameters are defined in logspace, we exponentiate them here
+  lr <- par[1]# "learningrate"
+  omega<-par[2]
+  mu0 <-  0
+  
+  mu=list()
+  all_choices <- NULL
+  dummy <- NULL
+  #look up samples
+  dat=expand.grid(x1=0:7,x2=0:7)
+  plot_dat=list()
+  chosen=NULL
+  all_choices<-NULL
+  
+  for (r in unique(data$round)){
+    # collect choices for current round
+    round_df <- data%>%filter(round == r)
+    # get the right environment to sample from
+    env=envs%>%filter(env==unique(round_df$env_number))#
+    trials <- nrow(round_df)
+    # social information
+    social_choices<-round_df$social_info
+    # Utilties of each choice
+    out<-rep(mu0,64)
+    #here, too
+    ind <- round_df$choices[1]
+    X <- as.matrix(dat[ind, 1:2]) # generate a new vector of Xs
+    y <- as.matrix(rnorm(1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))
+    y_scaled<-rep(0,length(y))
+    # store first choice of round
+    # store first choice of round
+    round_choices<-data.frame(
+      trial = 1, 
+      x = as.numeric(X[1, 1]), 
+      y = as.numeric(X[1, 2]),
+      z = as.numeric(y[1]),
+      index=ind,
+      social_info=NA,
+      round=r,
+      util_list=NA,# there are no utilities yet
+      p_list=I(list(rep(1/64,64))),
+      env_idx=unique(round_df$env_number),
+      demo_quality=unique(round_df$soc_info_round)
+    )
+    
+    #did you see the gem for the first time?
+    first=TRUE
+    
+    # loop over trials
+    for (t in 1:(trials-1)) {
+      #range adaptation
+      if(max(y[1:t])<120){
+        tau <- par[3] #  "random" exploration
+        
+        y_scaled[t] = (y[t]+75)/150#range normalization rule: (x-rmin)/(rmax-rmin)
+      }else {# when there is a gem. 
+        #crucial: rescale q-values to gem range first time we saw the gem
+        if(first){
+          tau <- par[4] #  "random" exploration
+          out<-out/4.84# (this is: out/((rmax_gem-rmin)/(rmax_non_gem-rmin))
+          first=FALSE
+        }
+        # reward value of the new range
+        y_scaled[t] = (y[t]+75)/(363)#range normalization rule for gems: (x-rmin)/(rmax-rmin)
+      }
+      
+      out <- RW_Q(ind, y_scaled[t], theta = lr, prevPost = out, mu0Par = mu0)
+      # build horizon_length x options matrix, where each row holds the utilities of each choice at each decision time in the search horizon
+      p_sfmx <- exp(out / tau)
+      # probabilities
+      p_sfmx <- p_sfmx / sum(p_sfmx)
+      #greedy rule for social info use on probabilites
+      p_ch<-p_sfmx*omega
+      p_ch[social_choices[t]] <- (1-omega) + (p_sfmx[social_choices[t]]*omega)
+      # probabilities
+      # numerical overflow
+      p_ch <- (pmax(p_ch, 0.00001))
+      p_ch <- (pmin(p_ch, 0.99999))
+      browser()
+      ind <- sample(1:64, 1, prob = p_ch) # choice index
+      # collect x y coordinate of choice
+      X <- rbind(X, as.matrix(dat[ind, 1:2]))
+      # sample from environment
+      y <- rbind(y, as.matrix(rnorm(n = 1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))) 
+      # write it to the next trial index because choice has already been made, learning will happen in next round
+      one_trial_choices <- data.frame(
+        trial = t + 1,
+        x = as.numeric(X[t + 1, 1]),
+        y = as.numeric(X[t + 1, 2]),
+        z = as.numeric(y[t + 1]),
+        index = ind,
+        social_info = social_choices[t + 1],
+        round = r,
+        util_list = I(list(out)),
+        p_list = I(list(out)),
+        env_idx=unique(round_df$env_number),
+        demo_quality=unique(round_df$soc_info_round)
+      )
+      
+      
+      # concat round choices
+      round_choices <- rbind(round_choices, one_trial_choices)
+    }
+    all_choices<-rbind(all_choices,round_choices)
+  }# end rounds
+  return(all_choices)
+}
+
 
 ##----------------------------------------------------------------
 ##              Model: Q-learning no social weight              --
@@ -211,7 +438,7 @@ exploreEnv1lr <- function(par, learning_model_fun, acquisition_fun, data, envs) 
       #utilities=utilityVec-max(utilityVec)# get no NAs
       p <- exp(utilityVec / tau)
       # probabilities
-      p <- p / colSums(p)
+      p <- p / rowSums(p)
       # numerical overflow
       p <- (pmax(p, 0.00001))
       p <- (pmin(p, 0.99999))

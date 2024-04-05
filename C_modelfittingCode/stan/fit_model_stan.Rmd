@@ -35,295 +35,105 @@ social_data<-social_data%>%#drop_na()
   )
   )
 #give kids a unqiquely numbered indx
-social_data<-social_data%>%mutate(player=ifelse(group=="adults",player,player+1000))
 R_subj=social_data%>%group_by(player)%>%summarise(n_r=length(unique(round)))%>%pull(n_r)
 #keep<-unique(social_data$player)[R_subj==12]# keep only participants who completed all trials
+keep_forfit_adults<-social_data%>%filter(group=="adults")%>%pull(player)%>%unique()#[R_subj==12]# keep only participants who completed all trials
+keep_forfit_adolescents<-social_data%>%filter(group=="adolescents")%>%pull(player)%>%unique()#[R_subj==12]# keep only participants who completed all trials
 
-hist(social_data$round)
-#only keep comsocial_dataplete rounds
-#social_data<-social_data%>%filter(player %in% keep)
 ```
 
-# Fit model to social data
-
-There is a credible interaction between SI use and agegroup. 
-
-TODO: is there something wrong here? Is copy calculated correctly?
 ```{r}
-social_data%>%group_by(demo_type,player,round,group,gem_found,soctype)%>%
-  filter(!is.na(social_info_use))%>%filter(social_info_use=="copy")%>%count(social_info_use)%>%
-  ggplot(aes(x=soctype,y=n,color=group))+
-  geom_point(alpha=0.2,position=position_dodge(0.9))+
-  stat_summary(position=position_dodge(0.9),size=1)+
-  geom_hline(yintercept = 25/64,linetype="dotted",color="red")+
-  scale_x_continuous(name="Social info quality",breaks=c(1,2,3),labels=c("Bad","Medium","Good"))+
-  scale_y_continuous(name="Number of copying decisions per trial")+
-  theme_bw(15)+
-  #facet_wrap(.~gem_found,labeller = label_both)+
-  theme(axis.text.x =element_text(angle=45,hjust=1))
+data_list_adults<-readRDS(file = "A_GeneratedFiles/data_list_adults.rds")
+data_list_adolescents<-readRDS(file = "A_GeneratedFiles/data_list_adolescents.rds")
 
-ggsave(filename = "copying_choices.png")
-# poisson regression for group effects
-
-p_model<-social_data%>%group_by(demo_quality,player,round,group,demo_type)%>%
-  count(social_info_use)%>%filter(!is.na(social_info_use))%>%filter(social_info_use=="copy")%>%
-  glmer(n~group*demo_quality+round+(1|player),data=.,family="poisson")#%>%summary()
-
-p_model%>%summary()
-
-vec<-c("Adults","Medium SI","Bad SI","Adults x Medium SI","Adults x Bad SI")
-vec_2<-vec[c(5,4,3,2,1)]
-
-model_plot<-sjPlot::plot_model(p_model)+
-  theme_bw(14)+
-  ggtitle("")+
-  scale_x_discrete(labels=vec_2)
-
-sjPlot::plot_model(p_model, type = "pred",terms = c("demo_quality", "group"))
-
-ggsave(model_plot,file = "./plots/poisson_regression.png",width=4,height=4)
-```
-
-# Fit model
-
-prepare data to be passed to stan.
-
-```{r}
-# first: cheat and take out "incomplete" cases
-social_data_forfit<-social_data%>%filter(group=="adolescents")
-R_subj<-social_data_forfit%>%group_by(player)%>%summarise(n_r=list(unique(round)))%>%pull(n_r)#%>%length()
-
-keep_forfit_adolescents<-unique(social_data_forfit$player)#[R_subj==12]# keep only participants who completed all trials
-social_data_forfit<-social_data_forfit%>%filter(player %in% keep_forfit_adolescents)
-
-#make it a list of round numbers
-# experiment specs
-T_max<-25
-R_max<-social_data_forfit%>%group_by(player)%>%summarize(env=length(unique(env_number)))%>%pull()%>%max()
-
-social_data_forfit%>%group_by(round,player,)
-# number of participants
-N<-length(unique(social_data_forfit$player))
-
-#put relevant data into lists
-choice = array(-1,c(T_max,R_max,N))
-reward = array(-1,c(T_max,R_max,N))
-social_info = array(-1,c(T_max,R_max,N))
-demo_type_dat = array(-1,c(T_max,R_max,N))
-env_rnd = array(-1,c(R_max,N))
-gem_found = array(-1,c(T_max,R_max,N))
-
-gem_found_demo_type=array(10,c(T_max,R_max,N))
-use_rounds<-rep(-1,N)
-
-for (ppt in 1:N){
-  use_rounds[ppt]<-length(R_subj[[ppt]])
-  for (r in 1:use_rounds[ppt]){  #loops throug unique round indices per participant
-    
-    env_rnd[r,ppt]<- social_data_forfit%>%filter(
-      round==R_subj[[ppt]][r] ,
-      player==keep_forfit_adolescents[ppt]
-    )%>%pull(env_number)%>%unique()
-    
-    for (t in 1:T_max){
-      # get choices
-      choice[t,r,ppt]<- social_data_forfit%>%filter(
-        trial==t ,
-        round==R_subj[[ppt]][r] ,
-        player==keep_forfit_adolescents[ppt]
-      )%>%pull(cells)
+#range normalization
+rewards_new_adol<-data_list_adolescents$rewards
+# rescale rewards for adolescents
+for (x in 1:length(data_list_adolescents$rewards[1,,1])){
+  for (y in 1:length(data_list_adolescents$rewards[1,1,])){
+    for (z in 1:length(data_list_adolescents$rewards[,1,1])){
       
-      # get points
-      reward[t,r,ppt]<-  social_data_forfit%>%filter(
-        trial==t,
-        round==R_subj[[ppt]][r],
-        player==keep_forfit_adolescents[ppt]
-      )%>%pull(points)
-      
-      #index if gem was found or not
-      gem_found[t,r,ppt] <- ifelse(max(reward[1:t,r,ppt])>150,1,2)
-      # get demonstrator
-      social_info[t,r,ppt]<-social_data_forfit%>%filter(
-        trial==t,
-        round==R_subj[[ppt]][r],
-        player==keep_forfit_adolescents[ppt]
-      )%>%pull(social_info)
-      
-      # get demonstrator
-      demo_type_dat[t,r,ppt]<-social_data_forfit%>%filter(
-        trial==t,
-        round==R_subj[[ppt]][r],
-        player==keep_forfit_adolescents[ppt]
-      )%>%pull(soctype)
-      
-             recoder<-c(4,5,6)
-
-            gem_found_demo_type[t,r,ppt]<-ifelse(gem_found[t,r,ppt]==1,recoder[demo_type_dat[t,r,ppt]],demo_type_dat[t,r,ppt])
-
+      rewards_new_adol[z,x,y]=ifelse(data_list_adolescents$gem_found[z,x,y]==2,
+                                (data_list_adolescents$rewards[z,x,y]+75)/150,
+                                (data_list_adolescents$rewards[z,x,y]+75)/363
+                 
+      )
     }
   }
 }
 
-data_list_adolescents<-list(
-  N=N,
-  T_max=T_max,
-  R_max=R_max,
-  R_subj=use_rounds,
-  choices=choice,
-  rewards=reward,#/80,#just rescaled
-  social_info=social_info,
-  demo_type=demo_type_dat,
-  gem_found=gem_found,
-  gem_found_demo_type=gem_found_demo_type,
-  env_rnd=env_rnd
-)
-#its/social_models/all_envs/kalman_ucb_softmax_egreedy/bmt_ucb_fits.csv")
-```
-
-
-
-# adults model
-
-In this document, we will fit learning model to the "social bandit" task that Andrea and I developed. 
-First, lets load some data.
-
-
-# Prepare adults data
-
-prepare data to be passed to stan (write to function at some point).
-
-```{r}
-# first: cheat and take out "incomplete" cases
-social_data_forfit<-social_data%>%filter(group=="adults")
-R_subj<-social_data_forfit%>%group_by(player)%>%summarise(n_r=list(unique(round)))%>%pull(n_r)#%>%length()
-
-keep_forfit_adults<-unique(social_data_forfit$player)#[R_subj==12]# keep only participants who completed all trials
-social_data_forfit<-social_data_forfit%>%filter(player %in% keep_forfit_adults)
-# experiment specs
-T_max<-25
-R_max<-social_data_forfit%>%group_by(player)%>%summarize(env=length(unique(env_number)))%>%pull()%>%max()
-# number of participants
-N<-length(unique(social_data_forfit$player))
-
-#put relevant data into lists
-choice=array(-1,c(T_max,R_max,N))
-reward=array(-1,c(T_max,R_max,N))
-social_info=array(-1,c(T_max,R_max,N))
-demo_type_dat=array(4,c(T_max,R_max,N))
-env_rnd=array(-1,c(R_max,N))
-gem_found = array(-1,c(T_max,R_max,N))
-gem_found_demo_type=array(10,c(T_max,R_max,N))
-
-use_rounds<-rep(-1,N)
-
-for (ppt in 1:N){
-  use_rounds[ppt]<-length(R_subj[[ppt]])
-  for (r in 1:use_rounds[ppt]){  #loops throug unique round indices per participant
-    
-    env_rnd[r,ppt]<- social_data_forfit%>%filter(
-      round==R_subj[[ppt]][r] ,
-      player==keep_forfit_adults[ppt]
-    )%>%pull(env_number)%>%unique()
-    
-    for (t in 1:T_max){
-      # get choices
-      choice[t,r,ppt]<- social_data_forfit%>%filter(
-        trial==t ,
-        round==R_subj[[ppt]][r] ,
-        player==keep_forfit_adults[ppt]
-      )%>%pull(cells)
-      
-      # get points
-      reward[t,r,ppt]<-  social_data_forfit%>%filter(
-        trial==t,
-        round==R_subj[[ppt]][r],
-        player==keep_forfit_adults[ppt]
-      )%>%pull(points)
-      
-      # make index if gem was found already or not
-      gem_found[t,r,ppt] <- ifelse(max(reward[1:t,r,ppt])>150,1,2)
-      
-      # get demonstrator
-      social_info[t,r,ppt]<-social_data_forfit%>%filter(
-        trial==t,
-        round==R_subj[[ppt]][r],
-        player==keep_forfit_adults[ppt]
-      )%>%pull(social_info)
-      
-      # get demonstrator
-      demo_type_dat[t,r,ppt]<-social_data_forfit%>%filter(
-        trial==t,
-        round==R_subj[[ppt]][r],
-        player==keep_forfit_adults[ppt]
-      )%>%pull(soctype)
-      
-      recoder<-c(4,5,6)
-      
-      gem_found_demo_type[t,r,ppt]<-ifelse(gem_found[t,r,ppt]==1,recoder[demo_type_dat[t,r,ppt]],demo_type_dat[t,r,ppt])
+# rescale rewards for adults
+rewards_new_adul<-data_list_adults$rewards
+for (x in 1:length(data_list_adults$rewards[1,,1])){
+  for (y in 1:length(data_list_adults$rewards[1,1,])){
+    for (z in 1:length(data_list_adults$rewards[,1,1])){
+      rewards_new_adul[z,x,y]=ifelse(data_list_adults$gem_found[z,x,y]==2,
+                                (data_list_adults$rewards[z,x,y]+75)/150,
+                                (data_list_adults$rewards[z,x,y]+75)/363
+      )
     }
   }
 }
 
-data_list_adults<-list(
-  N=N,
-  T_max=T_max,
-  R_max=R_max,
-  R_subj=use_rounds,
-  choices=choice,
-  rewards=reward,#(reward-mean(reward))/sd(reward),#normalize rewards
-  social_info=social_info,
-  demo_type=demo_type_dat,
-  env_rnd=env_rnd,
-  gem_found = gem_found,
-  gem_found_demo_type=gem_found_demo_type
-)
-#its/social_models/all_envs/kalman_ucb_softmax_egreedy/bmt_ucb_fits.csv")
+data_list_adolescents$rewards<-rewards_new_adol
+data_list_adults$rewards<-rewards_new_adul
+
 ```
 
 # Fit stanmodel
 
 ```{r}
+options(buildtools.check = function(action) TRUE)
 
-Q_mod_adol<-stan(
-  file="./C_modelfittingCode/stan/model_code/Q_nokeeper_3_2_sw_gem_nogem.stan",
+model_compiled<-stan_model(
+  model_name = "Q_sw_rangenorm",
+  file="./C_modelfittingCode/stan/model_code/Q_nokeeper_sw_gem_nogem_range_n.stan",
+  allow_optimizations=T,
+  warn_pedantic=T
+  )
+
+Q_mod_adol<-sampling(
+  model_compiled,
   data=data_list_adolescents,
   pars =c("lr","tau","sw","log_lik"),
   # init=1,
-  iter = 1000,
-  chains=4,
-  cores=4
+  iter = 4000,
+  chains=6,
+  cores=6
 )
 
-saveRDS(object = Q_mod_adol,file = "./A_GeneratedFiles/modelfits/Q_3_2_sw_gem_nogem_stan_adolescents.rds")
+saveRDS(object = Q_mod_adol,file = "./A_GeneratedFiles/modelfits/Q_nokeeper_sw_gem_nogem_range_n_adolescents.rds")
 #Q_mod_adol<-readRDS(file = "./A_GeneratedFiles/modelfits/Q_sw_gem_nogem_stan_adolescents.rds")
 
 
-Q_mod_adul<-stan(
-  file="./C_modelfittingCode/stan/model_code/Q_nokeeper_3_2_sw_gem_nogem.stan",
+Q_mod_adul<-sampling(
+  model_compiled,
   data=data_list_adults,
   pars =c("lr","tau","sw","log_lik"),
   # init=1,
-  iter = 1000,
+  iter = 4000,
   chains=4,
   cores=4
 )
 
-saveRDS(object = Q_mod_adul,file = "./A_GeneratedFiles/modelfits/Q_3_2_sw_gem_nogem_stan_adults.rds")
+saveRDS(object = Q_mod_adul,file = "./A_GeneratedFiles/modelfits/Q_nokeeper_sw_gem_nogem_range_n_adults.rds")
 
 ```
 
 # did that make any sense
 ```{r}
 # # current benchmark
- Q_mod_adul_2<-readRDS(file = "./A_GeneratedFiles/modelfits/Q_sw_gem_nogem_stan_adults.rds")
+Q_mod_adul_2<-readRDS(file = "./A_GeneratedFiles/modelfits/Q_sw_gem_nogem_stan_adults.rds")
+Q_mod_adol_2<-readRDS(file = "./A_GeneratedFiles/modelfits/Q_sw_gem_nogem_stan_adolescents.rds")
+
 # 
 # # compare models unsystematically. 
- Q_mod_adul_2_loglik<-loo::extract_log_lik(Q_mod_adul_2)
- Q_mod_adul_loglik<-loo::extract_log_lik(Q_mod_adul)
+Q_mod_adul_2_loglik<-loo::extract_log_lik(Q_mod_adol_2)
+Q_mod_adul_loglik<-loo::extract_log_lik(Q_mod_adol)
 # # 
 # # 
- hist(Q_mod_adul_2_loglik-Q_mod_adul_loglik,breaks=100)
- t.test(Q_mod_adul_2_loglik,Q_mod_adul_loglik)
+hist(Q_mod_adul_2_loglik-Q_mod_adul_loglik,breaks=100)
+t.test(Q_mod_adul_2_loglik,Q_mod_adul_loglik)
 
 
 #Q_mod_adol<-readRDS(file = "../../A_GeneratedFiles/modelfits/Q_3sw_gem_nogem_stan_adolescents.rds")
@@ -336,14 +146,14 @@ saveRDS(object = Q_mod_adul,file = "./A_GeneratedFiles/modelfits/Q_3_2_sw_gem_no
 ```{r}
 # make data in long format
 adults<-Q_mod_adul%>%
-  tidybayes::gather_draws(lr[participant],tau[participant,gem],sw[gem,participant,qual])%>%
+  tidybayes::gather_draws(lr[participant,gem],tau[participant,gem],sw[participant,gem])%>%
   mutate(
     group="adults",
     player = keep_forfit_adults[participant]
   )# get back original participant index
 
 adolescents<-Q_mod_adol%>%
-  tidybayes::gather_draws(lr[participant],tau[participant,gem],sw[gem,participant,qual])%>%
+  tidybayes::gather_draws(lr[participant,gem],tau[participant,gem],sw[participant,gem])%>%
   mutate(
     group="adolescents",
     player = keep_forfit_adolescents[participant]
@@ -352,10 +162,10 @@ adolescents<-Q_mod_adol%>%
 all_draws<-rbind(adults,adolescents)
 #all_draws<-adults
 # pivot wider first for joining with rest of the data.
-all_draws_summarized<-all_draws%>%group_by(player,group,.variable,gem,qual)%>%
+all_draws_summarized<-all_draws%>%group_by(player,group,.variable,gem)%>%
   dplyr::summarise(m_value=mean(.value))%>%pivot_wider(names_from = c(.variable,gem),values_from = m_value)
 
-social_fits_d<-left_join(social_data,all_draws_summarized,by="player")
+social_fits_d<-left_join(social_data,all_draws_summarized,by=c("player"))
 
 #saveRDS(all_draws,file = "A_GeneratedFiles/modelfits/draws_Q_gem_nogem.rds")
 #saveRDS(social_fits_d,file = "A_GeneratedFiles/modelfits/summed_Q_gem_nogem.rds")
@@ -364,14 +174,17 @@ social_fits_d<-left_join(social_data,all_draws_summarized,by="player")
 #
 
 ```{r}
-adolescents%>%filter(.variable=="sw")%>%
-  ggplot(aes(x=qual,y=.value,color=gem,group=gem))+
-  stat_summary()
+adolescents%>%#filter(.variable=="sw")%>%
+  ggplot(aes(x=gem,y=.value,color=gem,group=gem))+
+  stat_summary()+
+  facet_wrap(.~ .variable)
 
 
-adults%>%filter(.variable=="sw")%>%
-  ggplot(aes(x=qual,y=.value,color=gem,group=gem))+
-  stat_summary()
+adults%>%#filter(.variable=="sw")%>%
+  ggplot(aes(x=gem,y=.value,color=gem,group=gem))+
+  stat_summary()+
+  facet_wrap(.~ .variable)
+
 ```
 
 # plot parameter estimates
@@ -385,7 +198,7 @@ all_draws%>%group_by(participant,group,.variable,gem)%>%
   ggplot(aes(x=group,y=m_value,group=gem,color=as.factor(gem)))+
   #geom_point(position=position_dodge(0.9),alpha=0.1)+
   #geom_boxplot(position=position_dodge(0.1))+
-  scale_color_discrete(name="gem found",labels=c("yes","no"))+
+  #scale_color_discrete(name="gem found",labels=c("yes","no"))+
   stat_summary()+
   #scale_color_discrete()+
   facet_wrap(~ .variable,scales="free")+

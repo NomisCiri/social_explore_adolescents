@@ -48,6 +48,38 @@ fit_1lr <- function(d1, rounds) {
 }
 
 
+##---------------------------------------------------------------
+##                    basic Q-Learning model                   --
+##---------------------------------------------------------------
+
+fit_range_adapt_lr <- function(d1, rounds) {
+
+  # Set upper and lower bounds based on nParams
+  lbound <- c(0.00000001,0.00000001,0.00000001,0.00000001) 
+  ubound <- c(1,1, 10,10)                           
+  
+  #####
+  # Begin cross validation routine
+  # TRAINING SET
+  fit <- DEoptim(
+    range_1lr_sp, 
+    lower = lbound, 
+    upper = ubound, 
+    dat = d1,
+    DEoptim.control(itermax = 100,NP=8)
+  )
+  paramEstimates <- fit$optim$bestmem # MODEL DEPENDENT PARAMETER ESTIMATES
+  
+  # TEST SET
+  predict <- range_1lr_sp(
+    par = paramEstimates, 
+    dat = d1
+  )
+  
+  output <- c(predict, fit$optim$bestmem) # leaveoutindex, nLL, parameters....
+  return(output) # return optimized value
+}
+
 ##----------------------------------------------------------------
 ##       Q-Learning model with 2 learning rates (pos&neg)       --
 ##----------------------------------------------------------------

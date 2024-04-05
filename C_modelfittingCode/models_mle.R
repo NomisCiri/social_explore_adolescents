@@ -209,8 +209,8 @@ KF_social_greedy_2probs <- function(out, epsilon=1,maximize=1,zeta=1,epsilon_gem
   n <- length(out$mu)
   #softmaxing probs
   if(max(y<150)){
-  vals<-c(exp(epsilon),exp(maximize),exp(zeta))/sum(c(exp(epsilon),exp(maximize),exp(zeta)))
-  # compute utilities
+    vals<-c(exp(epsilon),exp(maximize),exp(zeta))/sum(c(exp(epsilon),exp(maximize),exp(zeta)))
+    # compute utilities
   }else {
     vals<-c(exp(epsilon_gem),exp(maximize_gem),exp(zeta_gem))/sum(c(exp(epsilon_gem),exp(maximize_gem),exp(zeta_gem)))
   }
@@ -241,88 +241,223 @@ KF_social_greedy_2probs <- function(out, epsilon=1,maximize=1,zeta=1,epsilon_gem
 ##                    basic Q-Learning model                   --
 ##---------------------------------------------------------------
 
-utility_1lr <- function(par, learning_model_fun, acquisition_fun, dat) {
+range_1lr <- function(par, learning_model_fun, acquisition_fun, dat) {
   
-  # for (rep in 1:ntrialss){
   # unpack
-  
-  #par<-exp(par)#parameters are defined in logspace, we exponentiate them here
   theta <- par[1]# "learningrate"
   tau <- par[2] #  "random" exploration
   mu0 <- 0# par[4] # exploration bonus
-  
   ## preallocate negative log likelihood
   nLL <- rep(0, length(dat$round))
   
   for (r in unique(dat$round)) {
-    
     ## collect choices for current round
     round_df <- subset(dat, round == r)
     trials <- nrow(round_df)
-    
+    out<-rep(mu0,64)
     ## Observations of subject choice behavior 
     chosen <- round_df$choices
-    
     ## rewards
     y <- round_df$z[0:(trials - 1)] # trim off the last observation, because it was not used to inform a choice (round already over)
-    
+    y_scaled<-rep(0,length(y))
     ## social information
     social_choices <- round_df$social_info
-    
     # create observation matrix
-    # Utilties of each choice
     utilities <- NULL
-    prevPost <- NULL # set the previous posterior computation to NULL for qlearning
-    pMat <- NULL
+    first=TRUE
     
-    #here, too
     for (t in 1:(trials - 1)) {
       
-      #learn
-      
-      #browser()
-      if (t > 1) {
-        out <- RW_Q(chosen[t], y[t], theta = theta, prevPost = out, mu0Par = mu0)
-      } else {
-        # first t of each round, start new
-        out <- RW_Q(chosen[t], y[t], theta = theta, prevPost = NULL, mu0Par = mu0)
+      #range adaptation
+      if(max(y[1:t])<120){
+        y_scaled[t] = (y[t]+75)/150#range normalization rule: (x-rmin)/(rmax-rmin)
+      }else {# when there is a gem. 
+        #crucial: rescale q-values the first time we saw the gem
+        if(first){
+          out<-out/(363/75)
+          first=FALSE
+        }
+        # reward value of the new range
+        y_scaled[t] = (y[t]+75)/(363)#range normalization rule for gems: (x-rmin)/(rmax-rmin)
       }
       
-      ## ?? what is this?
-      utilityVec <- ucb(out, 0)
+      out <- RW_Q(chosen[t], y_scaled[t], theta = theta, prevPost = out, mu0Par = mu0)
       
+      utilityVec <- out
       # next choice getrials a social utility
-      #utilityVec=utilityVec-max(utilityVec)
       utilityVec[social_choices[t]] <- utilityVec[social_choices[t]]
-      
       # build horizon_length x options matrix, where each row holds the utilities of each choice at each decision time in the search horizon
       utilities <- rbind(utilities, t(utilityVec)) 
-      #browser()
     }
-    
     # softmaximization
-    # browser()
     p <- exp(utilities / tau)
-    
     # probabilities
     p <- p / rowSums(p)
-    
     # numerical overflow
     p <- (pmax(p, 0.00001))
     p <- (pmin(p, 0.99999))
     
-    #browser()
     # add loglik nasty way of checking the predicted choice probability a the item that was chosen
     nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials - 1)), chosen[2:length(chosen)])]))
-    #browser()
   }
-  #browser()
-  
   #avoid nan in objective function
   if (any(is.nan(sum(nLL))))
   { 
     return(10 ^ 30)
+  }else
+  {
+    return(sum(nLL))
+  }
+}
+
+
+
+##---------------------------------------------------------------
+##                    basic Q-Learning model                   --
+##---------------------------------------------------------------
+
+range_1lr_sp <- function(par, learning_model_fun, acquisition_fun, dat) {
+  
+  # unpack
+  theta <- par[1]# "learningrate"
+  mu0 <- 0# par[4] # exploration bonus
+  ## preallocate negative log likelihood
+  nLL <- rep(0, length(dat$round))
+  
+  for (r in unique(dat$round)) {
+    ## collect choices for current round
+    round_df <- subset(dat, round == r)
+    trials <- nrow(round_df)
+    out<-rep(mu0,64)
+    ## Observations of subject choice behavior 
+    chosen <- round_df$choices
+    ## rewards
+    y <- round_df$z[0:(trials - 1)] # trim off the last observation, because it was not used to inform a choice (round already over)
+    y_scaled<-rep(0,length(y))
+    ## social information
+    social_choices <- round_df$social_info
+    # create observation matrix
+    utilities <- NULL
+    first=TRUE
     
+    for (t in 1:(trials - 1)) {
+      
+      #range adaptation
+      if(max(y[1:t])<120){
+        tau<-par[2]
+        y_scaled[t] = (y[t]+75)/150#range normalization rule: (x-rmin)/(rmax-rmin)
+      }else {# when there is a gem. 
+        #crucial: rescale q-values the first time we saw the gem
+        tau<-par[3]
+        
+        if(first){
+          out<-out/(363/75)
+          first=FALSE
+        }
+        # reward value of the new range
+        y_scaled[t] = (y[t]+75)/(363)#range normalization rule for gems: (x-rmin)/(rmax-rmin)
+      }
+      
+      out <- RW_Q(chosen[t], y_scaled[t], theta = theta, prevPost = out, mu0Par = mu0)
+      
+      utilityVec <- out
+      # next choice getrials a social utility
+      utilityVec[social_choices[t]] <- utilityVec[social_choices[t]]
+      # build horizon_length x options matrix, where each row holds the utilities of each choice at each decision time in the search horizon
+      utilities <- rbind(utilities, t(utilityVec)) 
+    }
+    # softmaximization
+    p <- exp(utilities / tau)
+    # probabilities
+    p <- p / rowSums(p)
+    # numerical overflow
+    p <- (pmax(p, 0.00001))
+    p <- (pmin(p, 0.99999))
+    
+    # add loglik nasty way of checking the predicted choice probability a the item that was chosen
+    nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials - 1)), chosen[2:length(chosen)])]))
+  }
+  #avoid nan in objective function
+  if (any(is.nan(sum(nLL))))
+  { 
+    return(10 ^ 30)
+  }else
+  {
+    return(sum(nLL))
+  }
+}
+
+##---------------------------------------------------------------
+##       range adaptation q model with probs                   --
+##---------------------------------------------------------------
+
+range_1lr_sp <- function(par, learning_model_fun, acquisition_fun, dat) {
+  
+  # unpack
+  theta <- par[1]# "learningrate"
+  omega<-par[2]
+  mu0 <- 0# par[4] # exploration bonus
+  ## preallocate negative log likelihood
+  nLL <- rep(0, length(dat$round))
+  
+  for (r in unique(dat$round)) {
+    ## collect choices for current round
+    round_df <- subset(dat, round == r)
+    trials <- nrow(round_df)
+    out<-rep(mu0,64)
+    ## Observations of subject choice behavior 
+    chosen <- round_df$choices
+    ## rewards
+    y <- round_df$z[0:(trials - 1)] # trim off the last observation, because it was not used to inform a choice (round already over)
+    y_scaled<-rep(0,length(y))
+    ## social information
+    social_choices <- round_df$social_info
+    # create observation matrix
+    p<-NULL
+    first=TRUE
+    for (t in 1:(trials - 1)) {
+      
+      #range adaptation
+      if(max(y[1:t])<120){
+        tau<-par[3]
+        y_scaled[t] = (y[t]+75)/150#range normalization rule: (x-rmin)/(rmax-rmin)
+      }else {# when there is a gem. 
+        #crucial: rescale q-values the first time we saw the gem
+        tau<-par[4]
+        if(first){
+          out<-out/(363/75)
+          first=FALSE
+        }
+        # reward value of the new range
+        y_scaled[t] = (y[t]+75)/(363)#range normalization rule for gems: (x-rmin)/(rmax-rmin)
+      }
+      
+      out <- RW_Q(chosen[t], y_scaled[t], theta = theta, prevPost = out, mu0Par = mu0)
+      
+      utilityVec <- out
+      # next choice getrials a social utility
+      utilityVec[social_choices[t]] <- utilityVec[social_choices[t]] + omega
+      # build horizon_length x options matrix, where each row holds the utilities of each choice at each decision time in the search horizon
+      p_sfmx <- exp(utilityVec / tau)
+      # probabilities
+      p_sfmx <- p_sfmx / sum(p_sfmx)
+      p <- rbind(p, t(p_sfmx)) 
+    }
+    # softmaximization
+    #browser()
+
+    p
+    # numerical overflow
+    p <- (pmax(p, 0.00001))
+    p <- (pmin(p, 0.99999))
+    
+    # add loglik nasty way of checking the predicted choice probability a the item that was chosen
+    nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials - 1)), chosen[2:length(chosen)])]))
+  }
+  #avoid nan in objective function
+  if (any(is.nan(sum(nLL))))
+  { 
+    return(10 ^ 30)
   }else
   {
     return(sum(nLL))
@@ -440,6 +575,84 @@ utility_2lr_sw <- function(par, dat) {
       } else {
         # first t of each round, start new
         out <- RW_Q_2(chosen[t], y[t], theta = theta, prevPost = NULL, mu0Par = mu0)
+      }
+      utilityVec <- ucb(out, 0)
+      #next choice getrials a social utility
+      #utilityVec=utilityVec-max(utilityVec)
+      
+      utilityVec[social_choices[t]] <- utilityVec[social_choices[t]] + zeta
+      # build horizon_length x options matrix, where each row holds the utilities of each choice at each decision time in the search horizon
+      utilities <- rbind(utilities, t(utilityVec)) 
+      #browser()
+    }
+    # softmaximization
+    # browser()
+    p <- exp(utilities / tau)
+    # probabilities
+    p <- p / rowSums(p)
+    # numerical overflow
+    p <- (pmax(p, 0.00001))
+    p <- (pmin(p, 0.99999))
+    # add loglik nasty way of checking the predicted choice probability a the item that was chosen
+    nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials-1)), chosen[2:length(chosen)] )]))
+    #browser()
+  }
+  #browser()
+  #avoid nan in objective function
+  if(any(is.nan(sum(nLL))))
+  { 
+    return(10 ^ 30)
+    
+  }else
+  {
+    return(sum(nLL))
+  }
+}
+
+
+
+
+
+
+##------------------------------------------------------------------------
+## range adaptation Q-Learning model with 2 learning rates (pos&neg) and social weight  --
+##------------------------------------------------------------------------
+
+range_adapt_lr_sw <- function(par, dat) {
+  # for (rep in 1:ntrialss){
+  # unpack
+  #par<-exp(par)#parameters are defined in logspace, we exponentiate them here
+  theta <- par[1]# "learningrate" 1 is positive, 2 is negative
+  tau <- par[2] #  "random" exploration
+  zeta <- par[3] # scales social info use
+  mu0 <- 0# par[4] # exploration bonus
+  # create a parameter vector
+  # preallocate negative log likelihood
+  nLL <- rep(0, 12)
+  
+  for (r in unique(dat$round)){
+    # collect choices for current round
+    round_df <- subset(dat, round == r)
+    trials <- nrow(round_df)
+    # Observations of subject choice behavior
+    chosen <- round_df$choices
+    y <- round_df$z[0:(trials - 1)] # trim off the last observation, because it was not used to inform a choice (round already over)
+    # social information
+    social_choices<-round_df$social_info
+    # create observation matrix
+    # Utilties of each choice
+    utilities <- NULL
+    prevPost <- NULL # set the previous posterior computation to NULL for qlearning
+    pMat <- NULL
+    #here, too
+    for (t in 1:(trials-1)) {
+      #learn
+      # browser()
+      if (t > 1) {
+        out <- RW_Q(chosen[t], y[t], theta = theta, prevPost = out, mu0Par = mu0)
+      } else {
+        # first t of each round, start new
+        out <- RW_Q(chosen[t], y[t], theta = theta, prevPost = NULL, mu0Par = mu0)
       }
       utilityVec <- ucb(out, 0)
       #next choice getrials a social utility
