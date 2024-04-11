@@ -559,49 +559,43 @@ filter(social_info_use == "copy" & gem_found_how != 'alone') %>%
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 
-## @ discuss with simon
-# all_data %>%
-#   group_by(demo_type, uniqueID, round, group, gem_found, age, demo_quality) %>%
-#   filter(social_info_use == "copy" & gem_found_how != 'alone') %>%
-#   count(social_info_use) %>% 
-#   lmer(n ~ demo_quality * group + (1 | uniqueID), data = .) -> r
-# 
-# summary(r)
 
 
 
 ```
 
-## different options
+## poisson regression analysis: copy by treatment and demonstrator
 
 ```{r differences in social info use by treatment}
-all_data %>% group_by(demo_type, uniqueID, round, group, gem_found, age, demo_quality) %>%
-  filter(social_info_use == "copy"  & gempresent ==1) %>%
-  count(social_info_use) %>%
-  ggplot(aes(
-    x = factor(demo_quality),
-    y = n,
-    shape = group,
-    color = demo_quality
-  )) +
-  stat_summary(position = position_dodge(width =.5)) +
- # geom_hline(yintercept = 25 / 64,
-  #           linetype = "dotted",
-  #          color = "red") +
-  labs(y='average number of copy per round',
-       x= 'treatment (quality of demonstrator)')+
-  scale_color_brewer(
-    type = "qual",
-    palette = 2,
-    name = "demonstrator:",
-    label = c("finds a gem", "settles for a positive option", "explores until the end")
-  ) +
-  scale_x_discrete(labels=c("high", "medium", "low")) +
- # facet_wrap(.~gem_found) +
-  theme_base(20)
- # guides(color = FALSE)
-ggsave("plots/social_info_use.png",plot = last_plot(), width = 6, heigh = 6)
 
+## latest version in the plots for the conference presentation
+
+# all_data %>% group_by(demo_type, uniqueID, round, group, gem_found, age, demo_quality) %>%
+#   filter(social_info_use == "copy"  & gempresent ==1) %>%
+#   count(social_info_use) %>%
+#   ggplot(aes(
+#     x = factor(demo_quality),
+#     y = n,
+#     shape = group,
+#     color = demo_quality
+#   )) +
+#   stat_summary(position = position_dodge(width =.5)) +
+#  # geom_hline(yintercept = 25 / 64,
+#   #           linetype = "dotted",
+#   #          color = "red") +
+#   labs(y='average number of copy per round',
+#        x= 'treatment (quality of demonstrator)')+
+#   scale_color_brewer(
+#     type = "qual",
+#     palette = 2,
+#     name = "demonstrator:",
+#     label = c("finds a gem", "settles for a positive option", "explores until the end")
+#   ) +
+#   scale_x_discrete(labels=c("high", "medium", "low")) +
+#  # facet_wrap(.~gem_found) +
+#   theme_base(20)
+#  # guides(color = FALSE)
+# ggsave("plots/social_info_use.png",plot = last_plot(), width = 6, heigh = 6)
 
 
 # ## difference in copy by group and treatment
@@ -622,27 +616,43 @@ ggsave("plots/social_info_use.png",plot = last_plot(), width = 6, heigh = 6)
 
 
 
-## bayesian model
-all_data %>% group_by(demo_type, uniqueID, round, group, gem_found, age, demo_quality) %>%
+## bayesian models
+
+## all copy trials included and random slopes
+model_random_slopes <- 
+  all_data %>%
+  mutate(age_group = group) %>% 
+group_by(demo_type, uniqueID, round, age_group, gem_found, age, demo_quality) %>%
   filter(social_info_use == "copy") %>%
   count(social_info_use) %>% 
-  brms::brm(n ~ demo_quality * group + (1|uniqueID), data = ., family = poisson(), iter = 3000) -> poission_regression_all_rounds
+  brms::brm(n ~ 1 + demo_quality * age_group + (1 + demo_quality | uniqueID), data = ., family = poisson(), iter = 4000) 
 
+plot_model(model_random_slopes)
 
+save(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/poission_regression_all_rounds_slopes.RData'), model_random_slopes)
 
-all_data %>% group_by(demo_type, uniqueID, round, group, gem_found, age, demo_quality) %>%
-  filter(social_info_use == "copy" & gempresent == 1 ) %>%
-  count(social_info_use) %>% 
-  brms::brm(n ~ demo_quality * group + (1|uniqueID), data = ., family = poisson(), iter = 3000) -> poission_regression_all_gem_rounds
-
-
-
-poission_regression_all_gem_rounds_copiers <- 
-all_data %>%
-  group_by(demo_type, uniqueID, round, group, gem_found, age, demo_quality) %>%
-  filter(social_info_use == "copy" & gem_found_how != 'alone') %>%
-  count(social_info_use) %>% 
-  brms::brm(n ~ demo_quality * group + (1 | uniqueID), data = ., family = poisson(), iter = 3000)
+# 
+# ## all copy trials included
+# all_data %>% group_by(demo_type, uniqueID, round, group, gem_found, age, demo_quality) %>%
+#   filter(social_info_use == "copy") %>%
+#   count(social_info_use) %>% 
+#   brms::brm(n ~ demo_quality * group + (1|uniqueID), data = ., family = poisson(), iter = 3000) -> poission_regression_all_rounds
+# 
+# 
+# save(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/poission_regression_all_rounds.RData'), poission_regression_all_rounds)
+# 
+# ## other models - not in final version
+# all_data %>% group_by(demo_type, uniqueID, round, group, gem_found, age, demo_quality) %>%
+#   filter(social_info_use == "copy" & gempresent == 1 ) %>%
+#   count(social_info_use) %>% 
+#   brms::brm(n ~ demo_quality * group + (1|uniqueID), data = ., family = poisson(), iter = 3000) -> poission_regression_all_gem_rounds
+# 
+# poission_regression_all_gem_rounds_copiers <- 
+# all_data %>%
+#   group_by(demo_type, uniqueID, round, group, gem_found, age, demo_quality) %>%
+#   filter(social_info_use == "copy" & gem_found_how != 'alone') %>%
+#   count(social_info_use) %>% 
+#   brms::brm(n ~ demo_quality * group + (1 | uniqueID), data = ., family = poisson(), iter = 3000)
 
 # 
 # ## freq
@@ -654,9 +664,36 @@ all_data %>%
 #   glmer(n ~ demo_quality * group + (1 | uniqueID), data = ., family = poisson())
 
 
-tab_model(poisson_reg_copy_bayseian)
-plot_model(poisson_reg_copy_bayseian, axis.lim = c(.2,2)) +
-  tidybayes::theme_tidybayes()
+tab_model(model_random_slopes, pred.labels = 
+    c("Intercept",
+      "Quality (Medium)",
+      "Quality (Worst)",
+      "Adults",
+      "Quality (Medium) X Adults",
+      "Quality (Worst) X Adults"
+    ), show.stat = TRUE )
+
+poisson_plot <- 
+  plot_model(
+  model_random_slopes,
+ # axis.lim = c(.2, 2),
+  axis.labels = rev(
+    c(
+      "Quality (Medium)",
+      "Quality (Worst)",
+      "Adults",
+      "Quality (Medium) X Adults",
+      "Quality (Worst) X Adults"
+    )
+  ),
+  title = "", vline.color = "grey", vline = 2,show.values = TRUE, 
+) +
+  ylim(.2,2)+
+  theme_base(base_size = 15)+
+  theme(plot.background = element_blank())
+
+ggsave("plots/poisson_regression_slopes.png",plot = poisson_plot, width = 6, height = 4)
+
 
 ```
 
