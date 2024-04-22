@@ -618,6 +618,12 @@ filter(social_info_use == "copy" & gem_found_how != 'alone') %>%
 
 ## bayesian models
 
+  model_random_slopes_data <- all_data %>%
+  mutate(age_group = group) %>% 
+group_by(demo_type, uniqueID, round, age_group, gem_found, age, demo_quality) %>%
+  filter(social_info_use == "copy") %>%
+  count(social_info_use)
+
 ## all copy trials included and random slopes
 model_random_slopes <- 
   all_data %>%
@@ -631,8 +637,17 @@ plot_model(model_random_slopes)
 
 save(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/poission_regression_all_rounds_slopes.RData'), model_random_slopes)
 
-# 
-# ## all copy trials included
+load(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/poission_regression_all_rounds_slopes.RData'))
+
+null_brms = update(model_random_slopes, formula = ~ .-demo_quality:group ) 
+
+# Same but without the interaction term
+BF_brms_bridge = bayes_factor(model_random_slopes, null_brms)
+BF_brms_bridge
+
+
+BayesFactor::regressionBF(formula = formula, n ~ 1 + demo_quality * age_group + (1 + demo_quality | uniqueID),  data = model_random_slopes_data)
+# ## all copy trials incluformula = # ## all copy trials included
 # all_data %>% group_by(demo_type, uniqueID, round, group, gem_found, age, demo_quality) %>%
 #   filter(social_info_use == "copy") %>%
 #   count(social_info_use) %>% 
