@@ -47,8 +47,8 @@ transformed parameters{
   lr[,1]=Phi_approx(mus[1]+params_phi[,1])*2;
   lr[,2]=Phi_approx(mus[2]+params_phi[,2])*2;
   
-  tau[,1]=Phi_approx(mus[3]+params_phi[,3])*5;
-  tau[,2]=Phi_approx(mus[4]+params_phi[,4])*5;
+  tau[,1]=Phi_approx(mus[3]+params_phi[,3]);
+  tau[,2]=Phi_approx(mus[4]+params_phi[,4]);
   
   
   sw[,1]=Phi_approx(mus[5]+params_phi[,5]);

@@ -91,29 +91,33 @@ model_compiled<-stan_model(
   allow_optimizations=T,
   warn_pedantic=T
   )
+```
 
+```{r}
 Q_mod_adol<-sampling(
   model_compiled,
   data=data_list_adolescents,
   pars =c("lr","tau","sw","log_lik"),
-  # init=1,
-  iter = 4000,
-  chains=6,
-  cores=6
+  init=0,
+  iter = 2000,
+  chains=4,
+  cores=4
 )
 
 saveRDS(object = Q_mod_adol,file = "./A_GeneratedFiles/modelfits/Q_nokeeper_sw_gem_nogem_range_n_adolescents.rds")
 #Q_mod_adol<-readRDS(file = "./A_GeneratedFiles/modelfits/Q_sw_gem_nogem_stan_adolescents.rds")
 
+```
 
+```{r}
 Q_mod_adul<-sampling(
   model_compiled,
   data=data_list_adults,
   pars =c("lr","tau","sw","log_lik"),
   # init=1,
   iter = 4000,
-  chains=4,
-  cores=4
+  chains=6,
+  cores=6
 )
 
 saveRDS(object = Q_mod_adul,file = "./A_GeneratedFiles/modelfits/Q_nokeeper_sw_gem_nogem_range_n_adults.rds")
@@ -123,21 +127,22 @@ saveRDS(object = Q_mod_adul,file = "./A_GeneratedFiles/modelfits/Q_nokeeper_sw_g
 # did that make any sense
 ```{r}
 # # current benchmark
-Q_mod_adul_2<-readRDS(file = "./A_GeneratedFiles/modelfits/Q_sw_gem_nogem_stan_adults.rds")
-Q_mod_adol_2<-readRDS(file = "./A_GeneratedFiles/modelfits/Q_sw_gem_nogem_stan_adolescents.rds")
+#Q_mod_adul_2<-readRDS(file = "./A_GeneratedFiles/modelfits/Q_sw_gem_nogem_stan_adults.rds")
+#Q_mod_adol_2<-readRDS(file = "./A_GeneratedFiles/modelfits/Q_sw_gem_nogem_stan_adolescents.rds")
 
 # 
 # # compare models unsystematically. 
-Q_mod_adul_2_loglik<-loo::extract_log_lik(Q_mod_adol_2)
-Q_mod_adul_loglik<-loo::extract_log_lik(Q_mod_adol)
+#Q_mod_adul_2_loglik<-loo::extract_log_lik(Q_mod_adol_2)
+#Q_mod_adul_loglik<-loo::extract_log_lik(Q_mod_adol)
 # # 
 # # 
 hist(Q_mod_adul_2_loglik-Q_mod_adul_loglik,breaks=100)
 t.test(Q_mod_adul_2_loglik,Q_mod_adul_loglik)
+```
 
-
-#Q_mod_adol<-readRDS(file = "../../A_GeneratedFiles/modelfits/Q_3sw_gem_nogem_stan_adolescents.rds")
-#Q_mod_adul<-readRDS(file = "../../A_GeneratedFiles/modelfits/Q_3sw_gem_nogem_stan_adults.rds")
+```{r}
+Q_mod_adol<-readRDS(file = "./A_GeneratedFiles/modelfits/Q_nokeeper_sw_gem_nogem_range_n_adolescents.rds")
+Q_mod_adul<-readRDS(file = "./A_GeneratedFiles/modelfits/Q_nokeeper_sw_gem_nogem_range_n_adults.rds")
 
 ```
 
@@ -191,18 +196,32 @@ adults%>%#filter(.variable=="sw")%>%
 
 ```{r}
 
-all_draws<-readRDS("./A_GeneratedFiles/modelfits/draws_Q_gem_nogem.rds")
+#all_draws<-readRDS("./A_GeneratedFiles/modelfits/draws_Q_gem_nogem.rds")
 library("tidybayes")
 all_draws%>%group_by(participant,group,.variable,gem)%>%
   dplyr::summarise(m_value=mean(.value))%>%
   ggplot(aes(x=group,y=m_value,group=gem,color=as.factor(gem)))+
-  #geom_point(position=position_dodge(0.9),alpha=0.1)+
+  geom_point(position=position_dodge(0.9),alpha=0.05)+
   #geom_boxplot(position=position_dodge(0.1))+
-  #scale_color_discrete(name="gem found",labels=c("yes","no"))+
+  scale_color_discrete(name="gem found",labels=c("yes","no"))+
   stat_summary()+
   #scale_color_discrete()+
-  facet_wrap(~ .variable,scales="free")+
+  facet_grid(gem ~ .variable,scales="free_y",labeller = labeller(gem=c(`1`="Gem Found",`2`="Gem Not Found")))+
   theme_bw(14)->plot
 
 plot
+
+
+all_draws%>%group_by(participant,group,.variable,gem)%>%filter(.variable=="sw")%>%
+  dplyr::summarise(m_value=mean(.value))%>%
+  ggplot(aes(x=group,y=m_value,group=gem,color=as.factor(gem)))+
+  #geom_point(position=position_dodge(0.9),alpha=0.05)+
+  #geom_boxplot(position=position_dodge(0.1))+
+  scale_color_discrete(name="gem found",labels=c("yes","no"))+
+  stat_summary()+
+  #scale_color_discrete()+
+  facet_grid(gem ~ .,labeller = labeller(gem=c(`1`="Gem Found",`2`="Gem Not Found")))+
+  theme_bw(14)->plot_sw
+
+plot_sw
 ```
