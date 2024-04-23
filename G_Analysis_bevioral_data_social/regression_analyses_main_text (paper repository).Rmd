@@ -1,0 +1,134 @@
+---
+title: "Regressions analyses main text"
+author: "Andrea & Simon"
+output: html_document
+---
+
+## load packages and prepare data
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, echo=FALSE}
+
+## load packages @andrea implement pck_mgmt script
+pacman::p_load(tidyverse,
+               rjson,
+               data.table,
+               gghalves,
+               here,
+               lme4,
+               lmerTest,
+               broom.mixed,
+               infer,
+               ggthemes,
+               sjPlot)
+
+'%!in%' <- function(x,y)!('%in%'(x,y))
+
+options(scipen = 999,digits = 4)
+```
+
+```{r load data, echo=FALSE, warning=FALSE, message=FALSE }
+
+## load data
+all_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants.csv")) %>% 
+   mutate(demo_quality_f = as.factor(demo_quality),
+         age_f = as.factor(group)) ## mutate IVs into factors
+```
+
+## differences in points scored by group
+
+```{r points by age group regression}
+
+## select only one observation per participant
+performance_age_demonstrator <- all_data %>%
+  ungroup() %>%
+  select(uniqueID, age_f, demo_quality_f, tot_points) %>%
+  distinct()
+
+## load model if fitting has been done, if not fit model
+if (file.exists(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/performance_age_demonstrator_model'))){
+  
+  base::load(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/performance_age_demonstrator_model'))
+
+  } else {
+
+## model specification
+performance_age_demonstrator_model <-
+  brms::brm(formula = tot_points ~ demo_quality_f * age_f + (1 +  uniqueID),
+            data = performance_age_demonstrator,
+            iter = 6000)
+
+## save
+save("follow_model_all_data_pre_reg", file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/performance_age_demonstrator_model'))
+  }
+
+## results
+tab_model(performance_age_demonstrator_model)
+plot_model(performance_age_demonstrator_model)
+
+```
+
+When do adults find gems? later then adolescents
+
+```{r gem found when bry group, warning=FALSE, message=FALSE}
+
+## select only one observation per participant
+data_gem_found <- all_data %>%  
+  filter(gem_found == 1) %>% 
+    select(round_gem_found, age_f, demo_quality_f, uniqueID) %>% 
+  distinct()
+
+hist(data_gem_found$round_gem_found)
+
+## define priors 
+prior_cauchy <- brms::prior_string("cauchy(0, 2.5)", class = "b")
+
+## model specification
+gem_found_when_model <- brms::brm(formula = round_gem_found ~  demo_quality_f * age_f + (1 | uniqueID),
+          #prior = prior_cauchy,
+          sample_prior = TRUE,
+          data = data_gem_found,
+          family = poisson(),
+          iter = 6000,
+          chains = 5) 
+
+## save results
+save(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/gem_found_when_model.RData'), gem_found_when_model)
+
+```
+
+## social learning differences
+
+```{r}
+
+## create count variable
+model_random_slopes_data <- all_data %>%
+  mutate(age_group = group) %>% 
+  group_by(demo_type, uniqueID, round, age_group, gem_found, age, demo_quality) %>%
+  filter(social_info_use == "copy") %>%
+  count(social_info_use)
+
+## define priors
+prior_cauchy <- brms::prior_string("cauchy(0, 2.5)", class = "b")
+
+## specify model and fit
+model_random_slopes <- brms::brm(formula = n ~ 1 + demo_quality_f * age_f + (1 + demo_quality_f | uniqueID),
+          prior = prior_cauchy,
+          sample_prior = TRUE,
+          data = model_random_slopes_data,
+          family = poisson(),
+          iter = 6000,
+          chains = 5) 
+
+## save results
+save(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/poission_regression_all_rounds_slopes.RData'), model_random_slopes)
+
+## bayes factor test
+brms::hypothesis(model_random_slopes,"age_fadolescents > 0")
+brms::hypothesis(model_random_slopes,"demo_quality_fmedium < 0")
+brms::hypothesis(model_random_slopes,"demo_quality_fworst	 < demo_quality_fmedium") ##? does this makes sense?
+
+brms::hypothesis(model_random_slopes,"demo_quality_fmedium:age_fadolescents	 > 0")
+brms::hypothesis(model_random_slopes,"demo_quality_fworst:age_fadolescents	 > 0")
+
+```
+

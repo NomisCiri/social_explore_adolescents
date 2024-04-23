@@ -190,26 +190,61 @@ c <-
    theme_base(base_size = 15) +
    guides(
      color = FALSE,
-     fill = guide_legend(override.aes = list(
-       alpha = .5,
-       shape = 21,
-       size  =
-         4,
-       fill = c("#e41a1c", "#377eb8", "#4daf4a"))),
+     # fill = guide_legend(override.aes = list(
+     #   alpha = .5,
+     #   shape = 21,
+     #   size  =
+     #     4,
+     #   fill = c("#e41a1c", "#377eb8", "#4daf4a"))),
+     fill = FALSE,
      shape = guide_legend(override.aes = list(size = 4))
    ) +
    theme(plot.background = element_blank())
  
  c
+ 
+ ## regression slopes 
+ 
+  load(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/poission_regression_all_rounds_slopes.RData'))
+  
+  poisson_plot <- 
+    plot_model(
+      model_random_slopes,
+      # axis.lim = c(.2, 2),
+      axis.labels = rev(
+        c(
+          "Quality (Medium)",
+          "Quality (Worst)",
+          "Adolescents",
+          "Quality (Medium) X Adolescents",
+          "Quality (Worst) X Adolescents"
+        )
+      ),
+      title = "", vline.color = "grey", vline = 2,show.values = TRUE, 
+    ) +
+    ylim(.2,2)+
+    theme_base(base_size = 15)+
+    theme(plot.background = element_blank())
+  
 
+  lower <- 
+    cowplot::plot_grid(
+      c,poisson_plot,
+      #labels = c("a","b"),
+      #align = "H",
+      nrow = 1,
+      rel_widths =  c(.6, .4)
+    )
+  
+    
 ## combine panels
 figure2 <- 
   cowplot::plot_grid(
-    upper, c,
+    upper, lower,
    # labels = c("","c"),
     #align = "H",
     nrow = 2,
-    rel_widths =  c(.6, .6, .8)
+    rel_widths =  c(1, 1)
   )
 
 figure2

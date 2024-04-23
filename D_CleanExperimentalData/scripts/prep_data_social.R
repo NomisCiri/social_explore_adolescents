@@ -186,6 +186,18 @@ data <- data %>%
   ungroup() %>%
   dplyr::filter(p_value_rand < 0.05)
 
+data_excluded <- data %>% 
+  ungroup() %>% 
+  group_by(player) %>%
+  mutate(p_value_rand = t.test(points, rewards_bt, alternative = "greater") %>%
+           .$p.value) %>%
+  ungroup() %>%
+  dplyr::filter(p_value_rand > 0.05) %>% 
+  select(uniqueID, group) %>% 
+  distinct() %>% 
+  group_by(group) %>% 
+  summarise(count = n())
+
 data <-
   data %>%    group_by(unique_rounds) %>%   mutate(
     mean_points = mean(points),

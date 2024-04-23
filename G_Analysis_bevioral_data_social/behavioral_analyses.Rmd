@@ -167,6 +167,7 @@ all_data %>%
 tab_model(glmer(round_gem_found ~ group * demo_type  + (1|player), family = poisson(), data = all_data))
 
 
+
 ## condition on round where demonstrator finds the gem first
 all_data %>% 
   filter(gem_found == 1 & gem_found_how == 'copier') %>% 
@@ -639,14 +640,14 @@ save(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/poission_r
 
 load(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/poission_regression_all_rounds_slopes.RData'))
 
-null_brms = update(model_random_slopes, formula = ~ .-demo_quality:group ) 
-
-# Same but without the interaction term
-BF_brms_bridge = bayes_factor(model_random_slopes, null_brms)
-BF_brms_bridge
-
-
-BayesFactor::regressionBF(formula = formula, n ~ 1 + demo_quality * age_group + (1 + demo_quality | uniqueID),  data = model_random_slopes_data)
+# null_brms = update(model_random_slopes, formula = ~ .-demo_quality:group ) 
+# 
+# # Same but without the interaction term
+# BF_brms_bridge = bayes_factor(model_random_slopes, null_brms)
+# BF_brms_bridge
+# 
+# 
+# BayesFactor::regressionBF(formula = formula, n ~ 1 + demo_quality * age_group + (1 + demo_quality | uniqueID),  data = model_random_slopes_data)
 # ## all copy trials incluformula = # ## all copy trials included
 # all_data %>% group_by(demo_type, uniqueID, round, group, gem_found, age, demo_quality) %>%
 #   filter(social_info_use == "copy") %>%
