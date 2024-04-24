@@ -54,9 +54,9 @@ for (x in 1:length(data_list_adolescents$rewards[1,,1])){
     for (z in 1:length(data_list_adolescents$rewards[,1,1])){
       
       rewards_new_adol[z,x,y]=ifelse(data_list_adolescents$gem_found[z,x,y]==2,
-                                (data_list_adolescents$rewards[z,x,y]+75)/150,
-                                (data_list_adolescents$rewards[z,x,y]+75)/363
-                 
+                                     (data_list_adolescents$rewards[z,x,y]+75)/150,
+                                     (data_list_adolescents$rewards[z,x,y]+75)/363
+                                     
       )
     }
   }
@@ -68,8 +68,8 @@ for (x in 1:length(data_list_adults$rewards[1,,1])){
   for (y in 1:length(data_list_adults$rewards[1,1,])){
     for (z in 1:length(data_list_adults$rewards[,1,1])){
       rewards_new_adul[z,x,y]=ifelse(data_list_adults$gem_found[z,x,y]==2,
-                                (data_list_adults$rewards[z,x,y]+75)/150,
-                                (data_list_adults$rewards[z,x,y]+75)/363
+                                     (data_list_adults$rewards[z,x,y]+75)/150,
+                                     (data_list_adults$rewards[z,x,y]+75)/363
       )
     }
   }
@@ -90,7 +90,7 @@ model_compiled<-stan_model(
   file="./C_modelfittingCode/stan/model_code/Q_nokeeper_sw_gem_nogem_range_n.stan",
   allow_optimizations=T,
   warn_pedantic=T
-  )
+)
 ```
 
 ```{r}
@@ -195,33 +195,35 @@ adults%>%#filter(.variable=="sw")%>%
 # plot parameter estimates
 
 ```{r}
+pacman::p_load(tidyverse, gghalves, here, lmerTest, ggthemes, cowplot)
+
 
 #all_draws<-readRDS("./A_GeneratedFiles/modelfits/draws_Q_gem_nogem.rds")
 library("tidybayes")
+
+
+# TODO: 
+# add greek. 
 all_draws%>%group_by(participant,group,.variable,gem)%>%
   dplyr::summarise(m_value=mean(.value))%>%
-  ggplot(aes(x=group,y=m_value,group=gem,color=as.factor(gem)))+
+  ggplot(aes(x=group,y=m_value,group=interaction(gem,group),color=as.factor(gem)))+
   geom_point(position=position_dodge(0.9),alpha=0.05)+
-  #geom_boxplot(position=position_dodge(0.1))+
-  scale_color_discrete(name="gem found",labels=c("yes","no"))+
-  stat_summary()+
+  geom_half_boxplot(errorbar.draw = FALSE, notch = TRUE) +
+  geom_half_point(alpha = .4) +
+  scale_y_continuous(name="posterior parameter sample")+
+  stat_summary(
+    geom = "point",
+    size = 1,
+    stroke = 0.5,
+    color = "black",
+    fill = "orange",
+    position = position_dodge(1)
+  ) +
   #scale_color_discrete()+
-  facet_grid(gem ~ .variable,scales="free_y",labeller = labeller(gem=c(`1`="Gem Found",`2`="Gem Not Found")))+
+  facet_wrap( ~ .variable,scales="free",labeller = labeller(gem=c(`1`="Gem Found",`2`="Gem Not Found")))+
   theme_bw(14)->plot
 
 plot
 
 
-all_draws%>%group_by(participant,group,.variable,gem)%>%filter(.variable=="sw")%>%
-  dplyr::summarise(m_value=mean(.value))%>%
-  ggplot(aes(x=group,y=m_value,group=gem,color=as.factor(gem)))+
-  #geom_point(position=position_dodge(0.9),alpha=0.05)+
-  #geom_boxplot(position=position_dodge(0.1))+
-  scale_color_discrete(name="gem found",labels=c("yes","no"))+
-  stat_summary()+
-  #scale_color_discrete()+
-  facet_grid(gem ~ .,labeller = labeller(gem=c(`1`="Gem Found",`2`="Gem Not Found")))+
-  theme_bw(14)->plot_sw
-
-plot_sw
 ```
