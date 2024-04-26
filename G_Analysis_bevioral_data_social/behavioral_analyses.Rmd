@@ -286,6 +286,9 @@ all_data %>%
  # facet_wrap( ~ gem_found) +
   labs(title = 'average points per trial') +
   theme_bw(base_size = 20)
+
+
+
 ```
 
 
@@ -318,7 +321,25 @@ all_data %>%
   labs(title = 'avg points per trial in gem environments') +
   theme_bw(base_size = 15)
 
+
 ```
+
+```{r}
+
+all_data %>%
+  #filter(gempresent == 1 ) %>% 
+  group_by(uniqueID, trial) %>%
+  ggplot(aes(x = trial, y = points, color = group, shape = factor(demo_type))) +
+  stat_summary() +
+  theme_minimal(base_size = 15) +
+  scale_color_brewer(type = "qual", palette = 2, name = "demonnstrator type")+
+  #facet_wrap( ~ group) +
+  labs(title = 'avg points per trial in gem environments') +
+  theme_bw(base_size = 15)
+
+
+```
+
 
 ```{r points by age group}
 all_data %>% 
@@ -376,6 +397,23 @@ all_data %>%
   group_by(uniqueID, group) %>% 
   summarise(n_gems = sum(gem_found)) %>% 
   infer::t_test(n_gems ~ group)
+
+all_data %>% 
+  filter(gempresent == 1) %>% 
+  group_by(uniqueID, round, group, demo_type) %>% 
+  summarise(gem_found = ifelse(1 %in% gem, 1, 0)) %>% 
+  group_by(uniqueID, group,demo_type) %>% 
+  summarise(n_gems = sum(gem_found)) %>%
+  ungroup()%>%
+  group_by(demo_type)%>%
+  group_split() -> data_t_test
+
+## 
+  infer::t_test(x = data_t_test[[1]], n_gems ~ group )
+  infer::t_test(x = data_t_test[[2]], n_gems ~ group )
+  infer::t_test(x = data_t_test[[3]], n_gems ~ group )
+
+
   
 
 # mean_gems_by_groups <- 
@@ -710,13 +748,26 @@ poisson_plot <-
 
 ggsave("plots/poisson_regression_slopes.png",plot = poisson_plot, width = 6, height = 4)
 
-
 ```
 
 ### if and when are gem found
 
 
 ```{r frequency of finding gems by group and demonstrator}
+
+  all_data %>%
+  filter(gempresent == 1 )%>%
+  ungroup %>%
+  group_by(demo_type, gem_found) %>%
+  select(uniqueID, round, gem_found, round_gem_found, gempresent, group) %>%
+  distinct() %>%
+  select(gem_found, round_gem_found) %>%
+  summarise(mean_round_found = mean(round_gem_found, na.rm = TRUE),
+            n = n()) %>%
+  ungroup() %>%
+  group_by(demo_type) %>%
+  mutate(freq = n / sum(n))
+
 
   all_data %>%
   filter(gempresent == 1 )%>%
@@ -777,4 +828,55 @@ distinct() %>%
 summary(model_when_gem)
   
 ```
+
+```{r proportion of copy by repeated staying on a tilew}
+
+
+data_running_count <- 
+all_data %>%
+  group_by(round) %>% 
+  mutate(running_count_si = sequence(rle(social_info)$lengths)) %>% 
+  select(social_info, running_count_si, social_info_use)
+
+
+base_rates <- all_data %>%
+  group_by(round) %>% 
+  mutate(running_count_si = sequence(rle(social_info)$lengths)) %>% 
+  select(social_info, running_count_si, social_info_use, group) %>% 
+  ungroup() %>% 
+  group_by(running_count_si, group) %>% 
+  summarise(base_rates= n()) 
+
+counts <- all_data %>%
+  group_by(round) %>% 
+  mutate(running_count_si = sequence(rle(social_info)$lengths)) %>% 
+  select(social_info, running_count_si, social_info_use, group) %>% 
+  ungroup() %>% 
+  group_by(running_count_si, group, social_info_use) %>% 
+  summarise(n = n()) 
+
+copy_heuristic <- 
+left_join(base_rates, counts, by = c("running_count_si", "group"))%>% 
+  mutate(proportion = n/base_rates)
+
+copy_heuristic %>% 
+  select(-c(base_rates,n)) %>% 
+  filter(social_info_use == "copy") %>% 
+  pivot_wider(names_from = c("group"), values_from = "proportion") %>% 
+  mutate(difference_copy = adolescents - adults) %>% 
+    ggplot() +
+  geom_col(aes(x = factor(running_count_si), y = difference_copy, fill = social_info_use),
+             position= "stack" ) 
+
+copy_heuristic %>% 
+  ggplot() +
+  geom_col(aes(x = factor(running_count_si), y = proportion, fill = social_info_use),
+             position= "stack" ) +
+  facet_wrap(~factor(group))
+
+
+ 
+
+```
+
 
