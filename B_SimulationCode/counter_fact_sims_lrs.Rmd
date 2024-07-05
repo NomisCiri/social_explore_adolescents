@@ -57,49 +57,50 @@ social_data$demo_quality%>%unique()
 ```{r}
 re_sim=T
 source(here::here("B_SimulationCode","load_environments_social_experiment.R")) # environments
-source(here::here("C_modelfittingCode","learning_models.R")) # environments
+source(here::here("B_SimulationCode","learning_models.R")) # environments
 source(here::here("B_SimulationCode","sim_models.R")) # modelcode for simulation
 
 #environment files are in generated files
-environments <- load_envs_social(path = here::here("A_GeneratedFiles","experiment"))
+environments <- load_envs_social(path = here::here("A_GeneratedFiles","environments/"))
 social_sims_plot_d <- list()
 social_sims_plot_one <- list()
 #filter out participants that could not be fit and wierd trials that have na values in environments
 #social_fits_d<-social_fits_d%>%filter(!is.na(fit),!is.na(env_number))
-sw_simvec<-seq(0,30,length.out=20)
-sw_a_simvec<-seq(0,30,length.out=20)
+#sw_simvec<-seq(0,30,length.out=20)
+#sw_a_simvec<-seq(0,30,length.out=20)
 
+sw_simvec<-seq(0,2,length.out=100)
 sim_dat<-expand.grid(
-  lr=0.5,
+  lr=1,
   sw=sw_simvec,
-  sw_a=sw_a_simvec
+  sw_a=0.1
 )
 
 if (re_sim){
   future::plan("multisession", workers = 40)
-  huge_1<-furrr::future_map_dfr(1:length(sim_dat$lr),~{
-    for (i in 1:2) {# simulate twice, but for all ppts
+  huge_1<-purrr::map_dfr(1:length(sim_dat$lr),~{
+    for (i in 1:5) {# simulate twice, but for all ppts
       # make sure you have the parameter lookup dataframe in the futures
-      sw_simvec<-seq(0,30,length.out=100)
-      sw_a_simvec<-seq(0,30,length.out=100)
+      sw_simvec<-seq(0,2,length.out=100)
       #lrs_simvec<-seq(0,0.7,length.out=10)
       sim_dat<-expand.grid(
-        lr=0.3,
+        lr=1,
         sw=sw_simvec,
-        sw_a=sw_a_simvec
+        sw_a=0.1
       )
       # make sure you have the environment lookup dataframe in the futures
       Xnew <- as.matrix(expand.grid(0:7, 0:7)) 
       # we save the exact demonstrator number here in the simulations
-      d1<-social_data%>%#filter(demo_quality=="worst")%>%
+      d1<-social_data%>%filter(uniqueID==1)%>%
         mutate(
           round=unique_rounds,
           choices = cells,
           social_info = ifelse(social_info == 64, 1, social_info) 
         )
       #### unpack parameters (learning rate, temperature, social weight)
-      estimates <- c(sim_dat$lr[.x],sim_dat$lr[.x],7,20,sim_dat$sw[.x],sim_dat$sw_a[.x])
-      #print(estimates)
+      estimates <- c(sim_dat$lr[.x],sim_dat$sw[.x],0.4,sim_dat$lr[.x],0.1,0.01)
+      print(estimates)
+      print(.x)
       
       ####
       ####
@@ -107,7 +108,7 @@ if (re_sim){
       ####
       ####
       
-      cv <- exploreEnv_2lr_2sw_2tau(
+      cv <- sim_range_1lr_sws(
         par = estimates,
         learning_model_fun = RW_Q,
         acquisition_fun = NULL,
@@ -118,7 +119,7 @@ if (re_sim){
       # Collect
       cv$player = i
       cv$sw=sim_dat$sw[.x]# si before gem found
-      cv$sw=sim_dat$sw_a[.x]# si after gem found
+      #cv$sw=sim_dat$sw_a[.x]# si after gem found
       cv$lr<-sim_dat$lr[.x]
       social_sims_plot_one[[i]] <- cv
     }
@@ -141,11 +142,9 @@ if (re_sim){
   saveRDS(sims,file = here::here("A_GeneratedFiles","all_sims_2sw_concat.rds"))
 }else{
   # read concatanated files
-  sims<-readRDS(here::here("A_GeneratedFiles","all_sims_concat.rds"))
+  sims<-readRDS(here::here("A_GeneratedFiles","all_sims_2sw_concat.rds"))
 }
 ```
-
-
 
 
 

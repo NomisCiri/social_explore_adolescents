@@ -23,7 +23,7 @@ data {
 
 transformed data{
   int  n_params=3*2;
-  
+  print(rewards);
 }
 // accepts two parameters 'mu' and 'sigma'.
 parameters {
@@ -47,12 +47,12 @@ transformed parameters{
   lr[,1]=Phi_approx(mus[1]+params_phi[,1])*2;
   lr[,2]=Phi_approx(mus[2]+params_phi[,2])*2;
   
-  tau[,1]=Phi_approx(mus[3]+params_phi[,3]);
-  tau[,2]=Phi_approx(mus[4]+params_phi[,4]);
+  tau[,1]=Phi_approx(mus[3]+params_phi[,3])*10;
+  tau[,2]=Phi_approx(mus[4]+params_phi[,4])*2;
   
   
-  sw[,1]=Phi_approx(mus[5]+params_phi[,5]);
-  sw[,2]=Phi_approx(mus[4]+params_phi[,6]);
+  sw[,1]=Phi_approx(mus[5]+params_phi[,5])*5;
+  sw[,2]=Phi_approx(mus[4]+params_phi[,6])*5;
   
 }
 
@@ -76,13 +76,17 @@ model {
       pe = rewards[1,r,ppt] - belief_means[choices[1,r,ppt]];
       //update
       belief_means[choices[1,r,ppt]]+=lr[ppt,gem_found[1,r,ppt]]*pe;
-      
       choices[1,r,ppt] ~ categorical_logit(belief_means/tau[ppt,gem_found[1,r,ppt]]);// turn into softmax again
       //after probability vector, add probability bonus to epsilon greedy, but epsilon is p to copy.
       for (t in 2:T_max){
         if ((gem_found[t,r,ppt] - gem_found[t-1,r,ppt])!=0){
           //rescale beleif means only once after gem was found
+          //print("before");
+          //print(belief_means);
           belief_means*=0.002754821;
+          //print("after");
+          //print(belief_means);
+          
         }
         //reward_scaled=rewards[t,r,ppt]/norm_const[gem_found[t,r,ppt]];
         pe = rewards[t,r,ppt] - belief_means[choices[t,r,ppt]];
@@ -131,7 +135,7 @@ generated quantities{
         //reward_scaled=rewards[t,r,ppt]/norm_const[gem_found[t,r,ppt]];
         pe = rewards[t,r,ppt] - belief_means[choices[t,r,ppt]];
         //update
-        belief_means[choices[t,r,ppt]]+=lr[ppt,gem_found[t,r,ppt]]*pe;
+        belief_means[choices[t,r,ppt]] += lr[ppt,gem_found[t,r,ppt]]*pe;
         //social info
         belief_means[social_info[t,r,ppt]] += sw[ppt,gem_found[t,r,ppt]];
         // increment log probabiltiy

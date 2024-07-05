@@ -66,8 +66,8 @@ social_sims_plot_d <- list()
 social_sims_plot_one <- list()
 #filter out participants that could not be fit and wierd trials that have na values in environments
 #social_fits_d<-social_fits_d%>%filter(!is.na(fit),!is.na(env_number))
-sw_simvec<-seq(0,30,length.out=10)
-lrs_simvec<-seq(0,0.7,length.out=10)
+sw_simvec<-seq(0,10,length.out=10)
+#lrs_simvec<-seq(0,0.7,length.out=10)
 
 sim_dat<-expand.grid(
   lr=0.5,
@@ -81,7 +81,7 @@ if (re_sim){
       sw_simvec<-seq(0,25,length.out=10)
       #lrs_simvec<-seq(0,0.7,length.out=10)
       sim_dat<-expand.grid(
-        lr=0.5,
+        lr=1,
         sw=sw_simvec
       )
       # make sure you have the environment lookup dataframe in the futures
