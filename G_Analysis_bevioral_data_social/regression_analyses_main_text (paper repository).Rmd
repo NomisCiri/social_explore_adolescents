@@ -37,7 +37,18 @@ all_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_partici
 
 ```{r points by age group regression}
 
-## 
+## vizualize mean player point performance
+all_data %>% 
+  ungroup() %>% 
+  group_by(uniqueID) %>% 
+  mutate(mean_points_player = mean(tot_points, na.rm = TRUE)) %>% 
+  select(mean_points_player, age_f,uniqueID) %>% 
+  distinct() %>% 
+  ungroup() %>%
+  ggplot(aes(x=age_f, y=mean_points_player))+
+  geom_boxplot() +
+  geom_point()
+
 
 all_data %>% 
   ungroup() %>% 
@@ -46,7 +57,7 @@ all_data %>%
   select(mean_points_player, age_f,uniqueID) %>% 
   distinct() %>% 
   ungroup() %>% 
-  t.test(mean_points_player ~ age_f, data = ., alternative = "two.sided", paired = FALSE)
+  stats::t.test(mean_points_player ~ age_f, data = ., alternative = "two.sided", paired = FALSE)
 
 all_data %>% 
   group_by(uniqueID) %>% 
@@ -156,24 +167,27 @@ When do adults find gems? later then adolescents
 ## select only one observation per participant
 data_gem_found <- all_data %>%  
   filter(gem_found == 1) %>% 
-    select(round_gem_found, age_f, demo_quality_f, uniqueID) %>% 
-  distinct()
+  select(round_gem_found, age_f, demo_quality_f, uniqueID) %>% 
+  distinct() 
 
-## gem found when by group 
+## gem found when by group across all rounds
 data_gem_found %>% 
   ungroup() %>% 
-  select(age_f, round_gem_found, demo_quality_f ) %>% 
-  group_by(age_f) %>% 
-  summarise( mean_copy = mean(round_gem_found),
-             sd = sd (round_gem_found))
+  select(age_f, round_gem_found, demo_quality_f, uniqueID ) %>% 
+  group_by(uniqueID) %>% 
+  mutate( mean_round_gem_found = mean(round_gem_found),
+             sd = sd (round_gem_found)) %>% 
+  select(mean_round_gem_found, age_f,uniqueID) %>% 
+  distinct() %>% 
+  ungroup() %>% 
+  stats::t.test(mean_round_gem_found ~ age_f, data = ., alternative = "two.sided", paired = FALSE)
 
-
-## mean copy by group and social information use 
+## mean round gem found by group and social information use 
 data_gem_found %>% 
   ungroup() %>% 
   select(age_f, round_gem_found, demo_quality_f ) %>% 
   group_by(age_f, demo_quality_f) %>% 
-  summarise( mean_copy = mean(round_gem_found),
+  summarise( mean_round_gem_found = mean(round_gem_found),
              sd = sd (round_gem_found))
 
 hist(data_gem_found$round_gem_found)
@@ -186,13 +200,9 @@ if (file.exists(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/gem_fo
   
   } else {
   
-## define priors 
-prior_cauchy <- brms::prior_string("cauchy(0, 2.5)", class = "b")
 
 ## model specification
 gem_found_when_model <- brms::brm(formula = round_gem_found ~  demo_quality_f * age_f + (1 | uniqueID),
-          # prior = prior_cauchy,
-          # sample_prior = TRUE,
           data = data_gem_found,
           family = poisson(),
           iter = 6000,
@@ -227,8 +237,6 @@ model_random_slopes_data <- all_data %>%
   group_by(uniqueID, round, gem_found, age_f, demo_quality_f) %>%
   filter(social_info_use == "copy") %>%
   count(social_info_use)
-
-
 
 
 ## mean copy by group t_test
