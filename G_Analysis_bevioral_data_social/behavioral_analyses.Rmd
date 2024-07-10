@@ -780,6 +780,20 @@ ggsave("plots/poisson_regression_slopes.png",plot = poisson_plot, width = 6, hei
             n = n()) %>%
   ungroup() %>%
   group_by(demo_type, group) %>%
+  mutate(freq = n / sum(n))
+
+
+  all_data %>%
+  filter(gempresent == 1 )%>%
+  ungroup %>%
+  group_by(demo_type, gem_found, group) %>%
+  select(uniqueID, round, gem_found, round_gem_found, gempresent, group) %>%
+  distinct() %>%
+  select(gem_found, round_gem_found, group) %>%
+  summarise(mean_round_found = mean(round_gem_found, na.rm = TRUE),
+            n = n()) %>%
+  ungroup() %>%
+  group_by(demo_type, group) %>%
   mutate(freq = n / sum(n)) %>%
   ggplot() +
   geom_col(aes(
