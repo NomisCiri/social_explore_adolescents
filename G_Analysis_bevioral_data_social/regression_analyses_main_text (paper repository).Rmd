@@ -294,7 +294,7 @@ summary(gem_found_when_model)
 
 ```
 
-## extra analyses
+## extra analyses trial by trial
 
 ```{r}
 
@@ -323,6 +323,7 @@ trial_by_trial_scaled_points <- all_data %>%
          sd = sd(points),
          scaled_points = (points - mean_points)/(sd*0.5))
 
+summary(lmer(points ~ trial + group * demo_quality +(1|uniqueID), data = all_data))
 
 trial_by_trial_scaled_points %>% 
   ungroup() %>% 
