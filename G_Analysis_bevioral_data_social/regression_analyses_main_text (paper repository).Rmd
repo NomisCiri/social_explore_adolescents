@@ -265,6 +265,8 @@ if (file.exists(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/gem_fo
   
   } else {
   
+prior_cauchy <- brms::prior_string("cauchy(0, 2.5)", class = "b")
+
 
 ## model specification
 gem_found_when_model <- brms::brm(formula = round_gem_found ~  demo_quality_f * age_f + (1 | uniqueID),
@@ -342,13 +344,35 @@ if (file.exists(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/points
   
   } else {
   
-## model specification
-points_by_trial <- brms::brm(scaled_points ~ trial + age_f * demo_quality_f +(1|uniqueID), data = trial_by_trial_scaled_points, chains = 4, iter = 4000)
+prior_cauchy <- brms::prior_string("cauchy(0, 2.5)", class = "b")
 
-save(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/points_by_trial.RData'), points_by_trial)
+## model specification
+    points_by_trial_scaled <- brms::brm(
+      points ~ trial + age_f * demo_quality_f + (1|uniqueID),
+      data = all_data,
+      chains = 4,
+      iter = 4000,
+      cores = 6)
+
+
+## model specification
+    points_by_trial_scaled <- brms::brm(
+      scaled_points ~ trial + age_f * demo_quality_f + (1|uniqueID),
+      prior = prior_cauchy,
+      sample_prior = TRUE,
+      data = trial_by_trial_scaled_points,
+      chains = 4,
+      iter = 4000,
+      cores = 6)
+    
+save(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/points_by_trial_scaled.Rdata'), points_by_trial_scaled)
 
   }
 
+plot_model(points_by_trial)
+
+summary(points_by_trial)
+brms::conditional_effects(points_by_trial)
 
 ```
 
