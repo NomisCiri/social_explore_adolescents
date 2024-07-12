@@ -296,7 +296,7 @@ summary(gem_found_when_model)
 
 ```
 
-## extra analyses trial by trial
+## extra analyses trial by trial:: develop if we want this.
 
 ```{r}
 
@@ -371,7 +371,6 @@ save(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/points_by_
   }
 
 plot_model(points_by_trial)
-
 summary(points_by_trial)
 brms::conditional_effects(points_by_trial)
 

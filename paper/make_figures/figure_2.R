@@ -135,19 +135,37 @@ b <-
  ## panel C
  
  ## re filter each treatment
- 
 
  dataset1 <- all_data %>% 
    filter(gem_found_how == "copier" & demo_type == "gem_found")
  
  dataset2 <- all_data %>% 
    filter(demo_type != "gem_found" & gem_found==1)
+ 
+ ## add information about proportion of gem found
+ prop_gem_found <- all_data %>%
+   filter(gempresent == 1)%>%
+   ungroup %>%
+   group_by(demo_type, gem_found, group) %>%
+   select(uniqueID, round, gem_found, round_gem_found, gempresent, group) %>%
+   distinct() %>%
+   select(gem_found, round_gem_found, group) %>%
+   summarise(mean_round_found = mean(round_gem_found, na.rm = TRUE),
+             n = n()) %>%
+   ungroup() %>%
+   group_by(demo_type, group) %>%
+   mutate(freq = round(n / sum(n),2)) %>% 
+   filter(gem_found == 1) %>% 
+   select(demo_type, group, freq) 
+ 
 
-c <-
-   bind_rows(dataset1, dataset2) %>% 
+ data_plot <- bind_rows(dataset1, dataset2) %>% 
    select(round_gem_found, group, demo_type, uniqueID) %>%
    group_by(uniqueID) %>%
    distinct() %>%
+   left_join(., prop_gem_found, by = c("group", "demo_type"))
+  
+c <- data_plot %>%
    ggplot(aes(
      x = demo_type,
      y = round_gem_found,
@@ -169,6 +187,8 @@ c <-
      color = "black",
      position = position_dodge(width = .75)
    ) +
+  geom_text(data = prop_gem_found, aes(x = demo_type, y = 26, label = freq), 
+             ) +
    scale_color_brewer(type = "qual", palette = 6) +
    scale_fill_brewer(
      type = "qual",
@@ -190,55 +210,55 @@ c <-
    theme_base(base_size = 15) +
    guides(
      color = FALSE,
-     # fill = guide_legend(override.aes = list(
-     #   alpha = .5,
-     #   shape = 21,
-     #   size  =
-     #     4,
-     #   fill = c("#e41a1c", "#377eb8", "#4daf4a"))),
-     fill = FALSE,
+    fill = guide_legend(override.aes = list(
+      alpha = .5,
+      shape = 21,
+      size  =
+        4,
+      fill = c("#e41a1c", "#377eb8", "#4daf4a"))),
+     #fill = FALSE,
      shape = guide_legend(override.aes = list(size = 4))
    ) +
    theme(plot.background = element_blank())
  
  c
  
- ## regression slopes 
- 
-  load(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/poission_regression_all_rounds_slopes.RData'))
-  
-  poisson_plot <- 
-    plot_model(
-      model_random_slopes,
-      # axis.lim = c(.2, 2),
-      axis.labels = rev(
-        c(
-          "Quality (Medium)",
-          "Quality (Worst)",
-          "Adolescents",
-          "Quality (Medium) X Adolescents",
-          "Quality (Worst) X Adolescents"
-        )
-      ),
-      title = "", vline.color = "grey", vline = 2,show.values = TRUE, 
-    ) +
-    ylim(.2,2)+
-    theme_base(base_size = 15)+
-    theme(plot.background = element_blank())
-  
-
-  lower <- 
+## regression slopes 
+#  
+#   load(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/poission_regression_all_rounds_slopes.RData'))
+#   
+#   poisson_plot <- 
+#     plot_model(
+#       model_random_slopes,
+#       # axis.lim = c(.2, 2),
+#       axis.labels = rev(
+#         c(
+#           "Quality (Medium)",
+#           "Quality (Worst)",
+#           "Adolescents",
+#           "Quality (Medium) X Adolescents",
+#           "Quality (Worst) X Adolescents"
+#         )
+#       ),
+#       title = "", vline.color = "grey", vline = 2,show.values = TRUE, 
+#     ) +
+#     ylim(.2,2)+
+#     theme_base(base_size = 15)+
+#     theme(plot.background = element_blank())
+#   
+# 
+  lower <-
     cowplot::plot_grid(
-      c,poisson_plot,
+      c,
       #labels = c("a","b"),
       #align = "H",
       nrow = 1,
       rel_widths =  c(.6, .4)
     )
-  
-    
+
+
 ## combine panels
-figure2 <- 
+figure2 <-
   cowplot::plot_grid(
     upper, lower,
    # labels = c("","c"),
