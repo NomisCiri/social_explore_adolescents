@@ -32,8 +32,6 @@ for (i in 1:6) {
 
 
 
-
-
 # make matrix with indices
 index_matrix <- matrix(1:64, nrow = 8, ncol = 8) # %>%as.array()
 # rotate function

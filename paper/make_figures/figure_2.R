@@ -187,8 +187,9 @@ c <- data_plot %>%
      color = "black",
      position = position_dodge(width = .75)
    ) +
-  geom_text(data = prop_gem_found, aes(x = demo_type, y = 26, label = freq), 
-             ) +
+  geom_label(data = prop_gem_found, aes(x = demo_type, y = 26.5, label = freq),show.legend = FALSE, 
+            colour = "white", fontface = "bold",
+            position=position_dodge(width=.75)) +
    scale_color_brewer(type = "qual", palette = 6) +
    scale_fill_brewer(
      type = "qual",
@@ -210,13 +211,14 @@ c <- data_plot %>%
    theme_base(base_size = 15) +
    guides(
      color = FALSE,
-    fill = guide_legend(override.aes = list(
+     fill = guide_legend(override.aes = list(
       alpha = .5,
       shape = 21,
       size  =
         4,
       fill = c("#e41a1c", "#377eb8", "#4daf4a"))),
-     #fill = FALSE,
+     label = FALSE,
+    #fill = FALSE,
      shape = guide_legend(override.aes = list(size = 4))
    ) +
    theme(plot.background = element_blank())

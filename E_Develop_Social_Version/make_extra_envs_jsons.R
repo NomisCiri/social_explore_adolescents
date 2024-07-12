@@ -4,7 +4,7 @@ library(rjson)
 library(jsonlite)
 
 # these are the same that are used in the experiment
-env_gems <- fromJSON("../A_GeneratedFiles/environments_no_gem_var25max.json")
+env_gems <- fromJSON("environments/env_gems.json")
 
 # save into different files
 env1 <- as.data.frame(env_gems[[1]])
