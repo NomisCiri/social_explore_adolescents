@@ -47,12 +47,14 @@ transformed parameters{
   
   params_phi = (diag_pre_multiply(sigmas, l_omega) * scale)';
   lr[,1]=Phi_approx(mus[1]+params_phi[,1]);
-  sw[,1]=Phi_approx(mus[2]+params_phi[,2])*30;
-  tau[,1]=exp(mus[3]+params_phi[,3]);
+  lr[,2]=Phi_approx(mus[2]+params_phi[,2]);
   
-  lr[,2]=Phi_approx(mus[4]+params_phi[,4]);
-  sw[,2]=Phi_approx(mus[5]+params_phi[,5])*30;
-  tau[,2]=exp(mus[6]+params_phi[,6]);
+  tau[,1]=exp(mus[3]+params_phi[,3])*2;
+  tau[,2]=exp(mus[4]+params_phi[,4])*2;
+  
+  sw[,1]=Phi_approx(mus[5]+params_phi[,5]);
+  sw[,2]=Phi_approx(mus[6]+params_phi[,6]);
+
 }
 
 model {
@@ -81,7 +83,8 @@ model {
         belief_means_sw = belief_means;
         belief_means_sw[social_info[t,r,ppt]] += sw[ppt,gem_found[t,r,ppt]];
         // increment log probabiltiy
-        choices[t,r,ppt] ~ categorical_logit(belief_means_sw/tau[ppt,gem_found[t,r,ppt]]);
+        choices[t,r,ppt] ~ categorical_logit(belief_means_sw/tau[ppt,gem_found[t,r,ppt]]);// turn into softmax again
+        //after probability vector, add probability bonus to epsilon greedy, but epsilon is p to copy.
       }
     }
   }

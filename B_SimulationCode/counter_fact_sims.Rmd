@@ -1,0 +1,217 @@
+---
+title: "Modelfitting"
+author: "Simon&Andrea"
+date: '2022-10-120'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+pacman::p_load(tidyverse, rjson, DEoptim, doParallel, here,data.table,jsonlite,lme4,nnet,rstan,brms)
+knitr::opts_knit$set(root.dir = here()) # set root fot the whole file
+refit=T
+```
+
+In this document, we will fit learning model to the "social bandit" task that Andrea and I developed. 
+First, lets load some data.
+
+```{r}
+social_data <-  read_csv(file = paste0("./data/social/data_social_all_participants.csv"))
+social_data<-social_data%>%mutate(player=ifelse(group=="adults",player,player+1000))
+
+## get unreasonable nans
+nans<-social_data%>%
+  filter(is.na(demo_type) | is.na(cells))%>%pull(player)%>%unique()
+
+social_data<-social_data%>%filter(!(player %in% nans))
+R_subj=social_data%>%group_by(player)%>%summarise(n_r=length(unique(round)))%>%pull(n_r)
+
+
+social_data<-social_data%>%#drop_na()
+  filter(!is.na(demo_type) & !is.na(cells))%>%#filter(player<30)%>%# get a sub-sample of both adults and adolescents 
+  mutate(soctype=case_when(
+    demo_type=="gem_found"~3,# i need that to index the different social weight parameters
+    demo_type=="gem_not_found" | demo_type=="no_gem"~2,
+    str_detect(demo_type,"never_exploit") ~ 1
+  )
+  )
+#give kids a unqiquely numbered indx
+social_data<-social_data%>%mutate(player=ifelse(group=="adults",player,player+1000))
+R_subj=social_data%>%group_by(player)%>%summarise(n_r=length(unique(round)))%>%pull(n_r)
+#keep<-unique(social_data$player)[R_subj==12]# keep only participants who completed all trials
+
+
+```
+
+# Simulate counterfact
+
+simulate!
+
+I have to do it differently. Extract good medium and bad demonstrators and simulate for all of them. 
+
+```{r}
+social_data$demo_quality%>%unique()
+# make new data for simulations and change round index
+d1<-social_data%>%filter(demo_quality=="best")#%>%pull(soc_info_round)%>%unique()%>%length()
+
+#hist(d1$unique_rounds)
+```
+
+```{r}
+
+source("./B_SimulationCode/load_environments_social_experiment.R") # environments
+source("./C_modelfittingCode/learning_models.R") # environments
+source("./B_SimulationCode/sim_models.R") # modelcode for simulation
+
+#environment files are in generated files
+environments <- load_envs_social(path = "./A_GeneratedFiles/experiment/")
+social_sims_plot_d <- list()
+social_sims_plot_one <- list()
+#filter out participants that could not be fit and wierd trials that have na values in environments
+#social_fits_d<-social_fits_d%>%filter(!is.na(fit),!is.na(env_number))
+sw_simvec<-seq(0,25,length.out=100)
+taus_simvec<-seq(1,30,length.out=100)
+
+sim_dat<-expand.grid(
+  tau=taus_simvec,
+  sw=sw_simvec
+)
+Xnew <- as.matrix(expand.grid(0:7, 0:7)) 
+
+worst_best<-c("worst","best")
+future::plan("multisession", workers = 40)
+huge<-furrr::future_map_dfr(1:length(sim_dat$tau),~{
+  for (i in 1:2) {
+    # make sure you have the environment lookup dataframe in the futures
+    
+    d1<-social_data%>%filter(demo_quality==worst_best[i])%>%
+      mutate(
+        round=unique_rounds,
+        choices = cells,
+        social_info = ifelse(social_info == 64, 1, social_info) 
+      )
+    #### unpack parameters (learning rate, temperature, social weight)
+    estimates <- c(0.2,sim_dat$tau[.x],sim_dat$sw[.x])
+    #print(estimates)
+    
+    ####
+    ####
+    #SIMULATE
+    ####
+    ####
+    cv <- exploreEnv1lrsw(
+      par = estimates,
+      learning_model_fun = RW_Q,
+      acquisition_fun = NULL,
+      data = d1,
+      envs = environments
+    )
+    
+    # Collect
+    cv$sw=sim_dat$sw[.x]
+    cv$tau<-sim_dat$tau[.x]
+    cv$qual=worst_best[i]
+    social_sims_plot_one[[i]] <- cv
+  }
+  social_sims_plot_d <- do.call("rbind", social_sims_plot_one)
+  return(social_sims_plot_d)
+})
+
+#saveRDS(huge_2,file = "A_GeneratedFiles/bootstrapped_rewards_1.rds")
+#saveRDS(huge_1,file = "A_GeneratedFiles/bootstrapped_rewards_2.rds")
+saveRDS(huge,file = "A_GeneratedFiles/effect_of_tau.rds")
+
+#  huge_1 %>%mutate(gem=ifelse(env_idx>4,1,0))%>%
+#    dplyr::group_by(gem,sw,tau) %>%
+#    filter(trial > 0) %>%
+#    #filter(group!="adults")%>%
+#    dplyr::summarise(m_rew = mean(z))%>%mutate(pats_or_sim="sims")->sims_1
+# 
+#  huge_2 %>%mutate(gem=ifelse(env_idx>4,1,0))%>%
+#   dplyr::group_by(gem,sw,lr) %>%
+#   filter(trial > 0) %>%
+#   #filter(group!="adults")%>%
+#   dplyr::summarise(m_rew = mean(z))%>%mutate(pats_or_sim="sims")->sims_2
+# #rm(huge_2,huge_1)
+
+```
+
+
+
+
+
+
+
+```{r fig.width=10}
+gem<-environments%>%group_by(env)%>%
+  summarise(gem=mean(gems))%>%arrange(env)%>%
+  pull(gem)
+
+huge%>%dplyr::group_by(sw,tau,qual) %>%
+  filter(trial > 0) %>%
+  #filter(group!="adults")%>%
+  dplyr::summarise(m_rew = mean(z))%>%mutate(pats_or_sim="sims")->sims_all
+
+```
+
+```{r}
+sims_all%>%filter(qual=="best")%>%
+  #dplyr::summarise(m_rew = mean(m_rew))%>%#(lr>0.2 & lr <0.4))%>%
+  ggplot(aes(x = sw, y = tau,color=m_rew,fill=m_rew)) +
+  geom_tile()+
+  #stat_smooth()+
+  scale_color_viridis_c()+
+  scale_fill_viridis_c()+
+  #facet_wrap(.~qual)+
+  theme_bw()+theme(aspect.ratio=1) -> good_demo
+
+
+sims_all%>%filter(qual=="worst")%>%
+  ggplot(aes(x = sw, y = tau,color=m_rew,fill=m_rew)) +
+  geom_tile()+
+  #stat_smooth()+
+  scale_color_viridis_c()+
+  scale_fill_viridis_c()+
+  theme_bw()+theme(aspect.ratio=1)-> bad_demo
+
+# perf<-social_data %>% #filter(uniqueID == 3| uniqueID==4)%>%
+#   ggplot(aes(x=group,y=points,shape=demo_quality,color=demo_quality))+
+#   stat_summary()
+
+cowplot::plot_grid(good_demo,bad_demo,cols = 1)
+
+
+social_data
+```
+
+```{r}
+sweetspot<-sims_1
+sims_2_sum<-sims_2%>% dplyr::group_by(sw,lr) %>%
+  dplyr::summarise(m_rew = mean(m_rew))
+
+sweetspot$diff_r<-sims_1$m_rew-sims_2_sum$m_rew
+
+
+sweetspot%>%
+  ggplot(aes(x = sw, y = lr,color=m_rew,fill=m_rew)) +
+  geom_tile()+
+  #stat_smooth()+
+  scale_color_viridis_c()+
+  scale_fill_viridis_c()+
+  theme_bw()+theme(aspect.ratio=1)-> asymmet
+```
+
+```{r}
+social_data%>%filter(demo_type=="gem_found" & uniqueID == 10)%>%
+  pull(soc_info_round)%>%unique()
+```
+
+
+# get param estimates and plop in
+
+Load the data from 
+
+```{r}
+
+
+social_fits_d<-left_join(social_data,all_draws_summarized,by="player")
+```

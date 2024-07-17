@@ -1,0 +1,195 @@
+---
+title: "Modelfitting"
+author: "Simon&Andrea"
+date: '2022-10-120'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+pacman::p_load(tidyverse, rjson, DEoptim, doParallel, here,data.table,jsonlite,lme4,nnet,rstan,brms)
+here::i_am("./B_SimulationCode/counter_fact_sims_lrs.Rmd")
+```
+
+In this document, we will fit learning model to the "social bandit" task that Andrea and I developed. 
+First, lets load some data.
+
+```{r}
+social_data <-  read_csv(file = here("data","social","data_social_all_participants.csv"))
+social_data<-social_data%>%mutate(player=ifelse(group=="adults",player,player+1000))
+
+## get unreasonable nans
+nans<-social_data%>%
+  filter(is.na(demo_type) | is.na(cells))%>%pull(player)%>%unique()
+
+social_data<-social_data%>%filter(!(player %in% nans))
+R_subj=social_data%>%group_by(player)%>%summarise(n_r=length(unique(round)))%>%pull(n_r)
+
+
+social_data<-social_data%>%#drop_na()
+  filter(!is.na(demo_type) & !is.na(cells))%>%#filter(player<30)%>%# get a sub-sample of both adults and adolescents 
+  dplyr::mutate(soctype=case_when(
+    demo_type=="gem_found" ~1,# i need that to index the different social weight parameters
+    demo_type=="gem_not_found" | demo_type=="no_gem"~2,
+    str_detect(demo_type,"never_exploit") ~ 3
+  )
+  )
+#give kids a unqiquely numbered indx
+social_data<-social_data%>%mutate(player=ifelse(group=="adults",player,player+1000))
+R_subj=social_data%>%group_by(player)%>%summarise(n_r=length(unique(round)))%>%pull(n_r)
+#keep<-unique(social_data$player)[R_subj==12]# keep only participants who completed all trials
+
+
+```
+
+# Simulate counterfact
+
+Plan: take empirical estimates for learning rates,
+
+
+```{r}
+social_data$demo_quality%>%unique()
+# make new data for simulations and change round index
+#d1<-social_data%>%filter(demo_quality=="best")#%>%pull(soc_info_round)%>%unique()%>%length()
+
+#hist(d1$unique_rounds)
+```
+
+```{r}
+re_sim=T
+source(here::here("B_SimulationCode","load_environments_social_experiment.R")) # environments
+source(here::here("B_SimulationCode","learning_models.R")) # environments
+source(here::here("B_SimulationCode","sim_models.R")) # modelcode for simulation
+
+#environment files are in generated files
+environments <- load_envs_social(path = here::here("A_GeneratedFiles","environments/"))
+social_sims_plot_d <- list()
+social_sims_plot_one <- list()
+#filter out participants that could not be fit and wierd trials that have na values in environments
+#social_fits_d<-social_fits_d%>%filter(!is.na(fit),!is.na(env_number))
+#sw_simvec<-seq(0,30,length.out=20)
+#sw_a_simvec<-seq(0,30,length.out=20)
+
+sw_simvec<-seq(0,2,length.out=100)
+sim_dat<-expand.grid(
+  lr=1,
+  sw=sw_simvec,
+  sw_a=0.1
+)
+
+if (re_sim){
+  future::plan("multisession", workers = 40)
+  huge_1<-purrr::map_dfr(1:length(sim_dat$lr),~{
+    for (i in 1:5) {# simulate twice, but for all ppts
+      # make sure you have the parameter lookup dataframe in the futures
+      sw_simvec<-seq(0,2,length.out=100)
+      #lrs_simvec<-seq(0,0.7,length.out=10)
+      sim_dat<-expand.grid(
+        lr=1,
+        sw=sw_simvec,
+        sw_a=0.1
+      )
+      # make sure you have the environment lookup dataframe in the futures
+      Xnew <- as.matrix(expand.grid(0:7, 0:7)) 
+      # we save the exact demonstrator number here in the simulations
+      d1<-social_data%>%filter(uniqueID==1)%>%
+        mutate(
+          round=unique_rounds,
+          choices = cells,
+          social_info = ifelse(social_info == 64, 1, social_info) 
+        )
+      #### unpack parameters (learning rate, temperature, social weight)
+      estimates <- c(sim_dat$lr[.x],sim_dat$sw[.x],0.4,sim_dat$lr[.x],0.1,0.01)
+      print(estimates)
+      print(.x)
+      
+      ####
+      ####
+      #SIMULATE
+      ####
+      ####
+      
+      cv <- sim_range_1lr_sws(
+        par = estimates,
+        learning_model_fun = RW_Q,
+        acquisition_fun = NULL,
+        data = d1,
+        envs = environments
+      )
+      
+      # Collect
+      cv$player = i
+      cv$sw=sim_dat$sw[.x]# si before gem found
+      #cv$sw=sim_dat$sw_a[.x]# si after gem found
+      cv$lr<-sim_dat$lr[.x]
+      social_sims_plot_one[[i]] <- cv
+    }
+    social_sims_plot_d <- do.call("rbind", social_sims_plot_one)
+    return(social_sims_plot_d)
+  },.options=furrr::furrr_options(seed = TRUE))
+  
+  #saveRDS(huge_2,file = "A_GeneratedFiles/bootstrapped_rewards_1.rds")
+  saveRDS(huge_1,file = here::here("A_GeneratedFiles","bootstrapped_rewards_2sw_all.rds"))
+  
+  
+  # 
+  huge_1 %>%mutate(gem=ifelse(env_idx>4,1,0))%>%
+    dplyr::group_by(gem,sw,sw_a,lr,demo_quality) %>%
+    filter(trial > 0) %>%
+    #filter(group!="adults")%>%
+    dplyr::summarise(m_rew = mean(z))%>%mutate(pats_or_sim="sims")->sims
+  # 
+  # rm(huge_2,huge_1)
+  saveRDS(sims,file = here::here("A_GeneratedFiles","all_sims_2sw_concat.rds"))
+}else{
+  # read concatanated files
+  sims<-readRDS(here::here("A_GeneratedFiles","all_sims_2sw_concat.rds"))
+}
+```
+
+
+
+```{r fig.width=10, fig.height=5}
+
+simulations<-sims%>%dplyr::group_by(sw,demo_quality)%>%
+  dplyr::summarise(m_rew = mean(m_rew))
+
+real_data<-social_data%>%dplyr::group_by(group,soc_info_round,demo_type,soctype)%>%#filter(trial>1)%>%
+  dplyr::summarise(m_rew = mean(points)) %>%#group_by(soc_info_round)%>%
+  pivot_wider(names_from = "group",values_from = "m_rew")%>%
+  mutate(adol_better=ifelse(adolescents-adults>0,1,0),
+         diff=adolescents-adults,
+         demo_quality=soc_info_round)
+
+sim_and_dat<-left_join(real_data,simulations,by="demo_quality")
+
+#sim_and_dat
+soc_labs=c("1" = "SI Quality high",
+           "2"="SI Quality medium",
+           "3"="SI Quality low")
+
+sim_and_dat%>%filter(demo_type!="no_gem", demo_type!="never_exploit_no_gem")%>%select(-demo_quality)%>%
+  group_by(demo_type)%>%
+  summarise(m_diff=mean(diff),across())%>%
+  filter(sw<10)%>%
+  ggplot()+
+  #geom_point(alpha=0.5)+
+  stat_summary(aes(x=sw,y=m_rew,color=m_diff))+
+  stat_smooth(aes(x=sw,y=m_rew,color=m_diff),method="lm")+
+  scale_color_distiller(name="participants' points\nadolescents - adults",palette = "Spectral")+
+  scale_y_continuous(name="average reward in simulations")+
+  scale_x_continuous(name=expression("social weight simulations ",psi))+
+  facet_wrap(.~soctype,labeller = labeller(soctype = soc_labs))+
+  theme_bw(15)->plot1
+
+all_draws<-readRDS("./../../A_GeneratedFiles/modelfits/draws_Q_gem_nogem.rds")
+
+sw_params<-all_draws%>%filter(gem==2,.variable=="sw")%>%
+  group_by(group,player)%>%
+  dplyr::summarize(mean_v=mean(.value))
+
+plot1+
+  geom_boxplot(data=sw_params,aes(x=mean_v,y=60,linetype=group),outlier.shape = NA)+
+  coord_cartesian(xlim=c(0,10))
+
+#sim_and_dat%>%pull(demo_quality)%>%unique()%>%length()
+```

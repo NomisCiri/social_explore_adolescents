@@ -38,6 +38,7 @@ data <- bind_rows(data_adolescents, data_adults) %>%
   group_by(uniqueID, round) %>% 
   mutate(unique_rounds = cur_group_id())
 
+
 ## create variable choice 
 ## this is different for the rotated environments (now 6 7 8), because of JS indexing
 data <- data %>% 
@@ -65,6 +66,7 @@ data <- left_join(data, when_gem_found) %>%
          social_info_use = ifelse(choice == social_info, "copy", "ignore") ## social info use as factor
          )
 
+
 data$gem_found[is.na(data$gem_found)] <- 0
 
 ## calculate performance, add labels of social info rounds
@@ -72,10 +74,8 @@ data <- data %>%
   group_by(gempresent, gem_found) %>%
   mutate(performance_group = ntile(tot_points, 3)) %>%
   mutate(performance_group_f = ifelse(
-    performance_group == 1,
-    "low",
-    ifelse(performance_group == 2, "medium",
-           "high")
+    performance_group == 1,"low",
+    ifelse(performance_group == 2, "medium","high")
   )) %>%
   ungroup()
 
@@ -120,10 +120,10 @@ demonstrators <- demonstrators %>%
       player %in% no_gem ~ "no_gem",
       player %in% gem_not_found ~ "gem_not_found",
       player %in% gem_found ~ "gem_found",
-     # player %in% never_exploit ~ "never_exploit"
+      # player %in% never_exploit ~ "never_exploit"
       
-     player %in% never_exploit_gem ~ "never_exploit_gem",
-     player %in% never_exploit_no_gem ~ "never_exploit_no_gem"
+      player %in% never_exploit_gem ~ "never_exploit_gem",
+      player %in% never_exploit_no_gem ~ "never_exploit_no_gem"
     ))
 
 
@@ -139,7 +139,7 @@ for (p in unique(data$uniqueID)) {
   for (r in unique(data[data$uniqueID == p, ]$round)) {
     ## get demonstrator for participant
     demo <- data[data$round == r &
-                          data$uniqueID == p, ]$social_info
+                   data$uniqueID == p, ]$social_info
     for (d in unique(demonstrators$player)) {
       ## loop through demonstrators
       c <- demonstrators[demonstrators$player == d, ]$choices
@@ -148,9 +148,9 @@ for (p in unique(data$uniqueID)) {
       if (setequal(demo, c)) {
         ## if demonstrators and social info seen by participant match
         data[data$round == r &
-                      data$uniqueID == p, ]$demonstrator <- d
+               data$uniqueID == p, ]$demonstrator <- d
         data[data$round == r &
-                      data$uniqueID == p, ]$demo_type <- type
+               data$uniqueID == p, ]$demo_type <- type
       } else {
         ## do nothing
       }
@@ -158,6 +158,14 @@ for (p in unique(data$uniqueID)) {
   }
 }
 
+#<<<<<<< back_up_andrea_machine
+#=======
+#data <- data %>% 
+#  mutate(env_number = ifelse(gempresent == 0 & env_number == 5, env_number - 1,
+#                             ifelse(gempresent == 1 & env_number < 6, env_number + 8,env_number)),
+#         env_number = ifelse(env_number > 5, env_number - 1, env_number))
+#
+#>>>>>>> main
 ## check there are 12 number of envs; 1:4 no gems, 5-12 gems
 data %>% 
   select(env_number, gempresent, demo_type) %>% 
@@ -207,9 +215,10 @@ data <-
     gemlabel = ifelse(gempresent == 0, "gem absent", "gem present")   )   
 
 
+
 # final exclusion: participants who attempted to refresh task to find where gems are, and 1 round (?) with NAs
 data <- data %>%
- dplyr::filter(attempt_refresh <= 0 ) %>%
+  dplyr::filter(attempt_refresh <= 0 ) %>%
   dplyr::filter(!is.na(points)) %>%
   dplyr::filter(!is.na(gempresent)) %>%
   dplyr::filter(!is.na(demo_type))
@@ -231,9 +240,8 @@ data <-
 
 
 
-data <- data %>% mutate(demo_quality = if_else(demo_type == "gem_found", "best",
-                                ifelse((demo_type == "gem_not_found" | demo_type == "no_gem"), "medium", "worst"))) 
 
+data <- data %>% mutate(demo_quality = if_else(demo_type == "gem_found", "best",ifelse((demo_type == "gem_not_found" | demo_type == "no_gem"), "medium", "worst"))) 
 
 ## save dataset
 #write.csv(data, "data/social/data_social_all_participants.csv", row.names = FALSE)
