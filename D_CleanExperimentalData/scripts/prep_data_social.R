@@ -12,32 +12,37 @@ pacman::p_load(tidyverse, jsonlite)
 ## function to select something that IS NOT in a array/dataframe etc.
 '%!in%' <- function(x,y)!('%in%'(x,y))
 
-
 ## create x & y variables
 data_adolescents <-
   as_tibble(read.csv('D_CleanExperimentalData/adolescents_data/clean_data/social/clean_data.csv')) %>% 
-  mutate(cell = cells - 1, # account for JavaScript indexing
-         x = cell %% 8,
-         y = trunc(cell/8,0),
-         group = 'adolescents') 
+  mutate(group = 'adolescents') 
 
 ## create x & y variables
 data_adults <-
   as_tibble(read.csv('D_CleanExperimentalData/adults_data/clean_data/social/clean_data.csv')) %>% 
-  mutate(cell = cells - 1, # account for JavaScript indexing
-         x = cell %% 8,
-         y = trunc(cell/8,0),
-         group = 'adults')
+  mutate(group = 'adults')
 
-## merge datasets
+## merge datasets and create new variables
 data <- bind_rows(data_adolescents, data_adults) %>% 
   ungroup() %>% 
+  mutate(cell = cells - 1, # account for JavaScript indexing, used below to create choice variable
+         x = cell %% 8,
+         y = trunc(cell/8,0),
+         env_number = ifelse(gempresent == 0 & env_number == 5, env_number - 1,
+                             ifelse(
+                               gempresent == 1 & env_number < 6, env_number + 8,env_number)),
+         env_number = ifelse(env_number > 5, env_number - 1, env_number)) %>% 
   group_by(player, group) %>% 
   mutate(uniqueID = cur_group_id()) %>% 
   ungroup() %>% 
   group_by(uniqueID, round) %>% 
   mutate(unique_rounds = cur_group_id())
-  
+
+## create variable choice 
+## this is different for the rotated environments (now 6 7 8), because of JS indexing
+data <- data %>% 
+  ungroup() %>% 
+  mutate(choice = ifelse(env_number == 6 | env_number == 7 | env_number == 8, cells, cell))
 
 # same uniqueIDs as unique participants
 length(unique(data$uniqueID)) == nrow(data)/25/12
@@ -51,14 +56,13 @@ when_gem_found <-  data %>%
   select(unique_rounds,
          round_gem_found)
 
-##
-
 ## join the datasets
 data <- left_join(data, when_gem_found) %>% 
   group_by(unique_rounds) %>% 
   fill(round_gem_found, .direction = "updown") %>% 
   mutate(gem_found = ifelse(round_gem_found > 0, 1, 0),
-         social_info_use = ifelse(cell == social_info, "copy", "ignore"),
+         copy = ifelse(choice == social_info, 1, 0), ## copy as numeric variable
+         social_info_use = ifelse(choice == social_info, "copy", "ignore") ## social info use as factor
          )
 
 data$gem_found[is.na(data$gem_found)] <- 0
@@ -99,13 +103,11 @@ demonstrators %>%
   ggplot() +
   geom_bar(aes(x = factor(env)))
 
-
 ## give labels to unique identifying rounds
 no_gem <- c(800, 921, 254, 1599, 1899, 408)
 gem_not_found <- c(1650, 504, 376, 868, 332, 1434)
 gem_found <- c(905, 1625, 1912, 335, 343, 795)
 #never_exploit <- c(838, 2195, 1177, 1244, 468, 1639)
-
 
 ## is this the problem???
 never_exploit_gem <- c(1177, 1244, 468, 1639)
@@ -156,14 +158,7 @@ for (p in unique(data$uniqueID)) {
   }
 }
 
-data <- data %>% 
-  mutate(env_number = ifelse(gempresent == 0 & env_number == 5, env_number - 1,
-             ifelse(
-               gempresent == 1 & env_number < 6, env_number + 8,env_number)),
-         env_number = ifelse(env_number > 5, env_number - 1, env_number))
-
 ## check there are 12 number of envs; 1:4 no gems, 5-12 gems
-
 data %>% 
   select(env_number, gempresent, demo_type) %>% 
   distinct() %>% 
@@ -177,33 +172,37 @@ data %>%
 rewards_bt <-
   read_rds("A_GeneratedFiles/bootstrapped_random_rewards.rds")
 
+# ## check what data would be excluded
+# data_excluded <- data %>% 
+#   ungroup() %>% 
+#   group_by(uniqueID) %>%
+#   mutate(p_value_rand = t.test(points, rewards_bt, alternative = "greater") %>%
+#            .$p.value) %>%
+#   ungroup() %>%
+#   dplyr::filter(p_value_rand > 0.05) %>% 
+#   select(uniqueID, group) %>% 
+#   distinct() %>% 
+#   group_by(group) %>% 
+#   summarise(count = n())
+
+
 # only take participants who are credibly better than random
 data <- data %>% 
   ungroup() %>% 
-  group_by(player) %>%
+  group_by(uniqueID) %>%
   mutate(p_value_rand = t.test(points, rewards_bt, alternative = "greater") %>%
            .$p.value) %>%
-  ungroup() %>%
+  ungroup() %>% 
   dplyr::filter(p_value_rand < 0.05)
 
-data_excluded <- data %>% 
-  ungroup() %>% 
-  group_by(player) %>%
-  mutate(p_value_rand = t.test(points, rewards_bt, alternative = "greater") %>%
-           .$p.value) %>%
-  ungroup() %>%
-  dplyr::filter(p_value_rand > 0.05) %>% 
-  select(uniqueID, group) %>% 
-  distinct() %>% 
-  group_by(group) %>% 
-  summarise(count = n())
-
 data <-
-  data %>%    group_by(unique_rounds) %>%   mutate(
+  data %>% 
+  group_by(unique_rounds) %>%  
+  mutate(
     mean_points = mean(points),
     sd_points = sd(points) ,
     z = (points - mean_points) / sd_points,
-    gem_cell = cell[match(round_gem_found, trial)],
+    gem_cell = choice[match(round_gem_found, trial)],
     #data_source = 'experiment', 
     gemlabel = ifelse(gempresent == 0, "gem absent", "gem present")   )   
 
@@ -218,21 +217,23 @@ data <- data %>%
 
 ## are people sticking to the gem
 data <-
-  data %>%   ungroup() %>%
+  data %>%
+  ungroup() %>%
   group_by(unique_rounds) %>% 
   mutate(remain_gem = case_when(
     trial > round_gem_found &
-      cell == gem_cell ~ 1,
+      choice == gem_cell ~ 1,
     trial > round_gem_found &
-      cell != gem_cell ~ 0,
+      choice != gem_cell ~ 0,
     TRUE ~ NA
   )
   ) %>%   ungroup()  
 
 
 
-  ## save dataset
-write.csv(data, "data/social/data_social_all_participants.csv", row.names = FALSE)
+data <- data %>% mutate(demo_quality = if_else(demo_type == "gem_found", "best",
+                                ifelse((demo_type == "gem_not_found" | demo_type == "no_gem"), "medium", "worst"))) 
 
 
-
+## save dataset
+#write.csv(data, "data/social/data_social_all_participants.csv", row.names = FALSE)
