@@ -14,6 +14,28 @@ knitr::opts_knit$set(root.dir = here()) # set root fot the whole file
 In this document, we will fit learning model to the "social bandit" task that Andrea and I developed. 
 First, lets load some data.
 
+
+
+```{r}
+social_data <-  read_csv(file = here("data","social","data_social_all_participants.csv"))
+social_data<-social_data%>%
+  mutate(copy=ifelse(social_info==cells,1,0))%>%
+  mutate(copy_old=ifelse(social_info_use=="copy",1,0))
+
+social_data%>%ggplot(aes(y=copy,x=as.factor(demonstrator),color=as.factor(env_number)))+
+  stat_summary()+
+  ggtitle("New (cells correct)")+
+  facet_wrap(.~demo_quality)
+
+
+social_data%>%ggplot(aes(y=copy_old,x=as.factor(demonstrator),color=as.factor(env_number)))+
+  stat_summary()+
+  ggtitle("Old (cell correct)")+
+  facet_wrap(.~demo_quality)
+```
+
+
+
 ```{r}
 
 ## load behavioral data
@@ -31,7 +53,8 @@ social_data<-social_data%>%
   mutate(streak=streak_run(change))%>%
   mutate(streak=ifelse(change==1,1,streak))%>%
   mutate(streak=ifelse(is.na(streak),1,streak))%>%
-  mutate(copy=ifelse(social_info_use=="copy",1,0))%>%
+  mutate(copy=ifelse(social_info==cells,1,0))%>%
+  mutate(copy_old=ifelse(social_info_use=="copy",1,0))%>%
   #  ungroup()%>%
   mutate(streak=streak/25)%>%
   mutate(qual=case_when(
@@ -43,13 +66,8 @@ social_data<-social_data%>%
 
 
 social_data <- social_data %>% group_by(uniqueID,round) %>%
-  mutate(social_info=social_info+1)%>%#group_by(round)
-  mutate(Var=any(social_info>64)) %>%
-  #  mutate(social_info<-ifelse(social_info==65,1,social_info))
-  #filter(social_info<=64)
-  filter(!Var) %>% select(-Var)%>%group_by(uniqueID)%>%ungroup()
-
-#social_data%>%filter(Var==1)%>%select(social_info_use,cell,cells,social_info)->inspect
+  mutate(social_info_p1=social_info+1)%>%#group_by(round)
+  mutate(Var=any(social_info_p1>64))%>%group_by(uniqueID)%>%ungroup()#%>%filter(Var!=1)#%>%select(social_info_use,cell,cells,social_info)#->inspect
 
 #social_data
 
@@ -57,6 +75,29 @@ soc_inf<-unique(social_data$soc_info_round)
 social_data<-social_data%>%filter(p_value_rand<0.01)
 
 #length(social_data$p_value_rand[social_data$p_value_rand<0.00001])
+
+social_data%>%mutate(qual=ifelse(env_number==6,1,qual))%>%filter(env_number!=7)%>%#filter(env_number==6)%>%
+  ggplot(aes(x=group,y=points,color=qual))+
+  stat_summary()+
+  facet_wrap(. ~ env_number,scales = "free")
+
+
+social_data%>%ggplot(aes(y=copy,x=demonstrator,color=as.factor(env_number)))+
+  stat_summary()+
+  scale_color_brewer(palette="Accent")+
+  facet_wrap(.~demo_quality)
+```
+
+```{r fig.width=7,fig.height=3}
+social_data%>%ggplot(aes(y=copy,x=as.factor(demonstrator),color=as.factor(env_number)))+
+  stat_summary()+
+  facet_wrap(.~demo_quality)
+
+
+social_data%>%ggplot(aes(y=copy_old,x=as.factor(demonstrator),color=as.factor(env_number)))+
+  stat_summary()+
+  facet_wrap(.~demo_quality)
+
 ```
 
 # Fit model to social data
@@ -90,7 +131,7 @@ source(here("./B_SimulationCode","load_environments_social_experiment.R")) # env
 #     #options.nws=opts
 #   ) %:%
 #Iteration: 200 bestvalit: 435.902250 bestmemit:    8.708619    0.021584    0.005103    0.336568
-#fitagain=T
+fitagain=T
 if (fitagain){
   social_fits <- foreach(
     player_nr = unique(social_data$uniqueID),
@@ -127,7 +168,7 @@ if (fitagain){
     d1$lr<-unlist(cv[2])
     d1$tau_1<-unlist(cv[3])
     d1$sw_1<-unlist(cv[4])
-    d1$prior<-unlist(cv[5])
+   # d1$prior<-unlist(cv[5])
     # d1$lr<-unlist(cv[4])
     #d1$ut<-unlist(cv[4])
     # d1$streak_w<-unlist(cv[4])
@@ -137,10 +178,12 @@ if (fitagain){
     
   }
   
-  saveRDS(social_fits,file = here("A_GeneratedFiles","modelfits","tau_slearn_rangs_oth_prior.rds"))
+  saveRDS(social_fits,file = here("A_GeneratedFiles","modelfits","tau_slearn_rangs_no_prior.rds"))
 }else{
-  social_fits<-readRDS(file = here("A_GeneratedFiles","modelfits","tau_slearn_rangs_prior.rds"))%>%ungroup()
-  social_fits_old<-readRDS(file = here("A_GeneratedFiles","modelfits","2tau_slearn_rangs.rds"))%>%ungroup()
+  #social_fits<-readRDS(file = here("A_GeneratedFiles","modelfits","tau_slearn_rangs_prior.rds"))%>%ungroup()
+  social_fits<-readRDS(file = here("A_GeneratedFiles","modelfits","tau_slearn_rangs_no_prior.rds"))%>%ungroup()
+  social_fits_prior<-readRDS(file = here("A_GeneratedFiles","modelfits","tau_slearn_rangs_prior.rds"))%>%ungroup()
+  #social_fits_old<-readRDS(file = here("A_GeneratedFiles","modelfits","2tau_slearn_rangs.rds"))%>%ungroup()
   
   # social_fits%>%filter(player==1)
 }
@@ -180,6 +223,24 @@ social_fits %>%
   #geom_line(aes(group=index))+
   stat_summary() +
   theme_minimal()
+
+
+argh<-social_data%>%filter(demo_quality=="best",env_number==6)%>%
+  select(cell,social_info,z,copy,soc_info_round,demo_quality,env_number)
+
+social_data
+social_data%>%filter(copy==1)%>%
+  select(cell,cells,social_info,points,copy,soc_info_round,env_number,social_info_p1)->ah
+
+ah%>%filter(cell+1 != cells)
+ah%>%filter(cell == social_info)
+ah%>%filter(cells == social_info_p1)
+
+ah%>%filter(cells == social_info_p1,soc_info_round==1912)#%>%pull(env_number)%>%unique()
+
+environments%>%filter(env==6)%>%pull(Mean)->ah
+ah[20]
+ah[20]
 ```
 
 ```{r}
@@ -193,39 +254,39 @@ social_fits %>%
   theme_minimal()
 ```
 
-<!-- ```{r} -->
+```{r}
 
-<!-- BIC_old<-social_fits_old%>%select(fit,uniqueID)%>% -->
-<!--   unique()%>% -->
-<!--   mutate(BIC=fit+2*log(12*25), -->
-<!--          model="no_lr") -->
+BIC_prior<-social_fits_old%>%select(fit,uniqueID)%>%
+  unique()%>%
+  mutate(BIC=fit+2*log(12*25),
+         model="no_lr")
 
-<!-- BIC_new<-social_fits%>%select(fit,uniqueID)%>% -->
-<!--   unique()%>% -->
-<!--   mutate(BIC=fit+4*log(12*25), -->
-<!--          model="lr") -->
+BIC_noprior<-social_fits%>%select(fit,uniqueID)%>%
+  unique()%>%
+  mutate(BIC=fit+4*log(12*25),
+         model="lr")
 
-<!-- rbind(BIC_new,BIC_old)%>% -->
-<!--   ggplot(aes(x=model,y=BIC))+ -->
-<!--   stat_summary() -->
+rbind(BIC_new,BIC_old)%>%
+  ggplot(aes(x=model,y=BIC))+
+  stat_summary()
 
-<!-- wilcox.test(BIC_old$BIC,BIC_new$BIC,paired=T) -->
+wilcox.test(BIC_old$BIC,BIC_new$BIC,paired=T)
 
-<!-- social_fits %>% -->
-<!--   dplyr::select(uniqueID, group, fit) %>%  -->
-<!--   distinct() %>%  -->
-<!--   ggplot(aes(x = group, y = fit, color = group)) + -->
-<!--   #geom_line(aes(group=index))+ -->
-<!--   stat_summary() + -->
-<!--   theme_minimal() -->
+social_fits %>%
+  dplyr::select(uniqueID, group, fit) %>%
+  distinct() %>%
+  ggplot(aes(x = group, y = fit, color = group)) +
+  #geom_line(aes(group=index))+
+  stat_summary() +
+  theme_minimal()
 
 
 
-<!-- #bechmark_2_tau<-social_fits %>% -->
-<!-- #  dplyr::select(uniqueID, group, fit) %>%  -->
-<!-- #  distinct() -->
+#bechmark_2_tau<-social_fits %>%
+#  dplyr::select(uniqueID, group, fit) %>%
+#  distinct()
 
-<!-- ``` -->
+```
 
 #Parameter plots.
 
@@ -747,7 +808,7 @@ rec_sw_sim_sw<-recovery_real%>%
   geom_point(color="red",alpha=0.1)+
   ggpubr::stat_cor(method = "pearson")+
   stat_smooth(method="lm",color="red",fill="red")+
-
+  
   scale_y_continuous(name=expression("simulated " *omega))+
   scale_x_continuous(name=expression("fitted " *omega))+  
   theme_bw()
@@ -1013,4 +1074,163 @@ social_fits%>%group_by(uniqueID,round,group)%>%
 social_fits%>%
   summarise()
 
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# make plot demonstrating SI
+```{r}
+
+social_data_recov_s_w<-foreach(
+  player_nr = unique(social_fits$uniqueID),
+  .packages = c("DEoptim", "dplyr","here"),
+  .combine = "rbind"
+) %do%{
+  
+  # print(rptx)
+  Xnew <-as.matrix(expand.grid(0:7, 0:7)) # do this outside the loop for better speed
+  print(player_nr)
+  
+  # social data TODO: concatenate nonsocial data.
+  d1 <- social_fits %>% filter(
+    uniqueID == player_nr,
+  ) %>%
+    #filter(gempresent == 0) %>%  # for now only have rounds without gems 
+    group_by(round) %>%
+    mutate(z = points, #(points - mean(points)) / sd(points), ventually figure out what is the best outcome for this
+           social_info = social_info,
+           choices = cells,
+           soc_info_round=demo_quality,
+    ) %>%ungroup()
+  
+  #### unpack parameters
+  lr<-unique(d1$lr)
+  tau<-unique(d1$tau_1)
+  sw<-0.0001
+  prior<--0.2
+  
+  estimates <- c(
+    lr,
+    tau,
+    sw,
+    prior
+  )
+  ####
+  #for (r in rounds) { # loop through rounds in roundList
+  cv <- s_learn_prior_sim(
+    par = estimates,
+    learning_model_fun = RW_Q,
+    data = d1,
+    envs = environments
+  ) # only try one sub
+  
+  cv$player = player_nr
+  cv$group = unique(d1$group)
+  cv$run = rptx
+  return(cv)
+  #  social_sims_plot_one[[i]] <- cv
+  # i = i+1  
+}
+```
+
+
+```{r}
+
+social_data_recov_s_w%>%filter(env %in% c(6))%>%
+  # filter(demo_quality=="worst")%>%
+  #filter(player==2)%>%
+  ggplot(aes(x=trial,y=copy_prob))+
+  #  geom_point()+
+  stat_summary()+
+  facet_grid(. ~ env)
+
+
+
+social_data_recov_s_w%>%
+  filter(env %in% c(6))%>%
+  select(index,social_info)
+
+
+environments$env%>%unique()
+
+envs<-environments%>%filter(env==6)%>%pull(Mean)
+
+envs[60]
+```
+
+
+```
+
+
+dummy<-social_data_recov_s_w%>%filter(env_idx %in% c(5,6))%>%
+  # filter(demo_quality=="worst")%>%
+  #filter(player==2)%>%
+  ggplot(aes(x=trial,y=copy_util,color=as.factor(env_idx)))+
+  geom_point(aes(group=player),alpha=0.3)+
+  scale_color_manual(name="Quality of\n Social Info",labels=c("Good","Bad"),values=c("red","chartreuse3"))+
+  scale_y_continuous(name="Utility of copying [au]")+
+  stat_smooth(size=2)+
+  facet_grid(env_idx ~. ,scales="free")+
+  guides(fill=F)+
+  theme_bw(15)
+
+
+
+Utility<-social_data_recov_s_w%>%filter(env_idx %in% c(5,6))%>%
+  # filter(demo_quality=="worst")%>%
+  #filter(player==2)%>%
+  ggplot(aes(x=trial,y=copy_util,color=as.factor(env_idx)))+
+  #geom_point(aes(group=player),alpha=0.3)+
+  scale_color_manual(name="Quality of\n Social Info",labels=c("Good","Bad"),values=c("red","chartreuse3"))+
+  scale_y_continuous(name="Utility of copying [au]")+
+  stat_smooth(size=2,method = "loess",fill=NA)+
+  facet_grid(env_idx ~. ,scales="free")+
+  guides(fill=F,color=F)+
+  theme_bw(15)+  
+  theme(
+    #aspect.ratio = 1,
+    strip.background = element_blank(),
+    strip.text.y = element_blank()
+  )
+
+
+Value<-social_data_recov_s_w%>%filter(env_idx %in% c(5,6))%>%
+  # filter(demo_quality=="worst")%>%
+  #filter(player==2)%>%
+  ggplot(aes(x=trial,y=copy_prob,color=as.factor(env_idx)))+
+  scale_color_manual(name="Quality of\n Social Info",labels=c("Good","Bad"),values=c("red","chartreuse3"))+
+  scale_y_continuous(name=expression("Copy probability: "* (1+exp(-Q_copy))^ -1))+
+  #stat_summary(size=1,geom="line")+
+  stat_smooth(size=2,method = "loess",fill=NA)+
+  coord_cartesian(ylim=c(0,0.2))+
+  facet_grid(env_idx ~. )+
+  guides(fill=F,color=F)+
+  theme_bw(15)+
+  theme(
+    #aspect.ratio = 1,
+    strip.background = element_blank(),
+    strip.text.y = element_blank()
+  )
+
+legend<-get_legend(dummy)
+model_demo_plot<-plot_grid(Utility,NULL,Value,legend,ncol=4,rel_widths = c(1,0.1,1,0.3))
+
+ggsave(model_demo_plot,filename=here::here("plots","model_dynamics.png"),width = 10,height=4.5)
 ```

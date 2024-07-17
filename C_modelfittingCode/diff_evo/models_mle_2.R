@@ -27,7 +27,7 @@ s_learn <- function(par, learning_model_fun, acquisition_fun, dat,envs) {
   omega<-par[3]
  # b<-par[3]
   tau_copy<-0.01#par[4]
-  prior_copy<- par[4]
+  prior_copy<- -1 #par[4]
   
   mu0 <- 0# par[4] # exploration bonus
   ## preallocate negative log likelihood

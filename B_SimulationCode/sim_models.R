@@ -21,7 +21,7 @@ s_learn_prior_sim <- function(par, learning_model_fun, acquisition_fun, data, en
   
   #hardcoded moving parts
   mu0 <-  0# prior
-  tau_copy<-0.1#par[4]
+  tau_copy<-1#par[4]
   prior_copy<-par[4]
   
   # a bunch of containers
@@ -83,7 +83,7 @@ s_learn_prior_sim <- function(par, learning_model_fun, acquisition_fun, data, en
       if (ind==social_choices[t]){
         copyUtil[t:trials]=copyUtil[t]+omega*(y[t]-copyUtil[t])
       }
-      copy_prob=1/(1+exp(-(copyUtil[t])/0.01))
+      copy_prob=1/(1+exp(-(copyUtil[t])/tau_copy))
       utilityVec <- out
       # build horizon_length x options matrix, where each row holds the utilities of each choice at each decision time in the search horizon
       p_sfmx <- exp(utilityVec / tau)
