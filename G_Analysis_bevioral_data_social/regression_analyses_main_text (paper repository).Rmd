@@ -28,7 +28,9 @@ options(scipen = 999,digits = 4)
 ```{r load data, echo=FALSE, warning=FALSE, message=FALSE }
 
 ## load data
-all_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants.csv")) %>% 
+all_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants_07-2024.csv"))
+
+all_data <- all_data %>%  
    mutate(demo_quality_f = as.factor(demo_quality),
          age_f = factor(group, levels = c("adults", "adolescents"))) ## mutate IVs into factors
 ```
@@ -49,12 +51,12 @@ all_data %>%
   geom_boxplot() +
   geom_point()
 
-
+## just raw difference in points across conditions
 all_data %>% 
   ungroup() %>% 
   group_by(uniqueID) %>% 
   mutate(mean_points_player = mean(tot_points, na.rm = TRUE)) %>% 
-  select(mean_points_player, age_f,uniqueID) %>% 
+  select(mean_points_player, age_f, uniqueID) %>% 
   distinct() %>% 
   ungroup() %>% 
   stats::t.test(mean_points_player ~ age_f, data = ., alternative = "two.sided", paired = FALSE)
@@ -66,9 +68,6 @@ all_data %>%
   distinct() %>% 
   ggplot()+
   geom_histogram(aes(x=mean_points_player))
-
-## just raw difference in points across conditions## juTRUEst raw difference in points across conditions
-t.test(tot_)
 
 ## select only one observation per participant
 performance_age_demonstrator <- all_data %>%
@@ -110,7 +109,7 @@ if #(file.exists(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/perfo
 #             data = performance_age_demonstrator,
 #             iter = 6000)
 # 
-
+    
 ## define priors 
 prior_cauchy <- brms::prior_string("cauchy(0, 2.5)", class = "b")
 
@@ -159,6 +158,8 @@ brms::hypothesis(performance_age_demonstrator_model_scaled,"demo_quality_fworst	
 brms::hypothesis(performance_age_demonstrator_model_scaled,"demo_quality_fmedium:age_fadolescents < 0")
 brms::hypothesis(performance_age_demonstrator_model_scaled,"demo_quality_fworst:age_fadolescents <  0")
 
+brms::conditional_effects(performance_age_demonstrator_model_scaled)
+
 ```
 ## social larning differences
 
@@ -180,7 +181,6 @@ model_random_slopes_data %>%
   distinct() %>% 
   t.test(mean_copy ~ age_f, data = ., alternative = "two.sided", paired = FALSE)
 
-
 ## mean copy by group %>% 
 model_random_slopes_data %>% 
   ungroup() %>% 
@@ -190,14 +190,8 @@ model_random_slopes_data %>%
   summarise( mean_copy = mean(n),
              sd = sd (n))
 
-
-## define priors
-prior_cauchy <- brms::prior_string("cauchy(0, 2.5)", class = "b")
-
 ## specify model and fit
 model_random_slopes <- brms::brm(formula = n ~ 1 + demo_quality_f * age_f + (1 + demo_quality_f | uniqueID),
-          prior = prior_cauchy,
-          sample_prior = TRUE,
           data = model_random_slopes_data,
           family = poisson(),
           iter = 6000,
@@ -219,6 +213,7 @@ brms::hypothesis(model_random_slopes,"demo_quality_fworst:age_fadolescents = 0")
 
 tab_model(model_random_slopes)
 plot_model(model_random_slopes)
+brms::conditional_effects(model_random_slopes)
 
 
 ```
@@ -252,8 +247,10 @@ data_gem_found %>%
   ungroup() %>% 
   select(age_f, round_gem_found, demo_quality_f ) %>% 
   group_by(age_f, demo_quality_f) %>% 
-  summarise( mean_round_gem_found = mean(round_gem_found),
-             sd = sd (round_gem_found))
+  # summarise( mean_round_gem_found = mean(round_gem_found),
+  #            sd = sd (round_gem_found)) %>% 
+  ggplot() +
+  stat_summary(aes(x=demo_quality_f, y = round_gem_found, color = age_f))
 
 hist(data_gem_found$round_gem_found)
 
@@ -265,9 +262,6 @@ if (file.exists(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/gem_fo
   
   } else {
   
-prior_cauchy <- brms::prior_string("cauchy(0, 2.5)", class = "b")
-
-
 ## model specification
 gem_found_when_model <- brms::brm(formula = round_gem_found ~  demo_quality_f * age_f + (1 | uniqueID),
           data = data_gem_found,
@@ -291,6 +285,8 @@ brms::hypothesis(gem_found_when_model,"demo_quality_fworst:age_fadolescents <  0
 
 tab_model(gem_found_when_model)
 plot_model(gem_found_when_model)
+
+brms::conditional_effects(gem_found_when_model)
 
 summary(gem_found_when_model)
 
@@ -325,7 +321,7 @@ trial_by_trial_scaled_points <- all_data %>%
          sd = sd(points),
          scaled_points = (points - mean_points)/(sd*0.5))
 
-summary(lmer(points ~ trial + group * demo_quality +(1|uniqueID), data = all_data))
+summary(lmer(scaled_points ~ trial + age_f * demo_quality_f +(1|uniqueID), data = trial_by_trial_scaled_points))
 
 trial_by_trial_scaled_points %>% 
   ungroup() %>% 
@@ -355,7 +351,6 @@ prior_cauchy <- brms::prior_string("cauchy(0, 2.5)", class = "b")
       iter = 4000,
       cores = 6)
 
-
 ## model specification
     points_by_trial_scaled <- brms::brm(
       scaled_points ~ trial + age_f * demo_quality_f + (1|uniqueID),
@@ -363,8 +358,9 @@ prior_cauchy <- brms::prior_string("cauchy(0, 2.5)", class = "b")
       sample_prior = TRUE,
       data = trial_by_trial_scaled_points,
       chains = 4,
-      iter = 4000,
-      cores = 6)
+      iter = 4000
+      #cores = 6
+      )
     
 save(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/points_by_trial_scaled.Rdata'), points_by_trial_scaled)
 

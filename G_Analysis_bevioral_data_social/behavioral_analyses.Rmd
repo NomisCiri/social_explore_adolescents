@@ -27,7 +27,8 @@ options(scipen = 999,digits = 4)
 ```{r load data, echo=FALSE, warning=FALSE, message=FALSE }
 
 ## load data
-all_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants.csv")) 
+#all_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants.csv")) 
+all_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants_07-2024.csv"))
 
 ```
 
@@ -70,7 +71,7 @@ Result 1: adults open slightly more boxes
 boxes_data <- 
 all_data %>% 
   group_by(round, uniqueID, gempresent, group, demo_type) %>% 
-  summarise(boxes_opened = n_distinct(cells)) ## n of unique cells = n of different boxes opened
+  summarise(boxes_opened = n_distinct(choice)) ## n of unique choice = n of different boxes opened
 
 ## quick regression if n of boxes opened ~ group and demo type
 sjPlot::tab_model(glmer(boxes_opened ~ group * demo_type + (1|uniqueID), family = poisson, data = boxes_data))
@@ -78,7 +79,7 @@ sjPlot::tab_model(glmer(boxes_opened ~ group * demo_type + (1|uniqueID), family 
 ## plot: n unique boxes by group and gem condition
 all_data %>%
   group_by(round, uniqueID, gempresent, gem_found, group) %>%
-  summarise(boxes_opened = n_distinct(cells)) %>%
+  summarise(boxes_opened = n_distinct(choice)) %>%
   ggplot(aes(x = factor(gempresent), y = boxes_opened)) +
   geom_boxplot(aes(fill = factor(gem_found))) +
   scale_fill_brewer(name = "gem found", label = c("no", "yes")) +
@@ -87,8 +88,6 @@ all_data %>%
   theme_bw(base_size = 20) +  facet_grid( ~ group)
 
 ## plot mean boxes open before and after finding gem
-
-
 ```
 
 ### boxes open by round
@@ -100,7 +99,7 @@ people open less boxes when gem is found early also people open fewer boxes when
 all_data %>% 
   filter(gem_found==1) %>% 
   group_by(round, uniqueID, gempresent, gem_found, group) %>% 
-  summarise(boxes_opened = n_distinct(cells),
+  summarise(boxes_opened = n_distinct(choice),
             round_gem_found=round_gem_found, 
             demo_type = demo_type) %>% 
   ggplot(aes(x = factor(round_gem_found), y = boxes_opened, color = demo_type)) +
@@ -120,7 +119,7 @@ all_data %>%
 ## does exploration decrease over rounds?
 all_data %>%
   group_by(round, uniqueID, gempresent, gem_found, group) %>%
-  summarise(boxes_opened = n_distinct(cells)) %>%
+  summarise(boxes_opened = n_distinct(choice)) %>%
   ggplot(aes(x = factor(round), y = boxes_opened)) +
   geom_boxplot(aes(fill = factor(gem_found))) +
   scale_fill_brewer(name = "gem found", label = c("no", "yes")) +
@@ -131,7 +130,7 @@ all_data %>%
 ## regression
 all_data %>%
   group_by(round, uniqueID, gempresent, gem_found, group) %>%
-  summarise(boxes_opened = n_distinct(cells)) %>% 
+  summarise(boxes_opened = n_distinct(choice)) %>% 
 glm(boxes_opened ~ group * round * gem_found, family = poisson, data = .) -> regression_fatigue
 
 tab_model(regression_fatigue)
@@ -286,8 +285,6 @@ all_data %>%
  # facet_wrap( ~ gem_found) +
   labs(title = 'average points per trial') +
   theme_bw(base_size = 20)
-
-
 
 ```
 
@@ -465,8 +462,8 @@ most participants find gems in half of the environments that contain them (4 out
 
 all_data
   group_by(uniqueID, group) %>%
-  mutate(exploit = ifelse(lead(cells) == cells, 1, 0),
-         explore = ifelse(lead(cells) != cells, 1, 0)) %>%
+  mutate(exploit = ifelse(lead(choice) == choice, 1, 0),
+         explore = ifelse(lead(choice) != choice, 1, 0)) %>%
   mutate(out_cat = case_when(points > 150 ~ 1,
                              points < 0 ~ 3,
                              TRUE ~ 2)) %>% pivot_longer(cols = c(exploit, explore), names_to = "explore_exploit") %>%

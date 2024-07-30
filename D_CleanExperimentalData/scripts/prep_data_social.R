@@ -239,9 +239,8 @@ data <-
   ) %>%   ungroup()  
 
 
-
-
-data <- data %>% mutate(demo_quality = if_else(demo_type == "gem_found", "best",ifelse((demo_type == "gem_not_found" | demo_type == "no_gem"), "medium", "worst"))) 
+data <- data %>% mutate(demo_quality = if_else(demo_type == "gem_found", "best",
+                                ifelse((demo_type == "gem_not_found" | demo_type == "no_gem"), "medium", "worst"))) 
 
 ## save dataset
-#write.csv(data, "data/social/data_social_all_participants.csv", row.names = FALSE)
+write.csv(data, "data/social/data_social_all_participants_07-2024.csv", row.names = FALSE)

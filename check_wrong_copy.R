@@ -1,27 +1,33 @@
 ## checks
-
-
 social_data <-  read_csv(file = here("data","social","data_social_all_participants.csv"))
-social_data<-social_data%>%
-  mutate(copy=ifelse((env_number == 6 | env_number == 7 | env_number == 8) & social_info==cells,"copy",
-                     ifelse((env_number == 1| env_number == 2 | env_number == 3| env_number == 4 | env_number == 5 | env_number == 9| env_number == 10 | env_number == 11 | env_number == 12) & social_info ==cell, "copy", "ignore")))%>%
-  mutate(copy_old=ifelse(social_info_use=="copy",1,0)) %>% 
+
+social_data<-data %>%
+  mutate(copy=ifelse((env_number == 6 | env_number == 7 | env_number == 8) & social_info == cells, 1,
+                     ifelse((env_number == 1| env_number == 2 | env_number == 3| env_number == 4 | env_number == 5 | env_number == 9| env_number == 10 | env_number == 11 | env_number == 12) & social_info==cell, 1, 0)))%>%
+  mutate(copy_old=ifelse(social_info_use == "copy" ,1,0)) %>% 
   mutate(demo_quality_f = as.factor(demo_quality),
          age_f = factor(group, levels = c("adults", "adolescents"))) ## mutate IVs into factors
 
-# 
-# social_data %>% filter(env_number == 6) -> a
-# 
-# social_data%>%ggplot(aes(y=copy,x=as.factor(demonstrator),color=as.factor(env_number)))+
-#   stat_summary()+
-#   ggtitle("New (cells correct)")+
-#   facet_wrap(.~demo_quality)
-# 
-# 
-# social_data%>%ggplot(aes(y=copy_old,x=as.factor(demonstrator),color=as.factor(env_number)))+
-#   stat_summary()+
-#   ggtitle("Old (cell correct)")+
-#   facet_wrap(.~demo_quality)
+
+data %>% 
+  #filter(env_number == 6 | env_number == 7 | env_number == 8) %>% 
+  select(points, cells, social_info, cell, copy, gem_found, choice) %>% 
+  filter(copy == 1) %>%
+  ggplot(aes(x = choice, y = social_info))+
+  geom_point()
+
+social_data %>% filter(env_number == 6) -> a
+
+social_data%>%ggplot(aes(y=copy,x=as.factor(demonstrator),color=as.factor(env_number)))+
+  stat_summary()+
+  ggtitle("New (cells correct)")+
+  facet_wrap(.~demo_quality)
+
+
+social_data%>%ggplot(aes(y=copy_old,x=as.factor(demonstrator),color=as.factor(env_number)))+
+  stat_summary()+
+  ggtitle("Old (cell correct)")+
+  facet_wrap(.~demo_quality)
 
 ## create count d
 model_random_slopes_data <- social_data %>%
