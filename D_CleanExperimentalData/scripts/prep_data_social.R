@@ -50,22 +50,27 @@ length(unique(data$uniqueID)) == nrow(data)/25/12
 
 ## find round when gem was first found
 when_gem_found <-  data %>%
-  group_by(uniqueID, round) %>%
-  dplyr::slice(match(1, gem)) %>%
-  mutate(round_gem_found = trial) %>%
+  select(unique_rounds, trial, round, uniqueID, gem, choice, social_info) %>% 
+  group_by(unique_rounds) %>%
+  dplyr::slice(match(1, gem)) %>% 
+  mutate(gem_found_how = ifelse( choice == social_info, "copy", "explore"), 
+    round_gem_found = trial) %>% 
   ungroup()  %>%
   select(unique_rounds,
-         round_gem_found)
+         round_gem_found,
+         gem_found_how)
 
 ## join the datasets
-data <- left_join(data, when_gem_found) %>% 
-  group_by(unique_rounds) %>% 
-  fill(round_gem_found, .direction = "updown") %>% 
-  mutate(gem_found = ifelse(round_gem_found > 0, 1, 0),
-         copy = ifelse(choice == social_info, 1, 0), ## copy as numeric variable
-         social_info_use = ifelse(choice == social_info, "copy", "ignore") ## social info use as factor
-         )
-
+data <- left_join(data, when_gem_found) %>%
+  group_by(unique_rounds) %>%
+  fill(round_gem_found, .direction = "updown") %>%
+  fill(gem_found_how, .direction = "updown") %>%
+  mutate(
+    gem_found = ifelse(round_gem_found > 0, 1, 0),
+    copy = ifelse(choice == social_info, 1, 0),
+    ## copy as numeric variable
+    social_info_use = ifelse(choice == social_info, "copy", "ignore") ## social info use as factor
+  )
 
 data$gem_found[is.na(data$gem_found)] <- 0
 
@@ -184,7 +189,7 @@ rewards_bt <-
 #   group_by(group) %>% 
 #   summarise(count = n())
 
-# only take participants who are credibly better than random
+# only take participants who are significantly better than random
 data <- data %>% 
   ungroup() %>% 
   group_by(uniqueID) %>%
@@ -228,8 +233,45 @@ data <-
   ) %>%   ungroup()  
 
 
-data <- data %>% mutate(demo_quality = if_else(demo_type == "gem_found", "best",
-                                ifelse((demo_type == "gem_not_found" | demo_type == "no_gem"), "medium", "worst"))) 
+## add final variables
+data <- data %>% mutate(
+  demo_quality = if_else(demo_type == "gem_found", "best", ifelse((demo_type == "gem_not_found" |
+                                                                     demo_type == "no_gem"),
+                                                                  "medium",
+                                                                  "worst"
+  )),
+  demo_quality_f = as.factor(demo_quality),
+  age_f = factor(group, levels = c("adults", "adolescents")),
+  treatment = factor(
+    ifelse(
+      demo_quality_f == "best" & age_f == "adults",
+      "adu_best",
+      ifelse(
+        demo_quality_f == "medium" & age_f == "adults",
+        "adu_medium",
+        ifelse(
+          demo_quality_f == "worst" & age_f == "adults",
+          "adu_worst",
+          ifelse(
+            demo_quality_f == "best" & age_f == "adolescents",
+            "ado_best",
+            ifelse(
+              demo_quality_f == "medium" & age_f == "adolescents",
+              "ado_medium",
+              ifelse(
+                demo_quality_f == "worst" &
+                  age_f == "adolescents",
+                "ado_worst",
+                NA
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+) ## mutate IVs into factors)
+
 
 ## save dataset
-write.csv(data, "data/social/data_social_all_participants_07-2024.csv", row.names = FALSE)
+write.csv(data, "data/social/data_social_all_participants_08-2024.csv", row.names = FALSE)

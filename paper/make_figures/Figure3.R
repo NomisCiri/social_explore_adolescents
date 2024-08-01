@@ -13,7 +13,7 @@
 pacman::p_load(tidyverse, gghalves, here, lmerTest, ggthemes, cowplot)
 
 ## load data
-all_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants.csv")) 
+all_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants_07-2024.csv"))
 
 ## panel 1 data
 load(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/performance_age_demonstrator_model_scaled.RData'))
