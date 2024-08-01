@@ -158,15 +158,6 @@ for (p in unique(data$uniqueID)) {
   }
 }
 
-#<<<<<<< back_up_andrea_machine
-#=======
-#data <- data %>% 
-#  mutate(env_number = ifelse(gempresent == 0 & env_number == 5, env_number - 1,
-#                             ifelse(gempresent == 1 & env_number < 6, env_number + 8,env_number)),
-#         env_number = ifelse(env_number > 5, env_number - 1, env_number))
-#
-#>>>>>>> main
-## check there are 12 number of envs; 1:4 no gems, 5-12 gems
 data %>% 
   select(env_number, gempresent, demo_type) %>% 
   distinct() %>% 
@@ -193,12 +184,11 @@ rewards_bt <-
 #   group_by(group) %>% 
 #   summarise(count = n())
 
-
 # only take participants who are credibly better than random
 data <- data %>% 
   ungroup() %>% 
   group_by(uniqueID) %>%
-  mutate(p_value_rand = t.test(points, rewards_bt, alternative = "greater") %>%
+  mutate(p_value_rand = t.test(points, rewards_bt, alternative = "greater") %>% 
            .$p.value) %>%
   ungroup() %>% 
   dplyr::filter(p_value_rand < 0.05)
@@ -212,8 +202,7 @@ data <-
     z = (points - mean_points) / sd_points,
     gem_cell = choice[match(round_gem_found, trial)],
     #data_source = 'experiment', 
-    gemlabel = ifelse(gempresent == 0, "gem absent", "gem present")   )   
-
+    gemlabel = ifelse(gempresent == 0, "gem absent", "gem present"))   
 
 
 # final exclusion: participants who attempted to refresh task to find where gems are, and 1 round (?) with NAs

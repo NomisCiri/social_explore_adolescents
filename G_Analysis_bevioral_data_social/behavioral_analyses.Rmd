@@ -41,14 +41,21 @@ sample size and age distribution
 ## age distribution
 all_data %>% 
   ungroup() %>% 
-  select(age, uniqueID, group) %>% 
+  select(uniqueID, group) %>% 
+  group_by( group) %>% 
+  distinct() %>%
+  count()
+
+all_data %>% 
+  ungroup() %>% 
+  select(uniqueID, age, group) %>% 
   distinct() %>% 
   ggplot() +
   geom_histogram(aes(x = age, fill = group), binwidth = 1) +
   theme_base(base_size = 15)
 
 ## count by group
-all_data %>% 
+all_data %>%
   ungroup() %>% 
   select(uniqueID, group) %>% 
   distinct() %>% 
@@ -285,6 +292,8 @@ all_data %>%
  # facet_wrap( ~ gem_found) +
   labs(title = 'average points per trial') +
   theme_bw(base_size = 20)
+
+
 
 ```
 
