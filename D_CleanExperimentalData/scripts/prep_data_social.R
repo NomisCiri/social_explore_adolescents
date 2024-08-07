@@ -233,45 +233,5 @@ data <-
   ) %>%   ungroup()  
 
 
-## add final variables
-data <- data %>% mutate(
-  demo_quality = if_else(demo_type == "gem_found", "best", ifelse((demo_type == "gem_not_found" |
-                                                                     demo_type == "no_gem"),
-                                                                  "medium",
-                                                                  "worst"
-  )),
-  demo_quality_f = as.factor(demo_quality),
-  age_f = factor(group, levels = c("adults", "adolescents")),
-  treatment = factor(
-    ifelse(
-      demo_quality_f == "best" & age_f == "adults",
-      "adu_best",
-      ifelse(
-        demo_quality_f == "medium" & age_f == "adults",
-        "adu_medium",
-        ifelse(
-          demo_quality_f == "worst" & age_f == "adults",
-          "adu_worst",
-          ifelse(
-            demo_quality_f == "best" & age_f == "adolescents",
-            "ado_best",
-            ifelse(
-              demo_quality_f == "medium" & age_f == "adolescents",
-              "ado_medium",
-              ifelse(
-                demo_quality_f == "worst" &
-                  age_f == "adolescents",
-                "ado_worst",
-                NA
-              )
-            )
-          )
-        )
-      )
-    )
-  )
-) ## mutate IVs into factors)
-
-
 ## save dataset
 write.csv(data, "data/social/data_social_all_participants_08-2024.csv", row.names = FALSE)

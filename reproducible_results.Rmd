@@ -29,6 +29,10 @@ source("extract_coefficients.R")
 
 ## function to calculate Bayes Factor
 source("calculate_BF.R")
+
+## set custom theme
+source("https://raw.githubusercontent.com/AndGrad/custom_themes_ggplot/main/theme_plot.R")
+
 ```
 
 ```{r load data, echo=FALSE, warning=FALSE, message=FALSE }
@@ -66,13 +70,13 @@ t_test_points <- all_data %>%
 base::load(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/points_age_advisor_model.RData'))
 
 ## parameters of the model
-params <- rownames(fixef(performance_age_demonstrator_model_scaled))
+params <- rownames(fixef(points_age_advisor_model))
 
 ## names to assign to the params (for covenience when calling results below)
 names <- c("intercept", "medium", "low", "adolescents", "ado_medium", "ado_low" )
 
 ## extract coefficients from model object 
-coef_points <- summarize_model(performance_age_demonstrator_model_scaled, params, names)
+coef_points <- summarize_model(points_age_advisor_model, params, names)
 
 ## list of hypotheses to test  
 hyp_list_points <- c(
@@ -84,7 +88,7 @@ hyp_list_points <- c(
 )
 
 ## extract BF for each hypothesis
-BFs_points <- test_hypotheses(performance_age_demonstrator_model_scaled, hyp_list_points)
+BFs_points <- test_hypotheses(points_age_advisor_model, hyp_list_points)
 
 ```
 

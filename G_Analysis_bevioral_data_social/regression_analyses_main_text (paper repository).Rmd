@@ -21,8 +21,6 @@ pacman::p_load(tidyverse,
                ggthemes,
                sjPlot)
 
-source("https://raw.githubusercontent.com/AndGrad/custom_themes_ggplot/main/theme_plot.R")
-
 '%!in%' <- function(x,y)!('%in%'(x,y))
 
 options(scipen = 999,digits = 4)
@@ -31,7 +29,9 @@ options(scipen = 999,digits = 4)
 ```{r load data, echo=FALSE, warning=FALSE, message=FALSE }
 
 ## load data
-all_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants_08-2024.csv"))
+all_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants_08-2024.csv")) %>% 
+    mutate(demo_quality_f = as.factor(demo_quality),
+          age_f = factor(group, levels = c("adults", "adolescents")))
 
 ```
 
@@ -166,7 +166,7 @@ brms::conditional_effects(copy_age_advisor_model)
 
 ```
 
-## When do adults find gems? later then adolescents
+## When do participants find gems?
 
 ```{r gem found when bry group, warning=FALSE, message=FALSE}
 
