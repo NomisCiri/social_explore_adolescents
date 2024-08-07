@@ -5,6 +5,7 @@ output: html_document
 ---
 
 ## load packages and prepare data
+
 ```{r echo=FALSE, warning=FALSE, message=FALSE, echo=FALSE}
 
 ## load packages @andrea implement pck_mgmt script
@@ -20,6 +21,8 @@ pacman::p_load(tidyverse,
                ggthemes,
                sjPlot)
 
+source("https://raw.githubusercontent.com/AndGrad/custom_themes_ggplot/main/theme_plot.R")
+
 '%!in%' <- function(x,y)!('%in%'(x,y))
 
 options(scipen = 999,digits = 4)
@@ -28,11 +31,8 @@ options(scipen = 999,digits = 4)
 ```{r load data, echo=FALSE, warning=FALSE, message=FALSE }
 
 ## load data
-all_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants_07-2024.csv"))
+all_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants_08-2024.csv"))
 
-all_data <- all_data %>%  
-   mutate(demo_quality_f = as.factor(demo_quality),
-         age_f = factor(group, levels = c("adults", "adolescents"))) ## mutate IVs into factors
 ```
 
 ## differences in points scored by group
@@ -49,10 +49,12 @@ all_data %>%
   ungroup() %>%
   ggplot(aes(x=age_f, y=mean_points_player))+
   geom_boxplot() +
-  geom_point()
+  geom_point() 
+  
 
 ## just raw difference in points across conditions
-all_data %>% 
+t_test_points_gem <- all_data %>% 
+  filter(gem_found == 1) %>% 
   ungroup() %>% 
   group_by(uniqueID) %>% 
   mutate(mean_points_player = mean(tot_points, na.rm = TRUE)) %>% 
@@ -61,118 +63,67 @@ all_data %>%
   ungroup() %>% 
   stats::t.test(mean_points_player ~ age_f, data = ., alternative = "two.sided", paired = FALSE)
 
-all_data %>% 
-  group_by(uniqueID) %>% 
-  mutate(mean_points_player = mean(tot_points, na.rm = TRUE)) %>% 
-  select(mean_points_player, age_f) %>% 
-  distinct() %>% 
-  ggplot()+
-  geom_histogram(aes(x=mean_points_player))
 
-## select only one observation per participant
-performance_age_demonstrator <- all_data %>%
+data_regression_points <- all_data %>%
   ungroup() %>%
-  select(uniqueID, age_f, demo_quality_f, tot_points) %>%
+  select(uniqueID, age_f, demo_quality_f, tot_points, treatment) %>% 
   distinct() %>% 
- # group_by(uniqueID, demo_quality_f) %>% 
-  mutate(mean_points = mean(tot_points, ),
+  group_by() %>%
+  mutate(mean_points = mean(tot_points),
          sd = sd(tot_points),
-         scaled_points = (tot_points - mean_points)/(sd*0.5),
-         treatment= factor(
-            ifelse(demo_quality_f == "best" & age_f == "adults", "adu_best",
-            ifelse(demo_quality_f == "medium" & age_f == "adults", "adu_medium",
-            ifelse(demo_quality_f == "worst" & age_f == "adults", "adu_worst",
-            ifelse(demo_quality_f == "best" & age_f == "adolescents", "ado_best",
-            ifelse(demo_quality_f == "medium" & age_f == "adolescents", "ado_medium",
-            ifelse(demo_quality_f == "worst" & age_f == "adolescents", "ado_worst", NA))))))))
+         scaled_points = (tot_points - mean_points)/(sd*0.5))
+
 
 ## load model if fitting has been done, if not fit model
+
 if #(file.exists(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/performance_age_demonstrator_model.RData')) & 
-(file.exists(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/performance_age_demonstrator_model_scaled.RData')))
+(file.exists(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/points_age_advisor_model.RData')))
   #)  
   {
   
   # base::load(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/performance_age_demonstrator_model.RData'))
-  base::load(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/performance_age_demonstrator_model_scaled.RData'))
+  base::load(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/points_age_advisor_model.RData'))
 
   } else {
 
-# ## model specification
-# performance_age_demonstrator_model <-
-#   brms::brm(formula = scaled_points ~ treatment+ (1 |  uniqueID),
-#             data = performance_age_demonstrator,
-#             iter = 6000)
-
-# ## model specification
-# performance_age_demonstrator_model <-
-#   brms::brm(formula = tot_points ~ demo_quality_f * age_f + (1 |  uniqueID),
-#             data = performance_age_demonstrator,
-#             iter = 6000)
-# 
-    
 ## define priors 
 prior_cauchy <- brms::prior_string("cauchy(0, 2.5)", class = "b")
 
 ## model specification
-performance_age_demonstrator_model_scaled <-
+points_age_advisor_model <-
   brms::brm(formula = scaled_points ~ demo_quality_f * age_f + (1 |  uniqueID),
             prior = prior_cauchy,
             sample_prior = TRUE,
-            data = performance_age_demonstrator,
-            iter = 6000)
-
+            data = data_regression_points,
+            iter = 6000,
+            chains = 6)
 ## save
-#save("performance_age_demonstrator_model", file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/performance_age_demonstrator_model.RData'))
-
-## save
-save("performance_age_demonstrator_model_scaled", file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/performance_age_demonstrator_model_scaled.RData'))
+save("points_age_advisor_model",
+     file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/points_age_advisor_model.RData'))
 
   }
 #
 # ## results
-# tab_model(performance_age_demonstrator_model)
-# plot_model(performance_age_demonstrator_model)
-           
-## results model 2
-tab_model(performance_age_demonstrator_model_scaled)
-plot_model(performance_age_demonstrator_model_scaled)
+tab_model(points_age_advisor_model)
+plot_model(points_age_advisor_model)
 
 
-## bayes factor test main effects
-# brms::hypothesis(performance_age_demonstrator_model,"age_fadolescents > 0", sample_prior = TRUE)
-# brms::hypothesis(performance_age_demonstrator_model,"demo_quality_fmedium < 0")
-# brms::hypothesis(performance_age_demonstrator_model,"demo_quality_fworst	 < 0") 
-# 
-# ## bayes factor test interactions
-# brms::hypothesis(performance_age_demonstrator_model,"demo_quality_fmedium:age_fadolescents < 0")
-# brms::hypothesis(performance_age_demonstrator_model,"demo_quality_fworst:age_fadolescents <  0")
-
-
-# scaled model
-## bayes factor test main effects
-brms::hypothesis(performance_age_demonstrator_model_scaled,"age_fadolescents > 0")
-brms::hypothesis(performance_age_demonstrator_model_scaled,"demo_quality_fmedium < 0")
-brms::hypothesis(performance_age_demonstrator_model_scaled,"demo_quality_fworst	 < 0") 
-
-## bayes factor test interactions
-brms::hypothesis(performance_age_demonstrator_model_scaled,"demo_quality_fmedium:age_fadolescents < 0")
-brms::hypothesis(performance_age_demonstrator_model_scaled,"demo_quality_fworst:age_fadolescents <  0")
-
-brms::conditional_effects(performance_age_demonstrator_model_scaled)
+brms::conditional_effects(points_age_advisor_model)
 
 ```
+
 ## social larning differences
 
 ```{r}
 ## create count variable
-model_random_slopes_data <- all_data %>%
-  group_by(uniqueID, round, gem_found, age_f, demo_quality_f) %>%
+data_regression_copy <- all_data %>%
+  group_by(uniqueID, round, gem_found, age_f, demo_quality_f, treatment) %>%
   filter(social_info_use == "copy") %>%
   count(social_info_use)
 
 
 ## mean copy by group t_test
-model_random_slopes_data %>% 
+data_regression_copy %>% 
   ungroup() %>% 
   filter(n!=0) %>% 
   group_by(uniqueID) %>% 
@@ -182,56 +133,51 @@ model_random_slopes_data %>%
   t.test(mean_copy ~ age_f, data = ., alternative = "two.sided", paired = FALSE)
 
 ## mean copy by group %>% 
-model_random_slopes_data %>% 
+data_regression_copy %>% 
   ungroup() %>% 
   filter(n!=0) %>% 
-  select(age_f, n,demo_quality_f ) %>% 
-  group_by(age_f, demo_quality_f) %>% 
-  summarise( mean_copy = mean(n),
+  select(treatment, n ) %>% 
+  group_by(treatment) %>% 
+  summarise(mean_copy = mean(n),
              sd = sd (n))
 
+if (file.exists(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/copy_age_advisor_model.RData'))) {
+  
+  # base::load(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/performance_age_demonstrator_model.RData'))
+  base::load(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/copy_age_advisor_model.RData'))
+
+  } else {
+
 ## specify model and fit
-model_random_slopes <- brms::brm(formula = n ~ 1 + demo_quality_f * age_f + (1 + demo_quality_f | uniqueID),
-          data = model_random_slopes_data,
+copy_age_advisor_model <- brms::brm(formula = n ~ 1 + demo_quality_f * age_f + (1 + demo_quality_f | uniqueID),
+          data = data_regression_copy,
           family = poisson(),
           iter = 6000,
-          chains = 5) 
+          chains = 6) 
 
 ## save results
-save(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/poission_regression_all_rounds_slopes.RData'), model_random_slopes)
+save(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/copy_age_advisor_model.RData'), copy_age_advisor_model)
 
-load(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/poission_regression_all_rounds_slopes.RData'))
+}
 
-## bayes factor test main effects
-brms::hypothesis(model_random_slopes,"age_fadolescents > 0")[[1]]$Evid.Ratio 
-brms::hypothesis(model_random_slopes,"demo_quality_fmedium < 0")[[1]]$Evid.Ratio 
-brms::hypothesis(model_random_slopes,"demo_quality_fworst	 < 0") [[1]]$Evid.Ratio 
-
-## bayes factor test interactions
-brms::hypothesis(model_random_slopes,"demo_quality_fmedium:age_fadolescents < 0")[[1]]$Evid.Ratio 
-brms::hypothesis(model_random_slopes,"demo_quality_fworst:age_fadolescents = 0")[[1]]$Evid.Ratio 
-
-tab_model(model_random_slopes)
-plot_model(model_random_slopes)
-brms::conditional_effects(model_random_slopes)
-
+tab_model(copy_age_advisor_model)
+plot_model(copy_age_advisor_model)
+brms::conditional_effects(copy_age_advisor_model)
 
 ```
-
-
 
 ## When do adults find gems? later then adolescents
 
 ```{r gem found when bry group, warning=FALSE, message=FALSE}
 
 ## select only one observation per participant
-data_gem_found <- all_data %>%  
+data_regression_gem <- all_data %>%  
   filter(gem_found == 1) %>% 
   select(round_gem_found, age_f, demo_quality_f, uniqueID) %>% 
   distinct() 
 
 ## gem found when by group across all rounds
-data_gem_found %>% 
+data_regression_gem %>% 
   ungroup() %>% 
   select(age_f, round_gem_found, demo_quality_f, uniqueID ) %>% 
   group_by(uniqueID) %>% 
@@ -243,132 +189,37 @@ data_gem_found %>%
   stats::t.test(mean_round_gem_found ~ age_f, data = ., alternative = "two.sided", paired = FALSE)
 
 ## mean round gem found by group and social information use 
-data_gem_found %>% 
+data_regression_gem %>% 
   ungroup() %>% 
   select(age_f, round_gem_found, demo_quality_f ) %>% 
   group_by(age_f, demo_quality_f) %>% 
-  # summarise( mean_round_gem_found = mean(round_gem_found),
-  #            sd = sd (round_gem_found)) %>% 
-  ggplot() +
-  stat_summary(aes(x=demo_quality_f, y = round_gem_found, color = age_f))
-
-hist(data_gem_found$round_gem_found)
-
+   summarise( mean_round_gem_found = mean(round_gem_found),
+              sd = sd(round_gem_found)) 
 
 ## load model if fitting has been done, if not fit model
-if (file.exists(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/gem_found_when_model.RData'))){
+if (file.exists(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/gem_age_advisor_model.RData'))){
   
-  base::load(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/gem_found_when_model.RData'))
+  base::load(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/gem_age_advisor_model.RData'))
   
   } else {
   
 ## model specification
-gem_found_when_model <- brms::brm(formula = round_gem_found ~  demo_quality_f * age_f + (1 | uniqueID),
-          data = data_gem_found,
+gem_age_advisor_model <- brms::brm(formula = round_gem_found ~  demo_quality_f * age_f + (1 | uniqueID),
+          data = data_regression_gem,
           family = poisson(),
           iter = 6000,
-          chains = 5) 
+          chains = 6) 
 
 ## save results
-save(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/gem_found_when_model.RData'), gem_found_when_model)
+save(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/gem_age_advisor_model.RData'), gem_age_advisor_model)
 
   }
 
-## bayes factor test main effects
-brms::hypothesis(gem_found_when_model,"age_fadolescents <  0")[[1]]$Evid.Ratio 
-brms::hypothesis(gem_found_when_model,"demo_quality_fmedium < 0")[[1]]$Evid.Ratio 
-brms::hypothesis(gem_found_when_model,"demo_quality_fworst	 < 0")[[1]]$Evid.Ratio 
+tab_model(gem_age_advisor_model)
+plot_model(gem_age_advisor_model)
 
-## bayes factor test interactions
-brms::hypothesis(gem_found_when_model,"demo_quality_fmedium:age_fadolescents < 0")[[1]]$Evid.Ratio 
-brms::hypothesis(gem_found_when_model,"demo_quality_fworst:age_fadolescents <  0")[[1]]$Evid.Ratio 
+brms::conditional_effects(gem_age_advisor_model)
 
-tab_model(gem_found_when_model)
-plot_model(gem_found_when_model)
-
-brms::conditional_effects(gem_found_when_model)
-
-summary(gem_found_when_model)
+summary(gem_age_advisor_model)
 
 ```
-
-## extra analyses trial by trial:: develop if we want this.
-
-```{r}
-
-all_data %>% 
-  ungroup %>% 
-  group_by(unique_rounds) %>% 
-  mutate(running_total = cumsum(points)) %>% 
-  ggplot() +
-  stat_summary(aes(x = trial, y = running_total, color= as.factor(group))) +
-  facet_wrap(~demo_quality)
-  
-all_data %>% 
-  ungroup %>% 
-  group_by(unique_rounds) %>% 
-  mutate(running_total = cumsum(points)) %>% 
-  ggplot() +
-  stat_summary(aes(x = trial, y = points, color= as.factor(group))) +
-  facet_wrap(~demo_quality)
-
-trial_by_trial_scaled_points <- all_data %>%
-  ungroup() %>%
-  select(uniqueID, age_f, demo_quality_f, points, trial, gempresent, unique_rounds) %>%
-  distinct() %>% 
-  group_by(factor(gempresent)) %>% 
-  mutate(mean_points = mean(points),
-         sd = sd(points),
-         scaled_points = (points - mean_points)/(sd*0.5))
-
-summary(lmer(scaled_points ~ trial + age_f * demo_quality_f +(1|uniqueID), data = trial_by_trial_scaled_points))
-
-trial_by_trial_scaled_points %>% 
-  ungroup() %>% 
-  group_by(unique_rounds) %>% 
-  mutate(running_total = cumsum(scaled_points)) %>% 
-  ggplot() +
-  stat_summary(aes(x = trial, y = scaled_points, color= as.factor(age_f))) +
-  facet_wrap(~demo_quality_f)
-
-
-## finish this
-
-## load model if fitting has been done, if not fit model
-if (file.exists(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/points_by_trial.RData'))){
-  
-  base::load(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/points_by_trial.RData'))
-  
-  } else {
-  
-prior_cauchy <- brms::prior_string("cauchy(0, 2.5)", class = "b")
-
-## model specification
-    points_by_trial_scaled <- brms::brm(
-      points ~ trial + age_f * demo_quality_f + (1|uniqueID),
-      data = all_data,
-      chains = 4,
-      iter = 4000,
-      cores = 6)
-
-## model specification
-    points_by_trial_scaled <- brms::brm(
-      scaled_points ~ trial + age_f * demo_quality_f + (1|uniqueID),
-      prior = prior_cauchy,
-      sample_prior = TRUE,
-      data = trial_by_trial_scaled_points,
-      chains = 4,
-      iter = 4000
-      #cores = 6
-      )
-    
-save(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/points_by_trial_scaled.Rdata'), points_by_trial_scaled)
-
-  }
-
-plot_model(points_by_trial)
-summary(points_by_trial)
-brms::conditional_effects(points_by_trial)
-
-```
-

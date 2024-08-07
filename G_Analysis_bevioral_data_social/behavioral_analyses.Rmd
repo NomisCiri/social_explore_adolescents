@@ -270,11 +270,13 @@ all_data %>%
 ```{r gem by strategy}
 
 all_data %>% 
-  select(gem_found_how, unique_rounds) %>% 
+  select(gem_found_how, unique_rounds, demo_quality_f, age_f) %>% 
   distinct() %>% 
   filter(!is.na(gem_found_how)) %>% 
   ggplot() +
-  geom_bar(aes(x = gem_found_how))
+  geom_bar(aes(x = demo_quality_f, fill = gem_found_how)) 
+ 
+  
 
 ```
 
