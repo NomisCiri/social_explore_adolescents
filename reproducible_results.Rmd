@@ -25,10 +25,10 @@ pacman::p_load(tidyverse,
 options(scipen = 999,digits = 4)
 
 ## function to extract coefficients
-source("extract_coefficients.R")
+source("utils/extract_coefficients.R")
 
 ## function to calculate Bayes Factor
-source("calculate_BF.R")
+source("utils/calculate_BF.R")
 
 ## set custom theme
 source("https://raw.githubusercontent.com/AndGrad/custom_themes_ggplot/main/theme_plot.R")
@@ -92,10 +92,9 @@ BFs_points <- test_hypotheses(points_age_advisor_model, hyp_list_points)
 
 ```
 
-Across all experimental treatments, adolescents and adults did not differed in points scored (two-sided t-test, t = `r round(t_test_points$statistic,2)`, df = `r round(t_test_points$parameter,2)`, p-value = `r round(t_test_points$p.value,2)`). Regression analysis (Figure 3a) shows that the quality of the advisor signifincaly impacted performance. Both adolescents and adults performing the best in high quality advisor rounds, while performance declined in the remaining treatmentens (medium quality: b = `r coef_points$medium$estimate`, C.I.= [`r coef_points$medium$ci_low`, `r coef_points$medium$ci_high`], BF = `r BFs_points[[2]]`; low quality: b = `r coef_points$low$estimate`, C.I.= [`r coef_points$low$ci_low`, `r coef_points$low$ci_high`], BF = `r BFs_points[[3]]`), indicating that worst social information led to fewer points gained. 
-Finally, across all treatments there was no interaction effect between age group and advisor quality high_quality ado: [β = `r coef_points$adolescents$estimate`, C.I. = [`r coef_points$adolescents$ci_low`, `r coef_points$adolescents$ci_high`], BF = `r BFs_points[[1]]`], (age groupmedium quality: b = `r coef_points$ado_medium$estimate`, C.I. = [`r coef_points$ado_medium$ci_low`, `r coef_points$ado_medium$ci_high`], BF = `r BFs_points[[4]]`; age grouplow: b = `r coef_points$ado_low$estimate`, C.I. = [`r coef_points$ado_low$ci_low`, `r coef_points$ado_low$ci_high`], BF = `r BFs_points[[5]]`), suggesting that potential differences in social information use across treatments did not lead to differences in performance.
+Across all experimental treatments, adolescents and adults did not differ in points scored (two-sided t-test, t = `r round(t_test_points$statistic,2)`, df = `r round(t_test_points$parameter,2)`, p-value = `r round(t_test_points$p.value,2)`). Regression analysis (Figure 3a) shows that the quality of the advisor significantly impacted performance. Both adolescents and adults performed the best in high quality advisor rounds, while performance declined in the remaining treatments (medium quality: b = `r coef_points$medium$estimate`, C.I.= [`r coef_points$medium$ci_low`, `r coef_points$medium$ci_high`], BF = `r BFs_points[[2]]`; low quality: b = `r coef_points$low$estimate`, C.I.= [`r coef_points$low$ci_low`, `r coef_points$low$ci_high`], BF = `r BFs_points[[3]]`), indicating that worse social information led to fewer points gained. Finally, across all treatments there was no interaction effect between age group and advisor quality high_quality ado: [β = `r coef_points$adolescents$estimate`, C.I. = [`r coef_points$adolescents$ci_low`, `r coef_points$adolescents$ci_high`], BF = `r BFs_points[[1]]`], (age groupmedium quality: b = `r coef_points$ado_medium$estimate`, C.I. = [`r coef_points$ado_medium$ci_low`, `r coef_points$ado_medium$ci_high`], BF = `r BFs_points[[4]]`; age grouplow: b = `r coef_points$ado_low$estimate`, C.I. = [`r coef_points$ado_low$ci_low`, `r coef_points$ado_low$ci_high`], BF = `r BFs_points[[5]]`), suggesting that potential differences in social information use across treatments did not lead to differences in performance.
 
-## social learning
+## Social learning
 
 ```{r differences in copy}
 ## mean copy by group t_test
@@ -120,21 +119,20 @@ copy_summary <- all_data %>%
   filter(n!=0) %>% 
   select(treatment, n ) %>% 
   group_by(treatment) %>% 
-  summarise(mean_copy = mean(n),
-             sd = sd(n))
-
+  summarise(mean_copy = round(mean(n),2),
+             sd = round(sd(n),2))
 
 ## load model fit file
-load(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/poission_regression_all_rounds_slopes.RData'))
+load(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/copy_age_advisor_model.RData'))
 
 ## parameters of the model
-params_copy <- rownames(fixef(model_random_slopes))
+params_copy <- rownames(fixef(copy_age_advisor_model))
 
 ## names to assign to the params (for convenience when calling results below)
 names_copy <- c("intercept", "medium", "low", "adolescents", "ado_medium", "ado_low" )
 
 ## extract coefficients from model object 
-coef_copy <- summarize_model(model_random_slopes, params_copy, names_copy, digits = 2)
+coef_copy <- summarize_model(copy_age_advisor_model, params_copy, names_copy, digits = 2)
 
 ## list of hypotheses to test  
 hyp_list_copy <- c(
@@ -142,19 +140,17 @@ hyp_list_copy <- c(
   "demo_quality_fmedium < 0",
   "demo_quality_fworst	 < 0",
   "demo_quality_fmedium:age_fadolescents < 0",
-  "demo_quality_fworst:age_fadolescents =  0"
+  "demo_quality_fworst:age_fadolescents <  0"
 )
 
 ## extract BF for each hypothesis
-BFs_copy <- test_hypotheses(model_random_slopes, hyp_list_copy)
+BFs_copy <- test_hypotheses(copy_age_advisor_model, hyp_list_copy)
 
 ```
 
-To test if these differences were indeed driven by adolescents’ using high quality social information more effectively, we looked at how often participants copied advisors. Despite large individual variability in copying behaviour, across all experimental treatments, adolescents used on average more social information than adults (two-sided t-test: t = `r round(t_test_copy$statistic,2)`, df = `r round(t_test_copy$parameter,2)`, p = `r round(t_test_copy$p.value,2)`, figure 2b). Adolescents copied significantly more than adults in the rounds where the advisors were of high quality (adolescents mean = `copy_summary$mean_copy[copy_summary$treatment == "ado_best"]` , s.d. = 6.83; adults mean = `r  copy_summary$mean_copy[copy_summary$treatment == "adu_best"]`, s.d. = 6.81; IR = `r coef_copy$adolescents$estimate`; CI = [`r coef_copy$adolescents$ci_low`, `r coef_copy$adolescents$ci_high`], BF = `r``BFs_copy[[1]]`). In the rest of the experimental treatments there was no difference between adolescents and adults (medium quality*age_group: IR = `r coef_copy$medium$estimate`; CI = [`r coef_copy$medium$ci_low`, `r coef_copy$medium$ci_high`], BF = `r`* `BFs_copy[[2]]`*; low quality*age_group: IR = `r coef_copy$low$estimate`; CI = [`r coef_copy$low$ci_low`, `r coef_copy$low$ci_high`], BF = `r``BFs_copy[[3]]`), with both groups copying the medium quality advisor (adolescents mean = 6.32, s.d. = 5.37; adults mean = 5.88, s.d. = 5.17; IR = `r coef_copy$ado_medium$estimate`; CI = [`r coef_copy$ado_medium$ci_low`, `r coef_copy$ado_medium$ci_high`], BF = `r``BFs_copy[[4]]`), and the least when quality of social information was low (adolescents mean = 4.29, s.d. = 4.31; adults mean = 3.78, s.d. = 3.24; IR = `r coef_copy$ado_low$estimate`; CI = [`r coef_copy$ado_low$ci_low`, `r coef_copy$ado_low$ci_high`], BF = `r BFs_copy[[5]]`). Overall, these results indicate some adaptive social information use in both groups, and especially adolescents, who copied the most in treatments where advisor quality was the highest.
+Next, we analysed differences in social information use. Across all experimental treatments, adolescents and adults copied advisors with similar frequencies. (two-sided t-test: t = `r round(t_test_copy$statistic,2)`, df = `r round(t_test_copy$parameter,2)`, p = `r round(t_test_copy$p.value,2)`, figure 2b). Interestingly, adolescents copied significantly more than adults in the rounds where the advisors were of high quality (adolescents mean = `r copy_summary$mean_copy[copy_summary$treatment == "ado_best"]`, s.d. =`r copy_summary$sd[copy_summary$treatment == "ado_best"]`; adults mean = `r  copy_summary$mean_copy[copy_summary$treatment == "adu_best"]`, s.d. = `r copy_summary$sd[copy_summary$treatment == "adu_best"]`; IR = `r coef_copy$adolescents$estimate`; CI = [`r coef_copy$adolescents$ci_low`, `r coef_copy$adolescents$ci_high`], BF = `r BFs_copy[[1]]`). In the rest of the experimental treatments there was no difference between adolescents and adults (medium quality\*age_group: IR = `r coef_copy$ado_medium$estimate`; CI = [`r coef_copy$ado_medium$ci_low`, `r coef_copy$ado_medium$ci_high`], BF = `r BFs_copy[[4]]` ; low quality\*age_group: IR = `r coef_copy$ado_low$estimate`; CI = [`r coef_copy$ado_low$ci_low`, `r coef_copy$ado_low$ci_high`], BF = `r BFs_copy[[5]]`), with both groups copying the medium quality advisor (adolescents mean = `r copy_summary$mean_copy[copy_summary$treatment == "ado_medium"]`, s.d. = `r copy_summary$sd[copy_summary$treatment == "ado_medium"]`; adults mean = `r copy_summary$mean_copy[copy_summary$treatment == "adu_medium"]`, s.d. = `r copy_summary$mean_copy[copy_summary$treatment == "adu_medium"]`; IR = `r coef_copy$medium$estimate`; CI = [`r coef_copy$medium$ci_low`, `r coef_copy$medium$ci_high`], BF \> `r BFs_copy[[2]]`), and the least when quality of social information was low (adolescents mean = `r copy_summary$mean_copy[copy_summary$treatment == "ado_low"]`, s.d. = `r copy_summary$sd[copy_summary$treatment == "ado_low"]`; adults mean = `r copy_summary$mean_copy[copy_summary$treatment == "adu_low"]`, s.d. = `r copy_summary$sd[copy_summary$treatment == "adu_low"]`; IR = `r coef_copy$low$estimate`; CI = [`r coef_copy$low$ci_low`, `r coef_copy$low$ci_high`], BF \> `r BFs_copy[[3]]`). Overall, these results indicate some adaptive social information use in both groups, and especially adolescents, who copied the most in treatments where advisor quality was the highest.
 
 ## finding gems
-
-
 
 ```{r}
 ## select only one observation per participant
@@ -172,17 +168,29 @@ t_test_gem <- all_data %>%
   ungroup() %>% 
   stats::t.test(mean_round_gem_found ~ age_f, data = ., alternative = "two.sided", paired = FALSE)
 
+## mean round gem found by group and social information use 
+gem_summary <- all_data %>% 
+ filter(gem_found == 1) %>% 
+  select(round_gem_found, age_f, demo_quality_f, uniqueID, treatment) %>% 
+  distinct() %>% 
+  ungroup() %>% 
+  select(round_gem_found, treatment ) %>% 
+  group_by(treatment) %>% 
+   summarise(mean_clicks = round(mean(round_gem_found), 2),
+              sd = round(sd(round_gem_found),2))
+
+
 ## load model fit
-base::load(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/gem_found_when_model.RData'))
+base::load(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/gem_age_advisor_model.RData'))
 
 ## parameters of the model
-params_gems <- rownames(fixef(gem_found_when_model))
+params_gems <- rownames(fixef(gem_age_advisor_model))
 
 ## names to assign to the params (for covenience when calling results below)
 names_gems <- c("intercept", "medium", "low", "adolescents", "ado_medium", "ado_low" )
 
 ## extract coefficients from model object 
-coef_gems <- summarize_model(gem_found_when_model, params_gems, names_gems, digits = 2)
+coef_gems <- summarize_model(gem_age_advisor_model, params_gems, names_gems, digits = 2)
 
 ## list of hypotheses to test  
 hyp_list_gems <- c(
@@ -194,13 +202,113 @@ hyp_list_gems <- c(
 )
 
 ## extract BF for each hypothesis
-BFs_copy <- test_hypotheses(gem_found_when_model, hyp_list_copy)
+BF_gems <- test_hypotheses(gem_age_advisor_model, hyp_list_gems)
 ```
+
+Finally, we looked at how often participants found gems and how many attempts it took them. (adolescents mean clicks = `r gem_summary$mean_clicks[gem_summary$treatment == "ado_best"]`, s.d. = `r gem_summary$sd[gem_summary$treatment == "ado_best"]`; adults mean clicks = `r gem_summary$mean_clicks[gem_summary$treatment == "adu_best"]`, s.d. = `r gem_summary$sd[gem_summary$treatment == "adu_best"]`; two-sided t-test, t = `r round(t_test_gem$statistic, 2)`, df = `r round(t_test_gem$parameter, 2)`, p-value = `r round(t_test_gem$p.value, 2)`). In the high quality advisor rounds (i.e., where the advisor found the gem), adolescents were faster than adults (adolescents mean = `r gem_summary$mean_clicks[gem_summary$treatment == "high_quality" & gem_summary$treatment == "ado_best"]` clicks, s.d. = `r gem_summary$sd[gem_summary$treatment == "high_quality" & gem_summary$treatment == "ado_best"]`; adults mean = `r gem_summary$mean_clicks[gem_summary$treatment == "high_quality" & gem_summary$treatment == "adults"]`, s.d. = `r gem_summary$sd[gem_summary$treatment == "high_quality" & gem_summary$treatment == "adults"]`; Poisson regression, high quality advisor: IR = `r coef_gems$adolescents$estimate`; CI = [`r coef_gems$adolescents$ci_low`, `r coef_gems$adolescents$ci_high`], BF = `r BF_high_quality`). In the remaining rounds (medium and low quality advisor), participants had to find the gems through individual exploration, resulting in a substantial drop in the proportion of gems found (24%) compared to the high quality advisor rounds (65%). However, when they did find the gems in the medium quality advisor treatment, both adolescents and adults were faster than in the high quality advisor rounds (adolescents mean = `r gem_summary$mean_clicks[gem_summary$treatment == "medium_quality"`, adults mean = `r gem_summary$mean_clicks[gem_summary$treatment == "medium_quality"]`; IR = `r coef_gems$medium$estimate`; CI = [`r coef_gems$medium$ci_low`, `r coef_gems$medium$ci_high`], BF = `r BF_medium_quality`), but there was no difference across groups (advisor quality: medium\*age_group: IR = `r coef_gems$ado_medium$estimate`; CI = [`r coef_gems$ado_medium$ci_low`, `r coef_gems$ado_medium$ci_high`], BF = `r BF_ado_medium`). Finally, when participants found gems in the low quality treatment, adolescents were faster than adults (adolescents mean = `r gem_summary$mean_clicks[gem_summary$treatment == "adolescents"]`, adults mean = `r gem_summary$mean_clicks[gem_summary$treatment == "adults"]`; IR = `r coef_gems$low$estimate`; CI = [`r coef_gems$low$ci_low`, `r coef_gems$low$ci_high`], BF = `r BF_low_quality`), but not faster than either group in the high quality advisor rounds (IR = `r coef_gems$ado_low$estimate`; CI = [`r coef_gems$ado_low$ci_low`, `r coef_gems$ado_low$ci_high`]).
+
+```         
+# Finally, we looked at how often participants found gems and how many attempts it took them. Across all rounds adolescents found gems earlier than adults (adolescents mean clicks = 11.9, s.d. = 6.73; adults mean clicks = 13.1, s.d. = 7.66; two-sided t-test, t = `r round(t_test_gem$statistic,2)`, df = `r round(t_test_gem$parameter,2)`, p-value = `r round(t_test_gem$p.value,2)`). In the high quality advisor rounds (i.e. where the advisor found the gem), adolescents were faster than adults (adolescents mean = 12.8 clicks, s.d. = 5.92; adults mean = 14.1, s.d. = 6.86; poisson regression, high quality advisor: IR = `r coef_gems$adolescents$estimate`; CI = [`r coef_gems$adolescents$ci_low`, `r coef_gems$adolescents$ci_high`], BF = `r BF_high_quality`). In the remaining rounds (medium and low quality advisor), participants had to find the gems through individual exploration, resulting in a substantial drop in proportion of gems found (24%) compared to the high quality advisor rounds (65%). However, when they did find the gems in the medium quality advisor treatment, both adolescents and adults were faster than in the high quality advisor rounds (adolescents mean = 10.4, adults mean = 11.0; IR = `r coef_gems$medium$estimate`; CI = [`r coef_gems$medium$ci_low`, `r coef_gems$medium$ci_high`], BF = `r BF_medium_quality`), but there was no difference across groups (advisor quality:medium\*age_group: IR = `r coef_gems$ado_medium$estimate`; CI = [`r coef_gems$ado_medium$ci_low`, `r coef_gems$ado_medium$ci_high`], BF = `r BF_ado_medium`). Finally, when participants found gems in the low quality treatment, adolescents were faster than adults (adolescents mean = 10.8, adults mean = 12.1; IR = `r coef_gems$low$estimate`; CI = [`r coef_gems$low$ci_low`, `r coef_gems$low$ci_high`], BF = `r BF_low_quality`), but not faster than either group in the high quality advisor rounds (IR = `r coef_gems$ado_low$estimate`; CI = [`r coef_gems$ado_low$ci_low`,  ]                                              
+```
+
+coeffcients plot
+
 ```{r}
 
-##Finally, we looked at how often participants found gems and how many attempts it took them. Across all rounds adolescents found gems earlier than adults (adolescents mean clicks = 11.9, s.d. = 6.73; adults mean clicks = 13.1, s.d. = 7.66; two-sided t-test, t = `r round(t_test_gem$statistic,2)`, df = `r round(t_test_gem$parameter,2)`, p-value = `r round(t_test_gem$p.value,2)`). In the high quality advisor rounds (i.e. where the advisor found the gem), adolescents were faster than adults (adolescents mean = 12.8 clicks, s.d. = 5.92; adults mean = 14.1, s.d. = 6.86; poisson regression, high quality advisor: IR = `r coef_gems$adolescents$estimate`; CI = [`r coef_gems$adolescents$ci_low`, `r coef_gems$adolescents$ci_high`], BF = `r BF_high_quality`). In the remaining rounds (medium and low quality advisor), participants had to find the gems through individual exploration, resulting in a substantial drop in proportion of gems found (24%) compared to the high quality advisor rounds (65%). However, when they did find the gems in the medium quality advisor treatment, both adolescents and adults were faster than in the high quality advisor rounds (adolescents mean = 10.4, adults mean = 11.0; IR = `r coef_gems$medium$estimate`; CI = [`r coef_gems$medium$ci_low`, `r coef_gems$medium$ci_high`], BF = `r BF_medium_quality`), but there was no difference across groups (advisor quality:medium\*age_group: IR = `r coef_gems$ado_medium$estimate`; CI = [`r coef_gems$ado_medium$ci_low`, `r coef_gems$ado_medium$ci_high`], BF = `r BF_ado_medium`). Finally, when participants found gems in the low quality treatment, adolescents were faster than adults (adolescents mean = 10.8, adults mean = 12.1; IR = `r coef_gems$low$estimate`; CI = [`r coef_gems$low$ci_low`, `r coef_gems$low$ci_high`], BF = `r BF_low_quality`), but not faster than either group in the high quality advisor rounds (IR = `r coef_gems$ado_low$estimate`; CI = [`r coef_gems$ado_low$ci_low`,  ]
+## panel 1
+panel_plot1 <- 
+  plot_model(
+    points_age_advisor_model,
+    # axis.lim = c(.2, 2),
+    axis.labels = rev(
+      c(
+        "Quality (Medium)",
+        "Quality (Worst)",
+        "Adolescents",
+        "Quality (Medium) X Adolescents",
+        "Quality (Worst) X Adolescents"
+      )
+    ),
+    title = "Points earned (std)", vline.color = "grey", vline = 2,show.values = TRUE, 
+  ) +
+  labs(tag = "a")+
+  theme_base(base_size = 15)+
+  theme(plot.background = element_blank(),
+        plot.title = element_text(size=15, hjust = 0.5),
+        plot.tag.position = c(0,1),
+        plot.tag = element_text(hjust = -9)
+        )
+
+panel_plot1
+
+## panel 2
+panel_plot2 <- 
+  plot_model(
+    copy_age_advisor_model,
+    # axis.lim = c(.2, 2),
+    axis.labels = rev(
+      c(
+        "Quality (Medium)",
+        "Quality (Worst)",
+        "Adolescents",
+        "Quality (Medium) X Adolescents",
+        "Quality (Worst) X Adolescents"
+      )
+    ),
+    title = "N of copy decisions", 
+    vline.color = "grey", vline = 2,
+    show.values = TRUE, 
+  ) +
+  labs(tag = "b")+
+  ylim(.2,2)+
+  theme_base(base_size = 15)+
+  theme(plot.background = element_blank())+
+  theme(axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        plot.title = element_text(size=15, hjust = 0.5),
+        plot.tag.position = c(0,1),
+  )
+
+
+panel_plot2
+
+
+## panel 3
+panel_plot3 <- 
+  plot_model(
+    gem_age_advisor_model
+    ,
+    title = "N of clicks to find a gem", 
+    vline.color = "grey", vline = 2,show.values = TRUE, 
+  ) +
+  ylim(.2,2)+
+  labs(tag = "c")+
+  theme_base(base_size = 15)+
+  theme(plot.background = element_blank()) +
+  theme(axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        plot.title = element_text(size=15, hjust = 0.5),
+        plot.tag.position = c(0,1),
+  )
+
+panel_plot3
+
+## combine panels
+## combine panels
+figure3 <- 
+  cowplot::plot_grid(
+    panel_plot1, panel_plot2, panel_plot3,
+   # labels = c("a", "b","c"),
+    label_x = -.01,
+    #align = "H",
+    nrow = 1,
+    rel_widths =  c(.95, .65, .65)
+  )
+figure3
+
+ggsave("plots/figure3.png", figure3, height = 3, width = 10)
 
 
 ```
-
- 

@@ -23,9 +23,11 @@ test_hypotheses <- function(model_fit, hypotheses_list) {
     
     ## extract the Bayes Factor (Evid.Ratio) from the result
     bayes_factor <- round(hyp_result$hypothesis$Evid.Ratio, 2)
+    if (bayes_factor == Inf) {bayes_factor = 100}
     
     ## store the Bayes Factor in the list
     bayes_factors[[hyp]] <- bayes_factor
+    
   }
   
   ## return the list of Bayes Factors
