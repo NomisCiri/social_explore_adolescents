@@ -52,6 +52,7 @@ a <-
   facet_wrap(~ gem_found, labeller = as_labeller(labels_a), scales = "free_y") +
   #ylim(c(500,1400))+
   labs(#subtitle = 'especially g',
+    x = "Age group",
     y = 'Points per round',
     tag = "A") +
   theme_base(base_size = 15) +
@@ -203,7 +204,7 @@ c <- data_plot %>%
        "Low: Explores until the end"
      )
    ) +
-   scale_shape_manual(values = c(21, 23)) +
+   scale_shape_manual(name = "Age group", values = c(21, 23)) +
    scale_x_discrete(labels = c("High (Gem)", "Medium", "Low")) +
    labs(x = "Quality of social information",
         y = 'N of clicks to find a gem',
@@ -274,4 +275,4 @@ figure2 <-
 figure2
 
 ## save figure
-ggsave("plots/figure2.png", figure2, height = 7, width = 10)
+ggsave("plots/figure2.png", figure2, height = 7, width = 10, scale = .8)

@@ -179,18 +179,36 @@ gem_summary <- all_data %>%
    summarise(mean_clicks = round(mean(round_gem_found), 2),
               sd = round(sd(round_gem_found),2))
 
-
+ ## add information about proportion of gem found
+ prop_gem_found <- all_data %>%
+   filter(gempresent == 1) %>%
+   ungroup %>%
+   group_by(treatment, gem_found) %>%
+   select(uniqueID, round, gem_found, round_gem_found, gempresent, age_f, treatment) %>%
+   distinct() %>%
+   select(gem_found, round_gem_found, treatment) %>%
+   summarise(mean_round_found = mean(round_gem_found, na.rm = TRUE),
+             n = n()) %>%
+   ungroup() %>%
+   group_by(treatment) %>%
+   mutate(freq = round(n / sum(n),2)) %>% 
+   filter(gem_found == 1) %>% 
+   select(treatment, freq, n) %>% 
+   mutate(perc_found = freq*100)
+ 
 ## load model fit
 base::load(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/gem_age_advisor_model.RData'))
+base::load(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/gem_freq_age_advisor_model.RData'))
 
 ## parameters of the model
-params_gems <- rownames(fixef(gem_age_advisor_model))
+#params_gems <- rownames(fixef(gem_age_advisor_model))
+params_gems <- rownames(fixef(gem_freq_age_advisor_model))
 
 ## names to assign to the params (for covenience when calling results below)
 names_gems <- c("intercept", "medium", "low", "adolescents", "ado_medium", "ado_low" )
 
 ## extract coefficients from model object 
-coef_gems <- summarize_model(gem_age_advisor_model, params_gems, names_gems, digits = 2)
+coef_gems <- summarize_model(gem_freq_age_advisor_model, params_gems, names_gems, digits = 2)
 
 ## list of hypotheses to test  
 hyp_list_gems <- c(
@@ -201,13 +219,54 @@ hyp_list_gems <- c(
   "demo_quality_fworst:age_fadolescents <  0"
 )
 
+plot_model(gem_freq_age_advisor_model)
 ## extract BF for each hypothesis
-BF_gems <- test_hypotheses(gem_age_advisor_model, hyp_list_gems)
+BF_gems <- test_hypotheses(gem_freq_age_advisor_model, hyp_list_gems)
 ```
 
-Finally, we looked at how often participants found gems and how many attempts it took them. (adolescents mean clicks = `r gem_summary$mean_clicks[gem_summary$treatment == "ado_best"]`, s.d. = `r gem_summary$sd[gem_summary$treatment == "ado_best"]`; adults mean clicks = `r gem_summary$mean_clicks[gem_summary$treatment == "adu_best"]`, s.d. = `r gem_summary$sd[gem_summary$treatment == "adu_best"]`; two-sided t-test, t = `r round(t_test_gem$statistic, 2)`, df = `r round(t_test_gem$parameter, 2)`, p-value = `r round(t_test_gem$p.value, 2)`). In the high quality advisor rounds (i.e., where the advisor found the gem), adolescents were faster than adults (adolescents mean = `r gem_summary$mean_clicks[gem_summary$treatment == "high_quality" & gem_summary$treatment == "ado_best"]` clicks, s.d. = `r gem_summary$sd[gem_summary$treatment == "high_quality" & gem_summary$treatment == "ado_best"]`; adults mean = `r gem_summary$mean_clicks[gem_summary$treatment == "high_quality" & gem_summary$treatment == "adults"]`, s.d. = `r gem_summary$sd[gem_summary$treatment == "high_quality" & gem_summary$treatment == "adults"]`; Poisson regression, high quality advisor: IR = `r coef_gems$adolescents$estimate`; CI = [`r coef_gems$adolescents$ci_low`, `r coef_gems$adolescents$ci_high`], BF = `r BF_high_quality`). In the remaining rounds (medium and low quality advisor), participants had to find the gems through individual exploration, resulting in a substantial drop in the proportion of gems found (24%) compared to the high quality advisor rounds (65%). However, when they did find the gems in the medium quality advisor treatment, both adolescents and adults were faster than in the high quality advisor rounds (adolescents mean = `r gem_summary$mean_clicks[gem_summary$treatment == "medium_quality"`, adults mean = `r gem_summary$mean_clicks[gem_summary$treatment == "medium_quality"]`; IR = `r coef_gems$medium$estimate`; CI = [`r coef_gems$medium$ci_low`, `r coef_gems$medium$ci_high`], BF = `r BF_medium_quality`), but there was no difference across groups (advisor quality: medium\*age_group: IR = `r coef_gems$ado_medium$estimate`; CI = [`r coef_gems$ado_medium$ci_low`, `r coef_gems$ado_medium$ci_high`], BF = `r BF_ado_medium`). Finally, when participants found gems in the low quality treatment, adolescents were faster than adults (adolescents mean = `r gem_summary$mean_clicks[gem_summary$treatment == "adolescents"]`, adults mean = `r gem_summary$mean_clicks[gem_summary$treatment == "adults"]`; IR = `r coef_gems$low$estimate`; CI = [`r coef_gems$low$ci_low`, `r coef_gems$low$ci_high`], BF = `r BF_low_quality`), but not faster than either group in the high quality advisor rounds (IR = `r coef_gems$ado_low$estimate`; CI = [`r coef_gems$ado_low$ci_low`, `r coef_gems$ado_low$ci_high`]).
 
-```         
+Finally, we looked at whether differences in social information quality affected the discovery of gems in rounds in which gems were present. Participants were most likely to find gems in high quality advisor rounds (adults: `r prop_gem_found$perc_found[prop_gem_found$treatment == "adu_best"]`%, adolescents: `r prop_gem_found$perc_found[prop_gem_found$treatment == "ado_best"]`%). Results of a multi-level logistic regression indicated that at the difference between groups was not significant (OR = `r coef_gems$adolescents$estimate`, C.I.= [`r coef_gems$adolescents$ci_low`, `r coef_gems$adolescents$ci_high`],  BF = `r BF_gems[[1]]`), suggesting that the observed differences in using high quality social information did not lead to differences in how many gems were found found. As expected, both groups were less likely to find gems in the remaining treatments (adults medium quality: `r prop_gem_found$perc_found[prop_gem_found$treatment == "adu_medium"]`%: OR = `r coef_gems$medium$estimate`, C.I.= [`r coef_gems$medium$ci_low`, `r coef_gems$medium$ci_high`], BF = `r BF_gems[[2]]`; adults low quality: `r prop_gem_found$perc_found[prop_gem_found$treatment == "adu_worst"]`%, OR = `r coef_gems$low$estimate`, C.I.= [`r coef_gems$low$ci_low`, `r coef_gems$low$ci_high`], BF = `r BF_gems[[3]]`), indicating that worse social information led to less gems being discovered. In these  treatment as well, there was no interaction effect between age group and advisor quality (adolescents medium: `r prop_gem_found$perc_found[prop_gem_found$treatment == "ado_medium"]`%, OR = `r coef_gems$ado_medium$estimate`, C.I. = [`r coef_gems$ado_medium$ci_low`, `r coef_gems$ado_medium$ci_high`], BF = `r BF_gems[[4]]`; adolescents low: `r prop_gem_found$perc_found[prop_gem_found$treatment == "ado_worst"]`%: OR = `r coef_gems$ado_low$estimate`, C.I. = [`r coef_gems$ado_low$ci_low`, `r coef_gems$ado_low$ci_high`], BF = `r BF_gems[[5]]`).
+
+
+```{r}
+
+base::load(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/gem_when_age.RData'))
+
+#params_gems <- rownames(fixef(gem_age_advisor_model))
+params_gems_when <- rownames(fixef(gem_when_age))
+
+## names to assign to the params (for covenience when calling results below)
+names_gems_when <- c("intercept", "adolescents" )
+
+## extract coefficients from model object 
+coef_gems_when <- summarize_model(gem_when_age, params_gems_when, names_gems_when, digits = 2)
+
+## list of hypotheses to test  
+hyp_list_gems_when <- c(
+  "age_fadolescents <  0"
+)
+
+## extract BF for each hypothesis
+BF_gems_when <- test_hypotheses(gem_when_age, hyp_list_gems_when)
+
+
+```
+To further explore the data, we ran an exploratory regression analysis to test whether in those rounds in which the gem was found exclusively using social information (which adolescents used more often), adolescents were able to find gems earlier than adults. This was not the case (IR = `r coef_gems_when$adolescents$estimate`; CI = [`r coef_gems_when$adolescents$ci_low`, `r coef_gems_when$adolescents$ci_high`], BF = `r BF_gems_when[[1]]`)), indicating that more propensity to copying did not result in earlier finding of gems.
+```{r}
+
+#often participants found gems and how many attempts it took them. (adolescents mean clicks = `r gem_summary$mean_clicks[gem_summary$treatment == "ado_best"]`, s.d. = `r gem_summary$sd[gem_summary$treatment == "ado_best"]`; adults mean clicks = `r gem_summary$mean_clicks[gem_summary$treatment == "adu_best"]`, s.d. = `r gem_summary$sd[gem_summary$treatment == "adu_best"]`; two-sided t-test, t = `r round(t_test_gem$statistic, 2)`, df = `r round(t_test_gem$parameter, 2)`, p-value = `r round(t_test_gem$p.value, 2)`). In the high quality advisor rounds (i.e., where the advisor found the gem), adolescents were faster than adults (adolescents mean = `r gem_summary$mean_clicks[gem_summary$treatment == "ado_best"]` clicks, s.d. = `r gem_summary$sd[gem_summary$treatment == "ado_best"]`; adults mean = `r gem_summary$mean_clicks[gem_summary$treatment == "adu_best"]`, s.d. = `r gem_summary$sd[gem_summary$treatment == "adu_best"]`;
+
+
+#Poisson regression, high quality advisor: IR = `r coef_gems$adolescents$estimate`; CI = [`r coef_gems$adolescents$ci_low`, `r coef_gems$adolescents$ci_high`], BF = `r BF_high_quality`). In the remaining rounds (medium and low quality advisor), participants had to find the gems through individual exploration, resulting in a substantial drop in the proportion of gems found (24%) compared to the high quality advisor rounds (65%). However, when they did find the gems in the medium quality advisor treatment, both adolescents and adults were faster than in the high quality advisor rounds (adolescents mean = `r gem_summary$mean_clicks[gem_summary$treatment == "medium_quality"`, adults mean = `r gem_summary$mean_clicks[gem_summary$treatment == "medium_quality"]`; 
+
+
+```
+
+
+
+```{r}
+#Poisson regression, high quality advisor: IR = `r coef_gems$adolescents$estimate`; CI = [`r coef_gems$adolescents$ci_low`, `r coef_gems$adolescents$ci_high`], BF = `r BF_high_quality`). In the remaining rounds (medium and low quality advisor), participants had to find the gems through individual exploration, resulting in a substantial drop in the proportion of gems found (24%) compared to the high quality advisor rounds (65%). However, when they did find the gems in the medium quality advisor treatment, both adolescents and adults were faster than in the high quality advisor rounds (adolescents mean = `r gem_summary$mean_clicks[gem_summary$treatment == "medium_quality"`, adults mean = `r gem_summary$mean_clicks[gem_summary$treatment == "medium_quality"]`; IR = `r coef_gems$medium$estimate`; CI = [`r coef_gems$medium$ci_low`, `r coef_gems$medium$ci_high`], BF = `r BF_medium_quality`), but there was no difference across groups (advisor quality: medium\*age_group: IR = `r coef_gems$ado_medium$estimate`; CI = [`r coef_gems$ado_medium$ci_low`, `r coef_gems$ado_medium$ci_high`], BF = `r BF_ado_medium`). Finally, when participants found gems in the low quality treatment, adolescents were faster than adults (adolescents mean = `r gem_summary$mean_clicks[gem_summary$treatment == "adolescents"]`, adults mean = `r gem_summary$mean_clicks[gem_summary$treatment == "adults"]`; IR = `r coef_gems$low$estimate`; CI = [`r coef_gems$low$ci_low`, `r coef_gems$low$ci_high`], BF = `r BF_low_quality`), but not faster than either group in the high quality advisor rounds (IR = `r coef_gems$ado_low$estimate`; CI = [`r coef_gems$ado_low$ci_low`, `r coef_gems$ado_low$ci_high`]).
+         
 # Finally, we looked at how often participants found gems and how many attempts it took them. Across all rounds adolescents found gems earlier than adults (adolescents mean clicks = 11.9, s.d. = 6.73; adults mean clicks = 13.1, s.d. = 7.66; two-sided t-test, t = `r round(t_test_gem$statistic,2)`, df = `r round(t_test_gem$parameter,2)`, p-value = `r round(t_test_gem$p.value,2)`). In the high quality advisor rounds (i.e. where the advisor found the gem), adolescents were faster than adults (adolescents mean = 12.8 clicks, s.d. = 5.92; adults mean = 14.1, s.d. = 6.86; poisson regression, high quality advisor: IR = `r coef_gems$adolescents$estimate`; CI = [`r coef_gems$adolescents$ci_low`, `r coef_gems$adolescents$ci_high`], BF = `r BF_high_quality`). In the remaining rounds (medium and low quality advisor), participants had to find the gems through individual exploration, resulting in a substantial drop in proportion of gems found (24%) compared to the high quality advisor rounds (65%). However, when they did find the gems in the medium quality advisor treatment, both adolescents and adults were faster than in the high quality advisor rounds (adolescents mean = 10.4, adults mean = 11.0; IR = `r coef_gems$medium$estimate`; CI = [`r coef_gems$medium$ci_low`, `r coef_gems$medium$ci_high`], BF = `r BF_medium_quality`), but there was no difference across groups (advisor quality:medium\*age_group: IR = `r coef_gems$ado_medium$estimate`; CI = [`r coef_gems$ado_medium$ci_low`, `r coef_gems$ado_medium$ci_high`], BF = `r BF_ado_medium`). Finally, when participants found gems in the low quality treatment, adolescents were faster than adults (adolescents mean = 10.8, adults mean = 12.1; IR = `r coef_gems$low$estimate`; CI = [`r coef_gems$low$ci_low`, `r coef_gems$low$ci_high`], BF = `r BF_low_quality`), but not faster than either group in the high quality advisor rounds (IR = `r coef_gems$ado_low$estimate`; CI = [`r coef_gems$ado_low$ci_low`,  ]                                              
 ```
 
@@ -239,8 +298,6 @@ panel_plot1 <-
         plot.tag = element_text(hjust = -9)
         )
 
-panel_plot1
-
 ## panel 2
 panel_plot2 <- 
   plot_model(
@@ -270,19 +327,15 @@ panel_plot2 <-
         plot.tag.position = c(0,1),
   )
 
-
-panel_plot2
-
-
 ## panel 3
 panel_plot3 <- 
   plot_model(
-    gem_age_advisor_model
+    gem_freq_age_advisor_model
     ,
-    title = "N of clicks to find a gem", 
+    title = "Probabilty to find a gem", 
     vline.color = "grey", vline = 2,show.values = TRUE, 
   ) +
-  ylim(.2,2)+
+  ylim(0,2.5)+
   labs(tag = "c")+
   theme_base(base_size = 15)+
   theme(plot.background = element_blank()) +
@@ -293,7 +346,6 @@ panel_plot3 <-
         plot.tag.position = c(0,1),
   )
 
-panel_plot3
 
 ## combine panels
 ## combine panels

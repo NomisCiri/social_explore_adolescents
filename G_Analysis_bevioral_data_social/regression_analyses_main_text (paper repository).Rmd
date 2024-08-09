@@ -166,7 +166,7 @@ brms::conditional_effects(copy_age_advisor_model)
 
 ```
 
-## When do participants find gems?
+## Gem performance
 
 ```{r gem found when bry group, warning=FALSE, message=FALSE}
 
@@ -210,16 +210,39 @@ gem_age_advisor_model <- brms::brm(formula = round_gem_found ~  demo_quality_f *
           iter = 6000,
           chains = 6) 
 
+
+gem_freq_age_advisor_model <- all_data %>% 
+  filter(gempresent == 1 ) %>% 
+  select(uniqueID,  gem_found, round_gem_found, gempresent, age_f, demo_quality_f) %>%
+  distinct() %>%
+  brms::brm(gem_found ~ demo_quality_f * age_f + (1|uniqueID), 
+            bernoulli(link = "logit"),
+            data = .,)
+
+## are there differences in round of gem found when gem is found by social info? 
+gem_when_age <- all_data %>% 
+  filter(gem_found_how == "copy" & demo_quality_f == "best") %>% 
+  select(round_gem_found, age_f, uniqueID) %>% 
+  distinct() %>% 
+  brms::brm(formula = round_gem_found ~   age_f + (1 | uniqueID),
+          data = .,
+          family = poisson())
+
 ## save results
 save(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/gem_age_advisor_model.RData'), gem_age_advisor_model)
+save(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/gem_freq_age_advisor_model.RData'), gem_freq_age_advisor_model)
+save(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/gem_when_age.RData'), gem_when_age)
 
   }
 
-tab_model(gem_age_advisor_model)
+tab_model(gem_freq_age_advisor_model)
 plot_model(gem_age_advisor_model)
 
 brms::conditional_effects(gem_age_advisor_model)
-
 summary(gem_age_advisor_model)
+
+summary(gem_when_age)
+plot_model(gem_when_age)
+tab_model(gem_when_age)
 
 ```

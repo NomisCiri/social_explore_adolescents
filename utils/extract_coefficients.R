@@ -44,7 +44,7 @@ summarize_model <- function(model, params, names, digits = 2) {
   names(coefficients) <- names  # Name the list entries according to the names provided to function
   
   ## return IRR if model is a poisson regression
-  if (family(model)$family == "poisson") {
+  if (family(model)$family == "poisson" | family(model)$family == "bernoulli" ) {
     coefficients <- map_list(coefficients, exp)
   }
   
