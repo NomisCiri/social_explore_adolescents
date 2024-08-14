@@ -3,3 +3,8 @@
 .RData
 .Ruserdata
 *.rds
+
+
+## directories
+/G_Analysis_bevioral_data_social/modelfits/
+/talks/

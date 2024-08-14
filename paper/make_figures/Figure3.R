@@ -13,16 +13,16 @@
 pacman::p_load(tidyverse, gghalves, here, lmerTest, ggthemes, cowplot)
 
 ## load data
-all_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants.csv")) 
+all_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants_07-2024.csv"))
 
 ## panel 1 data
-load(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/performance_age_demonstrator_model_scaled.RData'))
-    
+base::load(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/points_age_advisor_model.RData'))
+
 ## panel 2 data
-load(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/gem_found_when_model.RData'))
-    
+load(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/copy_age_advisor_model.RData'))
+
 ## panel 3 data
-load(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/poission_regression_all_rounds_slopes.RData'))
+base::load(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/gem_freq_age_advisor_model.RData'))
 
 
 ## make plots
@@ -30,7 +30,7 @@ load(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/poission_r
 ## panel 1
 panel_plot1 <- 
   plot_model(
-    performance_age_demonstrator_model_scaled,
+    points_age_advisor_model,
     # axis.lim = c(.2, 2),
     axis.labels = rev(
       c(
@@ -56,7 +56,7 @@ panel_plot1
 ## panel 2
 panel_plot2 <- 
   plot_model(
-    model_random_slopes,
+    copy_age_advisor_model,
     # axis.lim = c(.2, 2),
     axis.labels = rev(
       c(
@@ -89,12 +89,12 @@ panel_plot2
 ## panel 3
 panel_plot3 <- 
   plot_model(
-    gem_found_when_model
+    gem_freq_age_advisor_model
     ,
-    title = "N of clicks to find a gem", 
+    title = "Probabilty to find a gem", 
     vline.color = "grey", vline = 2,show.values = TRUE, 
   ) +
-  ylim(.2,2)+
+  ylim(0,2.5)+
   labs(tag = "c")+
   theme_base(base_size = 15)+
   theme(plot.background = element_blank()) +
@@ -105,9 +105,7 @@ panel_plot3 <-
         plot.tag.position = c(0,1),
   )
 
-panel_plot3
 
-## combine panels
 ## combine panels
 figure3 <- 
   cowplot::plot_grid(
@@ -120,5 +118,6 @@ figure3 <-
   )
 figure3
 
-ggsave("plots/figure3.png", figure3, height = 3, width = 10)
+## need to find the right proportions
+ggsave("plots/figure3.png", figure3, height = 3, width = 8)
 

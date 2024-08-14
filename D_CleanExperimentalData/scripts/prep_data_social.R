@@ -50,22 +50,27 @@ length(unique(data$uniqueID)) == nrow(data)/25/12
 
 ## find round when gem was first found
 when_gem_found <-  data %>%
-  group_by(uniqueID, round) %>%
-  dplyr::slice(match(1, gem)) %>%
-  mutate(round_gem_found = trial) %>%
+  select(unique_rounds, trial, round, uniqueID, gem, choice, social_info) %>% 
+  group_by(unique_rounds) %>%
+  dplyr::slice(match(1, gem)) %>% 
+  mutate(gem_found_how = ifelse( choice == social_info, "copy", "explore"), 
+    round_gem_found = trial) %>% 
   ungroup()  %>%
   select(unique_rounds,
-         round_gem_found)
+         round_gem_found,
+         gem_found_how)
 
 ## join the datasets
-data <- left_join(data, when_gem_found) %>% 
-  group_by(unique_rounds) %>% 
-  fill(round_gem_found, .direction = "updown") %>% 
-  mutate(gem_found = ifelse(round_gem_found > 0, 1, 0),
-         copy = ifelse(choice == social_info, 1, 0), ## copy as numeric variable
-         social_info_use = ifelse(choice == social_info, "copy", "ignore") ## social info use as factor
-         )
-
+data <- left_join(data, when_gem_found) %>%
+  group_by(unique_rounds) %>%
+  fill(round_gem_found, .direction = "updown") %>%
+  fill(gem_found_how, .direction = "updown") %>%
+  mutate(
+    gem_found = ifelse(round_gem_found > 0, 1, 0),
+    copy = ifelse(choice == social_info, 1, 0),
+    ## copy as numeric variable
+    social_info_use = ifelse(choice == social_info, "copy", "ignore") ## social info use as factor
+  )
 
 data$gem_found[is.na(data$gem_found)] <- 0
 
@@ -158,15 +163,6 @@ for (p in unique(data$uniqueID)) {
   }
 }
 
-#<<<<<<< back_up_andrea_machine
-#=======
-#data <- data %>% 
-#  mutate(env_number = ifelse(gempresent == 0 & env_number == 5, env_number - 1,
-#                             ifelse(gempresent == 1 & env_number < 6, env_number + 8,env_number)),
-#         env_number = ifelse(env_number > 5, env_number - 1, env_number))
-#
-#>>>>>>> main
-## check there are 12 number of envs; 1:4 no gems, 5-12 gems
 data %>% 
   select(env_number, gempresent, demo_type) %>% 
   distinct() %>% 
@@ -193,12 +189,11 @@ rewards_bt <-
 #   group_by(group) %>% 
 #   summarise(count = n())
 
-
-# only take participants who are credibly better than random
+# only take participants who are significantly better than random
 data <- data %>% 
   ungroup() %>% 
   group_by(uniqueID) %>%
-  mutate(p_value_rand = t.test(points, rewards_bt, alternative = "greater") %>%
+  mutate(p_value_rand = t.test(points, rewards_bt, alternative = "greater") %>% 
            .$p.value) %>%
   ungroup() %>% 
   dplyr::filter(p_value_rand < 0.05)
@@ -212,8 +207,7 @@ data <-
     z = (points - mean_points) / sd_points,
     gem_cell = choice[match(round_gem_found, trial)],
     #data_source = 'experiment', 
-    gemlabel = ifelse(gempresent == 0, "gem absent", "gem present")   )   
-
+    gemlabel = ifelse(gempresent == 0, "gem absent", "gem present"))   
 
 
 # final exclusion: participants who attempted to refresh task to find where gems are, and 1 round (?) with NAs
@@ -239,9 +233,5 @@ data <-
   ) %>%   ungroup()  
 
 
-
-
-data <- data %>% mutate(demo_quality = if_else(demo_type == "gem_found", "best",ifelse((demo_type == "gem_not_found" | demo_type == "no_gem"), "medium", "worst"))) 
-
 ## save dataset
-#write.csv(data, "data/social/data_social_all_participants.csv", row.names = FALSE)
+write.csv(data, "data/social/data_social_all_participants_08-2024.csv", row.names = FALSE)

@@ -12,7 +12,7 @@
 pacman::p_load(tidyverse, gghalves, here, lmerTest, ggthemes, cowplot)
 
 ## load data
-all_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants.csv")) 
+all_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants_08-2024.csv"))
 
 labels_a <- c(
   `0` = "Gem not found",
@@ -21,18 +21,19 @@ labels_a <- c(
 ## panel A
 a <-
   all_data %>%
-  group_by(uniqueID, group) %>%
+  group_by(uniqueID, age_f) %>%
   select(uniqueID,
-         group,
-         demo_quality,
+         age_f,
          tot_points,
          gem_found,
          gempresent) %>%
   distinct() %>%
-  ggplot(aes(x = group,
-             y = tot_points,
-             #color = group,
-             shape = group)) +
+  group_by(uniqueID, gem_found, age_f) %>%
+  summarise(mean_points = (mean(tot_points))) %>% 
+  ggplot(aes(x = age_f,
+             y = mean_points,
+             #color = age_f,
+             shape = age_f)) +
   geom_half_boxplot(errorbar.draw = FALSE, notch = TRUE) +
   geom_half_point(alpha = .4) +
   
@@ -51,24 +52,25 @@ a <-
   facet_wrap(~ gem_found, labeller = as_labeller(labels_a), scales = "free_y") +
   #ylim(c(500,1400))+
   labs(#subtitle = 'especially g',
+    x = "Age group",
     y = 'Points per round',
     tag = "A") +
   theme_base(base_size = 15) +
-  guides(color = FALSE,
-         shape = FALSE) +
+  guides(color = none,
+         shape = none) +
   theme(legend.position = "none",
         plot.background = element_blank())
 a
 
 ## panel C## panel Cgempresent
 b <-
-  all_data %>% group_by(demo_type, uniqueID, round, group, gem_found, age, demo_quality) %>%
+  all_data %>% group_by(demo_type, uniqueID, round, age_f, gem_found, age, demo_quality) %>%
   filter(social_info_use == "copy"  & gempresent == 1) %>%
   count(social_info_use) %>%
   ggplot(aes(
     x = factor(demo_quality),
     y = n,
-    shape = group,
+    shape = age_f,
     color = demo_quality,
     fill = demo_quality
   )) +
@@ -137,39 +139,39 @@ b <-
  ## re filter each treatment
 
  dataset1 <- all_data %>% 
-   filter(gem_found_how == "copier" & demo_type == "gem_found")
+   filter( gem_found == 1 & demo_type == "gem_found")
  
  dataset2 <- all_data %>% 
-   filter(demo_type != "gem_found" & gem_found==1)
+   filter(demo_type != "gem_found" & gem_found == 1)
  
  ## add information about proportion of gem found
  prop_gem_found <- all_data %>%
-   filter(gempresent == 1)%>%
+   filter(gempresent == 1) %>%
    ungroup %>%
-   group_by(demo_type, gem_found, group) %>%
-   select(uniqueID, round, gem_found, round_gem_found, gempresent, group) %>%
+   group_by(demo_type, gem_found, age_f) %>%
+   select(uniqueID, round, gem_found, round_gem_found, gempresent, age_f) %>%
    distinct() %>%
-   select(gem_found, round_gem_found, group) %>%
+   select(gem_found, round_gem_found, age_f) %>%
    summarise(mean_round_found = mean(round_gem_found, na.rm = TRUE),
              n = n()) %>%
    ungroup() %>%
-   group_by(demo_type, group) %>%
+   group_by(demo_type, age_f) %>%
    mutate(freq = round(n / sum(n),2)) %>% 
    filter(gem_found == 1) %>% 
-   select(demo_type, group, freq) 
+   select(demo_type, age_f, freq) 
  
 
  data_plot <- bind_rows(dataset1, dataset2) %>% 
-   select(round_gem_found, group, demo_type, uniqueID) %>%
+   select(round_gem_found, age_f, demo_type, uniqueID) %>%
    group_by(uniqueID) %>%
    distinct() %>%
-   left_join(., prop_gem_found, by = c("group", "demo_type"))
+   left_join(., prop_gem_found, by = c("age_f", "demo_type"))
   
 c <- data_plot %>%
    ggplot(aes(
      x = demo_type,
      y = round_gem_found,
-     shape = group,
+     shape = age_f,
      color = demo_type,
      fill = demo_type
    )) +
@@ -202,7 +204,7 @@ c <- data_plot %>%
        "Low: Explores until the end"
      )
    ) +
-   scale_shape_manual(values = c(21, 23)) +
+   scale_shape_manual(name = "Age group", values = c(21, 23)) +
    scale_x_discrete(labels = c("High (Gem)", "Medium", "Low")) +
    labs(x = "Quality of social information",
         y = 'N of clicks to find a gem',
@@ -224,6 +226,7 @@ c <- data_plot %>%
    theme(plot.background = element_blank())
  
  c
+ 
  
 ## regression slopes 
 #  
@@ -272,4 +275,4 @@ figure2 <-
 figure2
 
 ## save figure
-ggsave("plots/figure2.png", figure2, height = 7, width = 10)
+ggsave("plots/figure2.png", figure2, height = 7, width = 10, scale = .8)
