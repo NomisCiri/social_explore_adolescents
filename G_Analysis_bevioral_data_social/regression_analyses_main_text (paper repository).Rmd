@@ -19,7 +19,9 @@ pacman::p_load(tidyverse,
                broom.mixed,
                infer,
                ggthemes,
-               sjPlot)
+               sjPlot,
+               brms,
+               stats)
 
 '%!in%' <- function(x,y)!('%in%'(x,y))
 
@@ -61,8 +63,7 @@ t_test_points_gem <- all_data %>%
   select(mean_points_player, age_f, uniqueID) %>% 
   distinct() %>% 
   ungroup() %>% 
-  stats::t.test(mean_points_player ~ age_f, data = ., alternative = "two.sided", paired = FALSE)
-
+  stats::t.test(mean_points_player ~ age_f, data = ., alternative = "two.sided")
 
 data_regression_points <- all_data %>%
   ungroup() %>%
@@ -204,20 +205,19 @@ if (file.exists(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/gem_ag
   } else {
   
 ## model specification
-gem_age_advisor_model <- brms::brm(formula = round_gem_found ~  demo_quality_f * age_f + (1 | uniqueID),
-          data = data_regression_gem,
-          family = poisson(),
-          iter = 6000,
-          chains = 6) 
+# gem_age_advisor_model <- brms::brm(formula = round_gem_found ~  demo_quality_f * age_f + (1 | uniqueID),
+#           data = data_regression_gem,
+#           family = poisson(),
+#           iter = 6000,
+#           chains = 6) 
 
 
 gem_freq_age_advisor_model <- all_data %>% 
   filter(gempresent == 1 ) %>% 
   select(uniqueID,  gem_found, round_gem_found, gempresent, age_f, demo_quality_f) %>%
   distinct() %>%
-  brms::brm(gem_found ~ demo_quality_f * age_f + (1|uniqueID), 
-            bernoulli(link = "logit"),
-            data = .,)
+  brms::brm(data = ., gem_found ~ demo_quality_f * age_f + (1|uniqueID), 
+            family =bernoulli(link = "logit"))
 
 ## are there differences in round of gem found when gem is found by social info? 
 gem_when_age <- all_data %>% 
@@ -229,7 +229,7 @@ gem_when_age <- all_data %>%
           family = poisson())
 
 ## save results
-save(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/gem_age_advisor_model.RData'), gem_age_advisor_model)
+# save(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/gem_age_advisor_model.RData'), gem_age_advisor_model)
 save(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/gem_freq_age_advisor_model.RData'), gem_freq_age_advisor_model)
 save(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/gem_when_age.RData'), gem_when_age)
 
