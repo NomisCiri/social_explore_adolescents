@@ -16,18 +16,84 @@
 
 
 ##---------------------------------------------------------------
-##       social learning q model with copy probs                   --
+##       value shaping               --
+##---------------------------------------------------------------
+s_value_shaping <- function(par, learning_model_fun, acquisition_fun, dat,envs) {
+  
+  # unpack
+  lr <- par[1]# "learningrate"
+  tau<-par[2]
+  lr_soc<-par[3]
+  soc_rew<- par[4]
+  
+  mu0 <- 0# par[4] # exploration bonus
+  ## preallocate negative log likelihood
+  nLL <- rep(0, length(dat$round))
+  #set copy utility low.
+  for (r in unique(dat$round)) {
+    ## collect choices for current round
+    round_df <- subset(dat, round == r)
+    trials <- nrow(round_df)
+    out<-rep(mu0,64)
+    #browser()
+    if(!exists("envs")){
+      browser()
+    }
+    env=envs%>%filter(env==unique(round_df$env_number))#
+    ## Observations of subject choice behavior 
+    chosen <- round_df$choices
+    ## social information
+    social_choices <- round_df$social_info
+    ## rewards
+    y <- round_df$z[0:(trials - 1)] # trim off the last observation, because it was not used to inform a choice (round already over)
+    p<-NULL
+    for (t in 1:(trials - 1)) {
+      # individual learning
+      out <- RW_Q(chosen[t], y[t], theta = lr, prevPost = out, mu0Par = mu0)
+      #surrogate rewards for social signals
+      out[social_choices[t]]=out[social_choices[t]]+lr_soc*(25 - out[social_choices[t]])
+      #utilityVec <- out
+      # build horizon_length x options matrix, where each row holds the utilities of each choice at each decision time in the search horizon
+      p_sfmx <- exp(out / tau)
+      # probabilities
+      p_sfmx <- p_sfmx / sum(p_sfmx)
+      if(ncol(t(p_sfmx))!=64){
+        browser()
+      }
+      p <- rbind(p, t(p_sfmx)) 
+    }
+    p
+    # numerical overflow
+    p <- (pmax(p, 0.00000000001))
+    p <- (pmin(p, 0.99999999999))
+    # add loglik nasty way of checking the predicted choice probability a the item that was chosen
+    nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials - 1)), chosen[2:length(chosen)])]))
+  }
+  #avoid nan in objective function
+  if (any(is.nan(sum(nLL))))
+  { 
+    return(10 ^ 30)
+  }else
+  {
+    return(sum(nLL))
+  }
+}
+
+
+
+##---------------------------------------------------------------
+##       social learning q model with copy probs               --
 ##---------------------------------------------------------------
 
 s_learn <- function(par, learning_model_fun, acquisition_fun, dat,envs) {
   
   # unpack
-  theta <- par[1]# "learningrate"
+  lr <- par[1]# "learningrate"
   tau<-par[2]
-  omega<-par[3]
- # b<-par[3]
+  lr_soc<-par[3]
+  # b<-par[3]
   tau_copy<-0.01#par[4]
-  prior_copy<- -1 #par[4]
+  prior_copy<- par[4]
   
   mu0 <- 0# par[4] # exploration bonus
   ## preallocate negative log likelihood
@@ -52,18 +118,15 @@ s_learn <- function(par, learning_model_fun, acquisition_fun, dat,envs) {
     social_choices <- round_df$social_info
     # create observation matrix
     p<-NULL
-    first=TRUE
     for (t in 1:(trials - 1)) {
-    #  tau<-ifelse(max(y[1:t])>150,par[2],par[1])
-      
-      out <- RW_Q(chosen[t], y[t], theta = theta, prevPost = out, mu0Par = mu0)
+
+      out <- RW_Q(chosen[t], y[t], theta = lr, prevPost = out, mu0Par = mu0)
       
       if (chosen[t]==social_choices[t]){
-       # social_reward<- env[round_df$social_info[t], ]$Mean
-        copyUtil[(t+1):trials]=copyUtil[t]+omega*(y[t]-copyUtil[t])
-        # browser()
+        social_reward<- env[round_df$social_info[t], ]$Mean
+        copyUtil[(t+1):trials]=copyUtil[t]+lr_soc*(y[t]-copyUtil[t])
       }
-    #   + b*streak[t]
+      # 
       copy_prob=1/(1+exp(-(copyUtil[t+1])/tau_copy))
       
       utilityVec <- out
@@ -74,9 +137,10 @@ s_learn <- function(par, learning_model_fun, acquisition_fun, dat,envs) {
       p_sl=p_sfmx*(1-copy_prob)
       p_sl[social_choices[t]] <- (copy_prob) + (p_sfmx[social_choices[t]]*(1-copy_prob))
       
-      if(ncol(t(p_sfmx))==65){
+      if(ncol(t(p_sl))!=64){
         browser()
       }
+      
       p <- rbind(p, t(p_sl)) 
     }
     # softmaximization
@@ -123,7 +187,7 @@ sw <- function(par, learning_model_fun, acquisition_fun, dat) {
     out<-rep(mu0,64)
     ## Observations of subject choice behavior 
     chosen <- round_df$choices
-
+    
     ## rewards
     y <- round_df$z[0:(trials - 1)] # trim off the last observation, because it was not used to inform a choice (round already over)
     y_scaled<-rep(0,length(y))
@@ -224,7 +288,7 @@ sw_3 <- function(par, learning_model_fun, acquisition_fun, dat) {
       # probabilities
       p_sfmx <- p_sfmx / sum(p_sfmx)
       if(ncol(t(p_sfmx))==65){
-        browser()
+        #browser()
       }
       p <- rbind(p, t(p_sfmx)) 
     }
