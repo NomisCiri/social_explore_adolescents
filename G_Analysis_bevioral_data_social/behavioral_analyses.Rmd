@@ -170,10 +170,10 @@ all_data %>%
   theme_base(base_size = 15)
 
 ## poisson regression: round when gem was found by group and treatment (demonstrator type)
-tab_model(glmer(round_gem_found ~ group * demo_type  + (1|player), family = poisson(), data = all_data))
+#tab_model(glmer(round_gem_found ~ group * demo_type  + (1|player), family = poisson(), data = all_data))
 
 
-
+if(F){
 ## condition on round where demonstrator finds the gem first
 all_data %>% 
   filter(gem_found == 1 & gem_found_how == 'copier') %>% 
@@ -201,7 +201,7 @@ all_data %>%
 facet_wrap(~demo_type) +
   theme_base(base_size = 20) +
   guides(color = FALSE, fill = FALSE)
-
+}
 
 ```
 
@@ -270,7 +270,7 @@ all_data %>%
 ```{r gem by strategy}
 
 all_data %>% 
-  select(gem_found_how, unique_rounds, demo_quality_f, age_f) %>% 
+  select(gem_found_how, unique_rounds, demo_quality, age) %>% 
   distinct() %>% 
   filter(!is.na(gem_found_how)) %>% 
   ggplot() +

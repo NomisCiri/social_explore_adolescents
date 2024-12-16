@@ -15,62 +15,138 @@
 ##-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-=x=-
 
 
+
 ##---------------------------------------------------------------
-##       value shaping               --
+##       policy shaping               --
 ##---------------------------------------------------------------
-s_value_shaping <- function(par, learning_model_fun, acquisition_fun, dat,envs) {
+s_policy_shaping <- function(par, dat) {
   
   # unpack
   lr <- par[1]# "learningrate"
-  tau<-par[2]
-  lr_soc<-par[3]
-  soc_rew<- par[4]
-  
-  mu0 <- 0# par[4] # exploration bonus
+  tau<-c(par[2])
+  lr_soc<-c(par[3])
+  tau_copy<-par[4]
+  #range<-
+  prior_copy<- -2.5# c(par[3])
+  mu0 <-0.5 # exploration bonus
   ## preallocate negative log likelihood
   nLL <- rep(0, length(dat$round))
   #set copy utility low.
   for (r in unique(dat$round)) {
+    #reset
+    #lr_soc<-0
     ## collect choices for current round
     round_df <- subset(dat, round == r)
+    gem <- round_df$gem
+    qual= unique(round_df$qual)
     trials <- nrow(round_df)
-    out<-rep(mu0,64)
-    #browser()
-    if(!exists("envs")){
-      browser()
-    }
-    env=envs%>%filter(env==unique(round_df$env_number))#
+    out<-rep(mu0,64)# priors
+    copyUtil<- rep(prior_copy, length(round_df$choice))#roughly chance
     ## Observations of subject choice behavior 
-    chosen <- round_df$choices
+    chosen <- round_df$choice
     ## social information
     social_choices <- round_df$social_info
-    ## rewards
-    y <- round_df$z[0:(trials - 1)] # trim off the last observation, because it was not used to inform a choice (round already over)
+    ## rewards (apply range normalization)
+    y <- (round_df$z[0:(trials - 1)]+75)/(150) # trim off the last observation, because it was not used to inform a choice (round already over)
     p<-NULL
+    
     for (t in 1:(trials - 1)) {
       # individual learning
       out <- RW_Q(chosen[t], y[t], theta = lr, prevPost = out, mu0Par = mu0)
       #surrogate rewards for social signals
-      out[social_choices[t]]=out[social_choices[t]]+lr_soc*(25 - out[social_choices[t]])
-      #utilityVec <- out
+      #meta-learning: was advice good?
+      target = as.numeric(max(out)==out[social_choices[t]])#*3#so that all of a sudden a gem is not negative
+      target=ifelse(max(out)>1.5,target*3,target)
+      copyUtil[(t+1):trials]=copyUtil[t]+lr_soc*(target - out[social_choices[t]])
+      copy_prob=1/(1+exp(-(copyUtil[t+1])/tau_copy))#softmaxing copy_util
       # build horizon_length x options matrix, where each row holds the utilities of each choice at each decision time in the search horizon
+      p_sfmx <- exp(out / tau)
+      # probabilities
+      p_sfmx <- p_sfmx / sum(p_sfmx)
+      #greedy copy policy
+      p_sl=p_sfmx*(1-copy_prob)
+      p_sl[social_choices[t]] <- (copy_prob) + (p_sfmx[social_choices[t]])#*(1-copy_prob)
+      #reset
+      p <- rbind(p, t(p_sl)) 
+    }
+    p <- (pmax(p, 0.00000000001))
+    p <- (pmin(p, 0.99999999999))
+    # add loglik nasty way of checking the predicted choice probability a the item that was chosen
+    nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials - 1)), chosen[2:length(chosen)])]))
+  }
+  #avoid nan and unreasonablein objective function
+  if (any(is.nan(sum(nLL))) | par[2]>1 | par[2]<0)
+  { 
+    return(10 ^ 30)
+  }else
+  {
+    return(sum(nLL))
+  }
+}
+
+
+##---------------------------------------------------------------
+##       value shaping               --
+##---------------------------------------------------------------
+s_value_shaping <- function(par, dat) {
+  
+  # unpack
+  lr <- 0.5 #par[1]# "learningrate"
+  tau<-c(par[1])
+  lr_soc_m<-c(par[2],par[3],par[4])
+  #range<-
+  soc_rew<-1# c(par[3])
+  mu0 <- 0.5# par[4] # exploration bonus
+  ## preallocate negative log likelihood
+  nLL <- rep(0, length(dat$round))
+  #set copy utility low.
+  for (r in unique(dat$round)) {
+    #reset
+    lr_soc<-0
+    ## collect choices for current round
+    round_df <- subset(dat, round == r)
+    gem <- round_df$gem
+    qual= unique(round_df$qual)
+    trials <- nrow(round_df)
+    out<-rep(mu0,64)# priors
+    ## Observations of subject choice behavior 
+    chosen <- round_df$choice
+    ## social information
+    social_choices <- round_df$social_info
+    ## rewards (apply range normalization)
+    y <- (round_df$z[0:(trials - 1)]+75)/(150) # trim off the last observation, because it was not used to inform a choice (round already over)
+    p<-NULL
+    
+    for (t in 1:(trials - 1)) {
+      # individual learning
+      out <- RW_Q(chosen[t], y[t], theta = lr, prevPost = out, mu0Par = mu0)
+      #surrogate rewards for social signals
+      out[social_choices[t]] = out[social_choices[t]] + lr_soc * (soc_rew - out[social_choices[t]])
+      #meta-learning: was advice good?
+      target = max(out)==out[social_choices[t]]
+
+      if (social_choices[t]==chosen[t]){
+        target=y[t]
+      }
+      lr_soc = lr_soc + lr_soc_m[qual] * (target-lr_soc)# update advice learning rate
+      #softmax
       p_sfmx <- exp(out / tau)
       # probabilities
       p_sfmx <- p_sfmx / sum(p_sfmx)
       if(ncol(t(p_sfmx))!=64){
         browser()
       }
+      #reset
+      #out[social_choices[t]] = out[social_choices[t]]# - lr_soc_m
       p <- rbind(p, t(p_sfmx)) 
     }
-    p
-    # numerical overflow
     p <- (pmax(p, 0.00000000001))
     p <- (pmin(p, 0.99999999999))
     # add loglik nasty way of checking the predicted choice probability a the item that was chosen
     nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials - 1)), chosen[2:length(chosen)])]))
   }
-  #avoid nan in objective function
-  if (any(is.nan(sum(nLL))))
+  #avoid nan and unreasonablein objective function
+  if (any(is.nan(sum(nLL))) |any(par<0) | any(par>5))
   { 
     return(10 ^ 30)
   }else
@@ -90,10 +166,13 @@ s_learn <- function(par, learning_model_fun, acquisition_fun, dat,envs) {
   # unpack
   lr <- par[1]# "learningrate"
   tau<-par[2]
-  lr_soc<-par[3]
+  lr_soc<-c(par[3],par[4])
+  # lr_soc<-par[3]
+  
   # b<-par[3]
   tau_copy<-0.01#par[4]
-  prior_copy<- par[4]
+  # prior_copy<- par[4]
+  
   
   mu0 <- 0# par[4] # exploration bonus
   ## preallocate negative log likelihood
@@ -119,7 +198,7 @@ s_learn <- function(par, learning_model_fun, acquisition_fun, dat,envs) {
     # create observation matrix
     p<-NULL
     for (t in 1:(trials - 1)) {
-
+      
       out <- RW_Q(chosen[t], y[t], theta = lr, prevPost = out, mu0Par = mu0)
       
       if (chosen[t]==social_choices[t]){

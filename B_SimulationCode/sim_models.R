@@ -6,6 +6,93 @@
 ##############################################################################################
 ##############################################################################################
 
+#-----------------------------------------------------------
+##              Model: Q-learning lr prior               --
+##----------------------------------------------------------------
+
+s_learn_vshape_sim <- function(par, si, envs) {
+  # parameters are unpacked
+  lr <- par[1]# "learningrate"
+  tau_v<-c(par[2])
+  lr_soc<-c(par[3])#,par[5])
+  soc_rew<- 1
+  env=envs
+  
+  #hardcoded moving parts
+  mu0 <-  0.5# prior
+
+  # a bunch of containers
+  mu=list()
+  dummy <- NULL
+  #look up samples
+  dat=expand.grid(x1=0:7,x2=0:7)
+  plot_dat=list()
+  all_choices<-NULL
+#%>%filter(env==unique(round_df$env_number))#
+  trials<-25
+  # social information
+  social_choices <- si
+  # Utilties of each choice
+  out<-rep(mu0,64)
+  #here, too
+  ind <- 10
+  X <- as.matrix(dat[ind, 1:2]) # generate a new vector of Xs
+  y <- (as.matrix(rnorm(1, mean = env[ind, ]$Mean, sd = 0))+75)/150
+  
+  #first choice from previous
+  round_choices<-data.frame(
+    trial = 1, 
+    x = as.numeric(X[1, 1]), 
+    y = as.numeric(X[1, 2]),
+    z = as.numeric(y[1]),
+    index=ind,
+    social_info=social_choices[1],
+    util_list=NA,# there are no utilities yet
+    p_list=I(list(rep(1/64,64))),
+    lr_soc=lr_soc
+  )
+  
+  #did you see the gem for the first time?
+  # loop over trials
+  for (t in 1:(trials - 1)) {
+    # learn
+    # individual learning
+    out <- RW_Q(ind, y[t], theta = lr, prevPost = out, mu0Par = mu0)
+    #surrogate rewards for social signals
+    out[social_choices[t]] = out[social_choices[t]] + lr_soc[1] * (soc_rew - out[social_choices[t]])
+    #browser()
+    if (ind==social_choices[t]){
+      soc_rew = y[t]# next time double update 
+    }
+    #utilityVec <- out
+    # build horizon_length x options matrix, where each row holds the utilities of each choice at each decision time in the search horizon
+    p_sfmx <- exp(out / tau)
+    # probabilities
+    p_sfmx <- p_sfmx / sum(p_sfmx)
+
+    ind <- sample(1:64, 1, prob = p_sfmx) # choice index
+    # collect x y coordinate of choice
+    X <- rbind(X, as.matrix(dat[ind, 1:2]))
+    # sample from environment
+    y <- rbind(y, as.matrix((rnorm(n = 1, mean = env[ind, ]$Mean, sd =sqrt(env[ind, ]$Variance))+75)/150)) 
+    # write it to the next trial index because choice has already been made, learning will happen in next round
+    one_trial_choices <- data.frame(
+      trial = t + 1,
+      x = as.numeric(X[t+1, 1]),
+      y = as.numeric(X[t+1 , 2]),
+      z = as.numeric(y[t+1]),
+      index = ind,
+      social_info = social_choices[t],
+      util_list = I(list(out)),
+      p_list = I(list(p_sfmx)),
+      lr_soc=lr_soc
+    )
+    # concat round choices
+    round_choices <- rbind(round_choices, one_trial_choices)
+  }# end rounds
+  return(round_choices)
+}
+
 
 #-----------------------------------------------------------
 ##              Model: Q-learning lr prior               --
@@ -42,7 +129,7 @@ s_learn_prior_sim <- function(par, learning_model_fun, acquisition_fun, data, en
     trials <- nrow(round_df)
     # social information
     social_choices <- round_df$social_info
-   # streak<-round_df$streak
+    # streak<-round_df$streak
     copyUtil<- rep(prior_copy, length(round_df$choices))#roughly chance
     
     
@@ -134,9 +221,9 @@ s_learn_prior_sim <- function(par, learning_model_fun, acquisition_fun, data, en
 
 
 
-  #-----------------------------------------------------------
-  ##              Model: Q-learning no social weight              --
-  ##----------------------------------------------------------------
+#-----------------------------------------------------------
+##              Model: Q-learning no social weight              --
+##----------------------------------------------------------------
 
 s_learn_sim <- function(par, learning_model_fun, acquisition_fun, data, envs) {
   # parameters are unpacked
@@ -304,7 +391,7 @@ social_rewards<- function(data, envs) {
       points<-round_df$points[t]
       social_choices<-round_df$social_info[t]
       social_reward<- env[round_df$social_info[t], ]$Mean
-     
+      
       # write it to the next trial index because choice has already been made, learning will happen in next round
       one_trial_choices <- data.frame(
         trial = t, 
@@ -380,9 +467,9 @@ sim_range_1lr_sws <- function(par, learning_model_fun, acquisition_fun, data, en
     
     #did you see the gem for the first time?
     first=TRUE
-   # browser()
+    # browser()
     
-   
+    
     
     # loop over trials
     for (t in 1:(trials-1)) {
@@ -1187,7 +1274,7 @@ exploreEnv1lrsw <- function(par, learning_model_fun, acquisition_fun,data,envs) 
     ind <- round_df$choices[1]
     nTrials <- length(social_choices)
     X <- as.matrix(dat[ind, 1:2]) # generate a new vector of Xs
-
+    
     y <- as.matrix(rnorm(1, mean = env[ind, ]$Mean, sd = env[ind, ]$Variance))
     # store first choice of round
     #browser()
