@@ -18,7 +18,8 @@ pacman::p_load(tidyverse,
                broom.mixed,
                infer,
                ggthemes,
-               sjPlot)
+               sjPlot,
+               bayestestR)
 
 '%!in%' <- function(x,y)!('%in%'(x,y))
 
@@ -35,8 +36,13 @@ source("https://raw.githubusercontent.com/AndGrad/custom_themes_ggplot/main/them
 
 ```
 
+
 ```{r load data, echo=FALSE, warning=FALSE, message=FALSE }
-## load data
+
+## demographics dataa
+data_demographics <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants_full_sample_demographics"))
+
+## load clen data data
 all_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants_08-2024.csv"))
 
 all_data <- all_data %>% 
@@ -52,31 +58,117 @@ all_data <- all_data %>%
 
 ```
 
+```{r}
+
+## demographics
+
+## adults gender and age
+data_demographics %>% 
+    select(group, gender, uniqueID) %>% 
+    filter(group=="adults") %>% 
+    distinct() %>% 
+  group_by(gender) %>% 
+  summarise(count = n())
+
+58/116
+
+data_demographics %>% 
+    select(group, gender, uniqueID, age) %>% 
+    filter(group=="adults") %>% 
+    distinct() %>% 
+    summarize( mean = mean(age, na.rm=TRUE),
+               sd = sd(age, na.rm =TRUE))
+
+## adolescents gender and age
+data_demographics %>% 
+    select(group, gender, uniqueID) %>% 
+    filter(group=="adolescents") %>% 
+    distinct() %>% 
+  group_by(gender) %>% 
+  summarise(count = n())
+
+
+data_demographics %>% 
+    select(group, gender, uniqueID, age) %>% 
+    filter(group=="adolescents") %>% 
+    distinct() %>% 
+    summarize( mean = mean(age, na.rm=TRUE),
+               sd = sd(age, na.rm =TRUE))
+
+
+## age distribution
+data %>% 
+  ungroup() %>% 
+  select(uniqueID, group) %>% 
+  group_by( group) %>% 
+  distinct() %>%
+  count()
+
+data %>% 
+  select(group, gender, uniqueID) %>% 
+  filter(group=="adults") %>% 
+  distinct() %>% 
+  group_by(gender) %>% 
+  summarise(count = n())
+
+hist(all_data$age)
+
+
+data %>% 
+  select(group, gender, uniqueID, age) %>% 
+  filter(group=="adults") %>% 
+  distinct() %>% 
+  summarize( mean = mean(age, na.rm=TRUE),
+             sd = sd(age, na.rm =TRUE))
+
+
+
+```
+
+
 ## differences in points scored by group
 
 ```{r points by age group regression}
 
 ## just raw difference in points across conditions
-t_test_points <- all_data %>% 
-  ungroup() %>% 
-  group_by(uniqueID) %>% 
-  mutate(mean_points_player = mean(tot_points, na.rm = TRUE)) %>% 
-  select(mean_points_player, age_f, uniqueID) %>% 
-  distinct() %>% 
-  ungroup() %>% 
-  stats::t.test(mean_points_player ~ age_f, data = ., alternative = "two.sided")
+# t_test_points <- all_data %>% 
+#   ungroup() %>% 
+#   group_by(uniqueID) %>% 
+#   mutate(mean_points_player = mean(tot_points, na.rm = TRUE)) %>% 
+#   select(mean_points_player, age_f, uniqueID) %>% 
+#   distinct() %>% 
+#   ungroup() %>% 
+#   stats::t.test(mean_points_player ~ age_f, data = ., alternative = "two.sided")
 
 ## load model fit object 
-base::load(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/points_age_advisor_model.RData'))
+base::load(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/points_age_trial_advisor_model.RData'))
 
-## parameters of the model
-params <- rownames(fixef(points_age_advisor_model))
+bayestestR::bayesfactor_parameters(points_age_trial_advisor_model,
+                                effects = "fixed",
+                              
+  component = "all",
+  test = c("p_direction", "p_significance"),
+  centrality = "all", )
+
+
+table1 <- bayestestR::describe_posterior(points_age_trial_advisor_model, ci = .89, rope_range = c(-.1, .1))
+table %>% 
+  dplyr::select( -c("ROPE_CI", "ROPE_high", "ROPE_low","Rhat","ESS"))
+
+rope(
+  points_age_trial_advisor_model,
+  range = c(-0.1, 0.1),
+  ci = .89,
+  effects = c("fixed"))
+
+  ## parameters of the model
+params <- rownames(fixef(points_age_trial_advisor_model))
 
 ## names to assign to the params (for covenience when calling results below)
 names <- c("intercept", "medium", "low", "adolescents", "ado_medium", "ado_low" )
 
 ## extract coefficients from model object 
-coef_points <- summarize_model(points_age_advisor_model, params, names)
+coef_points <- summarize_model(points_age_trial_advisor_model, params, names)
 
 ## list of hypotheses to test  
 hyp_list_points <- c(
@@ -124,6 +216,17 @@ copy_summary <- all_data %>%
 
 ## load model fit file
 load(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/copy_age_advisor_model.RData'))
+
+
+table2 <- bayestestR::describe_posterior(copy_age_advisor_model, ci = .89, rope_range = c(-.1, .1))
+table2 %>% 
+  dplyr::select( -c("ROPE_CI", "ROPE_high", "ROPE_low","Rhat","ESS"))
+
+
+describe_posterior(copy_age_advisor_model,bayesfactor_parameters)
+
+bayesfactor_parameters(points_age_trial_advisor_model)
+rstanarm::plot(rope(copy_age_advisor_model))
 
 ## parameters of the model
 params_copy <- rownames(fixef(copy_age_advisor_model))

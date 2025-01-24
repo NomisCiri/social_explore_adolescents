@@ -171,6 +171,7 @@ data %>%
   geom_bar(aes(x = factor(env_number), fill = demo_type)) +
   facet_wrap(~gempresent)
 
+write.csv(data, "data/social/data_social_all_participants_full_sample_demographics", row.names = FALSE)
 
 ## load bootstrapped dataset of participants playing at random
 rewards_bt <-

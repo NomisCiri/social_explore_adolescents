@@ -29,7 +29,6 @@ options(scipen = 999,digits = 4)
 ```
 
 ```{r load data, echo=FALSE, warning=FALSE, message=FALSE }
-
 ## load data
 all_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants_08-2024.csv")) %>% 
     mutate(demo_quality_f = as.factor(demo_quality),
@@ -74,6 +73,19 @@ data_regression_points <- all_data %>%
          sd = sd(tot_points),
          scaled_points = (tot_points - mean_points)/(sd*0.5))
 
+data_regression_points_trial <- all_data %>%
+  ungroup() %>%
+  select(uniqueID, age_f, demo_quality_f,demo_quality_f, treatment, trial, points) %>% 
+    mutate(mean_points = mean(points),
+         sd = sd(points),
+         scaled_points = (points - mean_points)/(sd*0.5))
+
+hist(data_regression_points_trial$scaled_points)
+
+  distinct() 
+
+
+#summary(lmer(scaled_points ~ age_f * trial  + (1 |  uniqueID), data = data_regression_points_trial))
 
 ## load model if fitting has been done, if not fit model
 
@@ -91,25 +103,33 @@ if #(file.exists(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/perfo
 prior_cauchy <- brms::prior_string("cauchy(0, 2.5)", class = "b")
 
 ## model specification
-points_age_advisor_model <-
-  brms::brm(formula = scaled_points ~ demo_quality_f * age_f + (1 |  uniqueID),
+points_age_trial_advisor_model <-
+  brms::brm(formula = scaled_points ~ demo_quality_f * age_f * trial  + (1 |  uniqueID),
             prior = prior_cauchy,
             sample_prior = TRUE,
-            data = data_regression_points,
-            iter = 6000,
-            chains = 6)
+            data = data_regression_points_trial,
+            iter = 4000,
+            chains = 6,
+            cores = 6 )
+
+# model specification
+  summary(lmer(formula = scaled_points ~ demo_quality_f * age_f * trial  + (1 |  uniqueID),
+            # prior = prior_cauchy,
+            # sample_prior = TRUE,
+            data = data_regression_points_trial))
+            
+# ## save
+
 ## save
-save("points_age_advisor_model",
-     file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/points_age_advisor_model.RData'))
+save("points_age_trial_advisor_model",
+     file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/points_age_trial_advisor_model.RData'))
 
   }
 #
 # ## results
-tab_model(points_age_advisor_model)
-plot_model(points_age_advisor_model)
-
-
-brms::conditional_effects(points_age_advisor_model)
+tab_model(points_age_trial_advisor_model)
+plot_model(points_age_trial_advisor_model)
+brms::conditional_effects(points_age_trial_advisor_model)
 
 ```
 
@@ -136,7 +156,7 @@ data_regression_copy %>%
 ## mean copy by group %>% 
 data_regression_copy %>% 
   ungroup() %>% 
-  filter(n!=0) %>% 
+  #filter(n!=0) %>% 
   select(treatment, n ) %>% 
   group_by(treatment) %>% 
   summarise(mean_copy = mean(n),
@@ -154,8 +174,16 @@ copy_age_advisor_model <- brms::brm(formula = n ~ 1 + demo_quality_f * age_f + (
           data = data_regression_copy,
           family = poisson(),
           iter = 6000,
-          chains = 6) 
+          chains = 6,
+          cores = 6) 
 
+bayestestR::describe_posterior(copy_age_advisor_model, ci = .89)
+
+p_rope(
+  copy_age_advisor_model,
+  range = "default",
+  effects = c("fixed")
+)
 ## save results
 save(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/copy_age_advisor_model.RData'), copy_age_advisor_model)
 

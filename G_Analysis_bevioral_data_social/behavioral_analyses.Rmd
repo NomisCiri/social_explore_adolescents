@@ -28,7 +28,7 @@ options(scipen = 999,digits = 4)
 
 ## load data
 #all_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants.csv")) 
-all_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants_07-2024.csv"))
+all_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants_08-2024.csv"))
 
 ```
 
@@ -287,15 +287,13 @@ adolescents score more points in gem environments
 ```{r points by trial, echo=FALSE, message=FALSE}
 all_data %>%
   group_by(uniqueID, trial, group) %>%
-  ggplot(aes(x = trial, y = points, color = factor(gem_found), shape = group)) +
+  ggplot(aes(x = trial, y = points, color = group)) +
   stat_summary() +
   theme_minimal(base_size = 15) +
   scale_color_brewer(type = "qual", palette = 2, name = "gem found", label = c("no", "yes"))+
- # facet_wrap( ~ gem_found) +
+  facet_wrap( ~ gem_found) +
   labs(title = 'average points per trial') +
   theme_bw(base_size = 20)
-
-
 
 ```
 
@@ -325,7 +323,7 @@ all_data %>%
   stat_summary() +
   theme_minimal(base_size = 15) +
   scale_color_brewer(type = "qual", palette = 2, name = "demonnstrator type")+
-  #facet_wrap( ~ group) +
+  facet_wrap( ~ demo_type) +
   labs(title = 'avg points per trial in gem environments') +
   theme_bw(base_size = 15)
 
@@ -335,14 +333,14 @@ all_data %>%
 ```{r}
 
 all_data %>%
-  #filter(gempresent == 1 ) %>% 
+  #filter(gem_found == 1 ) %>% 
   group_by(uniqueID, trial) %>%
   ggplot(aes(x = trial, y = points, color = group, shape = factor(demo_type))) +
   stat_summary() +
   theme_minimal(base_size = 15) +
   scale_color_brewer(type = "qual", palette = 2, name = "demonnstrator type")+
-  #facet_wrap( ~ group) +
-  labs(title = 'avg points per trial in gem environments') +
+  facet_wrap( ~ demo_type) +
+  labs(title = 'avg points per trial') +
   theme_bw(base_size = 15)
 
 
