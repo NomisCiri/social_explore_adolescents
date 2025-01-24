@@ -60,7 +60,7 @@ all_data <- all_data %>%
 
 ```{r}
 
-## demographics
+## demographics before excluding participants
 
 ## adults gender and age
 data_demographics %>% 
@@ -70,14 +70,15 @@ data_demographics %>%
   group_by(gender) %>% 
   summarise(count = n())
 
-58/116
 
 data_demographics %>% 
     select(group, gender, uniqueID, age) %>% 
     filter(group=="adults") %>% 
     distinct() %>% 
-    summarize( mean = mean(age, na.rm=TRUE),
-               sd = sd(age, na.rm =TRUE))
+    reframe( mean = mean(age, na.rm=TRUE),
+               sd = sd(age, na.rm =TRUE),
+             range = range(age, na.rm = TRUE))
+
 
 ## adolescents gender and age
 data_demographics %>% 
@@ -92,38 +93,57 @@ data_demographics %>%
     select(group, gender, uniqueID, age) %>% 
     filter(group=="adolescents") %>% 
     distinct() %>% 
-    summarize( mean = mean(age, na.rm=TRUE),
-               sd = sd(age, na.rm =TRUE))
-
-
-## age distribution
-data %>% 
-  ungroup() %>% 
-  select(uniqueID, group) %>% 
-  group_by( group) %>% 
-  distinct() %>%
-  count()
-
-data %>% 
-  select(group, gender, uniqueID) %>% 
-  filter(group=="adults") %>% 
-  distinct() %>% 
-  group_by(gender) %>% 
-  summarise(count = n())
-
-hist(all_data$age)
-
-
-data %>% 
-  select(group, gender, uniqueID, age) %>% 
-  filter(group=="adults") %>% 
-  distinct() %>% 
-  summarize( mean = mean(age, na.rm=TRUE),
-             sd = sd(age, na.rm =TRUE))
-
+    reframe( mean = mean(age, na.rm=TRUE),
+               sd = sd(age, na.rm =TRUE),
+               range = range(age, na.rm = TRUE))
 
 
 ```
+
+```{r}
+
+## demographics after excluding participants
+
+## adults gender and age
+all_data %>% 
+    select(group, gender, uniqueID) %>% 
+    filter(group=="adults") %>% 
+    distinct() %>% 
+  group_by(gender) %>% 
+  summarise(count = n())
+
+all_data %>% 
+    select(group, gender, uniqueID, age) %>% 
+    filter(group=="adults") %>% 
+    distinct() %>% 
+      reframe( mean = mean(age, na.rm=TRUE),
+               sd = sd(age, na.rm =TRUE),
+             range = range(age, na.rm = TRUE))
+
+
+## adolescents gender and age
+all_data %>% 
+    select(group, gender, uniqueID) %>% 
+    filter(group=="adolescents") %>% 
+    distinct() %>% 
+  group_by(gender) %>% 
+  summarise(count = n())
+
+
+
+all_data %>% 
+    select(group, uniqueID, age) %>% 
+    dplyr::filter(group=="adolescents") %>% 
+    distinct() %>%
+    reframe( mean = mean(age, na.rm=TRUE),
+               sd = sd(age, na.rm =TRUE),
+             range = range(age, na.rm = TRUE))
+
+
+hist(data)
+
+```
+
 
 
 ## differences in points scored by group
