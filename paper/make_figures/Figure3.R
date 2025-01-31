@@ -13,10 +13,13 @@
 pacman::p_load(tidyverse, gghalves, here, lmerTest, ggthemes, cowplot)
 
 ## load data
-all_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants_07-2024.csv"))
+all_data <- read_csv(file = paste0(here(), "/data/social/data_social_all_participants_08-2024.csv"))
 
 ## panel 1 data
 base::load(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/points_age_advisor_model.RData'))
+
+## panel 1 data (with trial info)
+base::load(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/points_age_trial_advisor_model.RData'))
 
 ## panel 2 data
 load(file = paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/copy_age_advisor_model.RData'))
@@ -30,17 +33,18 @@ base::load(paste0(here(),'/G_Analysis_bevioral_data_social/modelfits/gem_freq_ag
 ## panel 1
 panel_plot1 <- 
   plot_model(
-    points_age_advisor_model,
+    points_age_trial_advisor_model,
+    #points_age_advisor_model,
     # axis.lim = c(.2, 2),
-    axis.labels = rev(
-      c(
-        "Quality (Medium)",
-        "Quality (Worst)",
-        "Adolescents",
-        "Quality (Medium) X Adolescents",
-        "Quality (Worst) X Adolescents"
-      )
-    ),
+    # axis.labels = rev(
+    #   c(
+    #     "Quality (Medium)",
+    #     "Quality (Worst)",
+    #     "Adolescents",
+    #     "Quality (Medium) X Adolescents",
+    #     "Quality (Worst) X Adolescents"
+    #   )
+    # ),
     title = "Points earned (std)", vline.color = "grey", vline = 2,show.values = TRUE, 
   ) +
   labs(tag = "a")+
@@ -109,7 +113,7 @@ panel_plot3 <-
 ## combine panels
 figure3 <- 
   cowplot::plot_grid(
-    panel_plot1, panel_plot2, panel_plot3,
+    panel_plot1, panel_plot2, #panel_plot3,
    # labels = c("a", "b","c"),
     label_x = -.01,
     #align = "H",
