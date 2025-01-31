@@ -20,68 +20,64 @@
 ##       policy shaping               --
 ##---------------------------------------------------------------
 s_policy_shaping <- function(par, dat) {
-  
   # unpack
   lr <- par[1]# "learningrate"
-  tau<-c(par[2])
-  lr_soc<-c(par[3])
-  tau_copy<-par[4]
-  #range<-
-  prior_copy<- -2.5# c(par[3])
+  tau<-par[2]# exploration
+  lr_soc<-par[3]# social meta learning rate
+  tau_copy<-par[4]# social copy temperature
+  # hardcoded but potentially moving parts
+  prior_copy<- -2.5 # rougly chance when tau copy is 1
   mu0 <-0.5 # exploration bonus
   ## preallocate negative log likelihood
   nLL <- rep(0, length(dat$round))
   #set copy utility low.
   for (r in unique(dat$round)) {
-    #reset
-    #lr_soc<-0
     ## collect choices for current round
     round_df <- subset(dat, round == r)
     gem <- round_df$gem
     qual= unique(round_df$qual)
     trials <- nrow(round_df)
     out<-rep(mu0,64)# priors
-    copyUtil<- rep(prior_copy, length(round_df$choice))#roughly chance
+    copy_util<- rep(prior_copy, length(round_df$choice))#roughly chance
     ## Observations of subject choice behavior 
     chosen <- round_df$choice
     ## social information
     social_choices <- round_df$social_info
-    ## rewards (apply range normalization)
+    ## rewards (apply range normalization for non-gems to be between 0 and 1)
     y <- (round_df$z[0:(trials - 1)]+75)/(150) # trim off the last observation, because it was not used to inform a choice (round already over)
-    p<-NULL
-    
+    p<-NULL#reset probability vector every round
     for (t in 1:(trials - 1)) {
       # individual learning
       out <- RW_Q(chosen[t], y[t], theta = lr, prevPost = out, mu0Par = mu0)
-      #surrogate rewards for social signals
-      #meta-learning: was advice good?
-      target = as.numeric(max(out)==out[social_choices[t]])#*3#so that all of a sudden a gem is not negative
-      target=ifelse(max(out)>1.5,target*3,target)
-      copyUtil[(t+1):trials]=copyUtil[t]+lr_soc*(target - out[social_choices[t]])
-      copy_prob=1/(1+exp(-(copyUtil[t+1])/tau_copy))#softmaxing copy_util
+      #social meta-learning: was advice good?      #first compute surrogate rewards for social signals
+      target = as.numeric(max(out)==out[social_choices[t]])#maximum Q value = social info, this is a surrogate reward?
+      target=ifelse(max(out)>1.5,target*3,target)#*3so that all of a sudden a gem is not negative
+      #prediction error of copy utility t+1 because new social information is always shown after a choice in one trail
+      copy_util[(t+1):trials]=copy_util[t]+lr_soc*(target - out[social_choices[t]])
+      copy_prob=1/(1+exp(-(copy_util[t+1])/tau_copy))#softmaxing copy_util
       # build horizon_length x options matrix, where each row holds the utilities of each choice at each decision time in the search horizon
       p_sfmx <- exp(out / tau)
       # probabilities
       p_sfmx <- p_sfmx / sum(p_sfmx)
       #greedy copy policy
-      p_sl=p_sfmx*(1-copy_prob)
-      p_sl[social_choices[t]] <- (copy_prob) + (p_sfmx[social_choices[t]])#*(1-copy_prob)
+      p_sl=p_sfmx*(1-copy_prob)# first decrease probability by copy probability
+      p_sl[social_choices[t]] <- (copy_prob) + (p_sfmx[social_choices[t]])# add copy probability to demostrated option
       #reset
       p <- rbind(p, t(p_sl)) 
     }
+    # avoid over or underflow
     p <- (pmax(p, 0.00000000001))
     p <- (pmin(p, 0.99999999999))
     # add loglik nasty way of checking the predicted choice probability a the item that was chosen
     nLL[which(unique(dat$round) == r)] <- -sum(log(p[cbind(c(1:(trials - 1)), chosen[2:length(chosen)])]))
   }
-  #avoid nan and unreasonablein objective function
+  #avoid nan and unreasonable value in objective function
   if (any(is.nan(sum(nLL))) | par[2]>1 | par[2]<0)
   { 
-    return(10 ^ 30)
-  }else
-  {
-    return(sum(nLL))
+    nLL=10 ^ 30# really high value (not good)
   }
+  #return sum of negative log likelihod
+  return(sum(nLL))
 }
 
 
@@ -124,7 +120,7 @@ s_value_shaping <- function(par, dat) {
       out[social_choices[t]] = out[social_choices[t]] + lr_soc * (soc_rew - out[social_choices[t]])
       #meta-learning: was advice good?
       target = max(out)==out[social_choices[t]]
-
+      
       if (social_choices[t]==chosen[t]){
         target=y[t]
       }

@@ -6,6 +6,98 @@
 ##############################################################################################
 ##############################################################################################
 
+
+
+#-----------------------------------------------------------
+##              Model: Q-learning lr prior               --
+##----------------------------------------------------------------
+
+s_policy_shaping_sim <- function(par, si, envs) {
+  # this function takes social information,
+  # environments and fitted parameters as input and simulates one round of the 
+  # social bandits experiment, were 12 rounds make up one whole experiment
+  # unpack
+  lr <- par[1]# "learningrate"
+  tau<-par[2]# exploration
+  lr_soc<-par[3]# social meta learning rate
+  tau_copy<-par[4]# social copy temperature
+
+  #hardcoded moving parts
+  prior_copy<- -2.5 # rougly chance when tau copy is 1
+  mu0 <-0.5 # exploration bonus
+  trials<-25
+  env<-envs# be precise
+  social_choices<-si
+  # a bunch of containers
+  copy_util<- rep(prior_copy, trials)#roughly chance
+  dat=expand.grid(x1=0:7,x2=0:7)
+  out<-rep(mu0,64)
+  ind <- 10 #random start index; can be changed
+  X <- as.matrix(dat[ind, 1:2]) # generate a new vector of choice options
+  y <- (as.matrix(rnorm(1, mean = env[ind, ]$Mean, sd = 0))+75)/150#rewards, scaled to 0-1 for nongems
+  copy_prob=1/(1+exp(-(copy_util[1])/tau_copy))#softmaxing copy_util
+  
+  #first choice from previous
+  round_choices<-data.frame(
+    trial = 1, 
+    x = as.numeric(X[1, 1]), 
+    y = as.numeric(X[1, 2]),
+    z = as.numeric(y[1]),
+    index=ind,
+    social_info=si[1],
+    util_list=NA,# there are no utilities yet
+    p_list=I(list(rep(1/64,64))),# ppl choose randomly
+    p_soc_list=I(list(rep(1/64,64))),
+    p_copy=copy_prob,
+    pars_sim = I(list(par))
+  )
+  
+  # loop over trials
+  for (t in 1:(trials - 1)) {
+    # individual learning
+    out <- RW_Q(ind, y[t], theta = lr, prevPost = out, mu0Par = mu0)
+    #social meta-learning: was advice good?      #first compute surrogate rewards for social signals
+    target = as.numeric(max(out)==out[social_choices[t]])#maximum Q value = social info, this is a surrogate reward?
+    target=ifelse(max(out)>1.5,target*3,target)#*3so that all of a sudden a gem is not negative
+    #prediction error of copy utility t+1 because new social information is always shown after a choice in one trail
+    copy_util[(t+1):trials]=copy_util[t]+lr_soc*(target - out[social_choices[t]])
+    copy_prob=1/(1+exp(-(copy_util[t+1])/tau_copy))#softmaxing copy_util
+    # build horizon_length x options matrix, where each row holds the utilities of each choice at each decision time in the search horizon
+    p_sfmx <- exp(out / tau)
+    # probabilities
+    p_sfmx <- p_sfmx / sum(p_sfmx)
+    #greedy copy policy
+    p_sl=p_sfmx*(1-copy_prob)# first decrease probability by copy probability
+    p_sl[social_choices[t]] <- (copy_prob) + (p_sfmx[social_choices[t]])# add copy probability to demostrated option
+    #reset
+    ind <- sample(1:64, 1, prob = p_sl) # choice index
+    # collect x y coordinate of choice
+    X <- rbind(X, as.matrix(dat[ind, 1:2]))
+    # sample from environment
+    y <- rbind(y, as.matrix((rnorm(n = 1, mean = env[ind, ]$Mean, sd =sqrt(env[ind, ]$Variance))+75)/150)) 
+    # write it to the next trial index because choice has already been made, learning will happen in next round
+    one_trial_choices <- data.frame(
+      trial = t + 1,
+      x = as.numeric(X[t+1, 1]),
+      y = as.numeric(X[t+1 , 2]),
+      z = as.numeric(y[t+1])*150-70,# rescale to original
+      index = ind,
+      social_info = si[t],
+      util_list = I(list(out)),
+      p_list = I(list(p_sfmx)),
+      p_soc_list=I(list(p_sfmx)),
+      p_copy=copy_prob,
+      pars_sim = I(list(par))
+    )
+    # concat round choices
+    round_choices <- rbind(round_choices, one_trial_choices)
+  }# end rounds
+  return(round_choices)
+}
+
+
+
+
 #-----------------------------------------------------------
 ##              Model: Q-learning lr prior               --
 ##----------------------------------------------------------------
