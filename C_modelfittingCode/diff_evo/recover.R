@@ -2,7 +2,8 @@
 pacman::p_load(here,brms,tidyverse, rjson, DEoptim, doParallel, foreach,data.table)
 here::i_am("./C_modelfittingCode/diff_evo/recover.R")
 bashInput <- as.numeric(commandArgs(trailingOnly=TRUE))#c(1, 8)
-
+# make not in operator
+'%!in%' <- function(x,y)!('%in%'(x,y))
 
 ## loads the script where the learning models are specified (Q-learning, social Q-learning, UCB etc)
 source(here::here("./C_modelfittingCode/","diff_evo/","learning_models.R"))
@@ -20,11 +21,10 @@ source(here::here("./B_SimulationCode","sim_models.R")) # modelcode for simulati
 
 #environment files are in generated files
 environments <- load_envs_social(path = here::here("A_GeneratedFiles","environments/"))
-# make not in operator
-'%!in%' <- function(x,y)!('%in%'(x,y))
+
 
 #load df
-social_fits<-readRDS(file = here::here("A_GeneratedFiles","modelfits","tau_slearn.rds"))%>%ungroup()
+social_fits<-readRDS(file = here::here("A_GeneratedFiles","modelfits","tau_slearn_v_shape2.rds"))%>%ungroup()
 
 
 # make cluster
@@ -37,6 +37,7 @@ random_G2s <-  -1 * (log((1 / 64)) * 24 * 4)
 
 #environment files are in generated files
 environments <- load_envs_social(path = here::here("A_GeneratedFiles","environments/"))
+environment_lookup<-environments%>%group_split(env)
 social_sims_plot_d <- list()
 
 cl <- makeCluster(detectCores(), type = 'PSOCK')
@@ -51,44 +52,40 @@ social_data_recov<-foreach(
   
   # print(rptx)
   Xnew <-as.matrix(expand.grid(0:7, 0:7)) # do this outside the loop for better speed
-  print(player_nr)
   
   # social data TODO: concatenate nonsocial data.
-  d1 <- social_fits %>% filter(
+  dat <- social_fits %>% filter(
     uniqueID == player_nr,
-  ) %>%
-    #filter(gempresent == 0) %>%  # for now only have rounds without gems 
-    group_by(round) %>%
-    mutate(z = points, #(points - mean(points)) / sd(points), ventually figure out what is the best outcome for this
-           social_info = social_info,
-           choices = cells,
-           soc_info_round=demo_quality,
-    ) %>%ungroup()
+  ) 
   
   #### unpack parameters
-  lr<-unique(d1$lr)
-  tau<-unique(d1$tau_1)
-  sw<-unique(d1$sw_1)
-  prior<-unique(d1$prior)
-  
   estimates <- c(
-    lr,
-    tau,
-    sw,
-    -1
+    unique(dat$p1),
+    unique(dat$p2),
+    unique(dat$p3),
+    unique(dat$p4)
   )
-  ####
-  #for (r in rounds) { # loop through rounds in roundList
-  cv <- s_learn_prior_sim(
-    par = estimates,
-    learning_model_fun = RW_Q,
-    data = d1,
-    envs = environments
-  ) # only try one sub
   
-  cv$player = player_nr
-  cv$group = unique(d1$group)
-  return(cv)
+  ####
+  rounds<-unique(dat$round)
+  ####
+  sim_dat<-NULL
+  for (r in rounds) { # loop through rounds in roundList
+    d1<-dat%>%filter(round==r)
+    env_nr<-unique(d1$env_number)
+    # simulations for parameter recovery
+    sim_dat_r <- s_policy_shaping_sim(
+      par = estimates,
+      si = d1$social_info,
+      envs = environment_lookup[[env_nr]]
+    ) # only try one sub
+    sim_dat_r$round=r
+    sim_dat_r$player = player_nr
+    sim_dat_r$group = unique(d1$group)
+    sim_dat<-rbind(sim_dat,sim_dat_r)
+  }
+  # cv$run = rptx
+  return(sim_dat)
 }
 
 #container for the parameter recovery analysis
@@ -97,35 +94,42 @@ social_recovery <- foreach(
   .packages = c("DEoptim", "tidyverse","here","data.table"),
   .combine = "rbind"
 ) %dopar%{
- # environments <- load_envs_social(path = here("A_GeneratedFiles","environments/"))
+  # environments <- load_envs_social(path = here("A_GeneratedFiles","environments/"))
   #for(player_nr in unique(social_data$player)){
   Xnew <- as.matrix(expand.grid(0:7, 0:7)) # do this outside the loop for better speed
   # social data TODO: concatenate nonsocial data.
   #print(s)
   print(player_nr)
-  d1 <- social_data_recov %>% filter(
+  d1 <- social_data_recov %>% mutate(
+    choice=index
+  )%>%filter(
     player == player_nr
     #soc_info_round == s
-  ) %>%
-    #filter(gempresent == 0) %>%  # for now only have rounds without gems 
-    group_by(round) %>%
-    mutate(z = z, #(points - mean(points)) / sd(points), ventually figure out what is the best outcome for this
-           social_info = social_info,
-           choices = index,
-           env_number=env_idx
-    ) %>%ungroup()
-  #rounds <- unique(d1$round)
-  #only fit if you have 25 klicks.
-  d_recov <- fit_slr(d1 = d1,environments=environments) # only try one sub
-  
+  )
+  #sometimes it breaks; just make this thing go through, kick out NAs later.
+  d_recov <- tryCatch(        # might throw an error, just continue if it does and dont be annoying
+    {
+      fit_policy(d1=d1)
+    },
+    warning = function(w) {
+      # Handle warnings
+      message("Warning occurred: ", conditionMessage(w))
+      fit_policy(d1=d1)
+    },
+    error = function(e) {
+      # Handle errors
+      message("Error occurred: ", conditionMessage(e))
+      return(NA)  # Return a default value
+    }
+  )  
   # collect fit indices
   d_recov$fit <- unlist(cv[1])
   #d1$lr_p <- unlist(cv[2])
   #d1$intercept <- unlist(cv[2])
-  d_recov$lr<-unlist(cv[2])
-  d_recov$tau_1<-unlist(cv[3])
-  d_recov$sw_1<-unlist(cv[4])
-  d_recov$prior<--1#unlist(cv[5])
+  d_recov$p1<-unlist(cv[2])
+  d_recov$p2<-unlist(cv[3])
+  d_recov$p3<-unlist(cv[4])
+  d_recov$p4<-unlist(cv[5])
   # d1$lr<-unlist(cv[4])
   #d1$ut<-unlist(cv[4])
   # d1$streak_w<-unlist(cv[4])
@@ -133,4 +137,4 @@ social_recovery <- foreach(
   # d1$sw <- unlist(cv[4])
   return(d_recov)
 }
-saveRDS(social_recovery,file = here::here("A_GeneratedFiles",paste_0("tardis_recovery_",bashInput[1],"sw.rds")))
+saveRDS(social_recovery,file = here::here("A_GeneratedFiles",paste_0("tardis_recovery_",bashInput[1],".rds")))

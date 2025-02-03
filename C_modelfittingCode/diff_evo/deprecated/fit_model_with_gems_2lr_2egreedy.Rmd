@@ -40,14 +40,13 @@ if (refit){
   registerDoParallel(cl)
   
   ## loads the script where the learning models are specified (Q-learning, social Q-learning, UCB etc)
-  source(here("./C_modelfittingCode/","diff_evo(depricated)/","learning_models.R"))
+  source('./C_modelfittingCode/learning_models.R')
   
   ## load functions that perform Maximul Likelihood Estimation
-  source(here("./C_modelfittingCode/","diff_evo(depricated)/","models_mle.R"))
+  source("./C_modelfittingCode/models_mle.R")
   
   ## load functions that initialize the model fit
-  source(here("./C_modelfittingCode/","diff_evo(depricated)/","model_fitting_functions_social_bandits.R"))
-  
+  source("./C_modelfittingCode/model_fitting_functions_social_bandits.R")
   
   social_fits <- foreach(
     player_nr = unique(social_data$uniqueID),
@@ -76,8 +75,8 @@ if (refit){
     #### leaves out one round and fits model on the other rounds. 
     #### then evaluates the modelfit on the held out data
     #for (r in rounds) { # loop through rounds in roundList
-    cv_one<-fit_2lr_softmax_egreedy(d1 = d1,leaveoutindex = NA)
-    cv <-rbind(cv,cv_one) # only try one sub
+      cv_one<-fit_2lr_softmax_egreedy(d1 = d1,leaveoutindex = NA)
+      cv <-rbind(cv,cv_one) # only try one sub
     #}
     # collect fit indices and compute mean
     d1$fit <- mean(cv[,2],na.rm=T)
@@ -89,12 +88,12 @@ if (refit){
     
     #d1$prior<-unlist(cv[5])
     saveRDS(cv, file = paste0("./A_GeneratedFiles/modelfits/social_models/all_envs/utility_2lr_softmax_egreedy/fit", player_nr, ".rds"))
-    saveRDS(d1, file = paste0("./A_GeneratedFiles/modelfits/social_models/all_envs/utility_2lr_softmax_egreedy/data_fit", player_nr, ".rds"))
+        saveRDS(d1, file = paste0("./A_GeneratedFiles/modelfits/social_models/all_envs/utility_2lr_softmax_egreedy/data_fit", player_nr, ".rds"))
     return(d1)
   }
 } else{#read from disk if refit is false
   fits_path<-"A_GeneratedFiles/modelfits/social_models/all_envs/utility_2lr_softmax_egreedy/"
-  
+
 }
 ```
 

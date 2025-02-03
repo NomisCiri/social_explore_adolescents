@@ -34,16 +34,14 @@ if (refit){
   cl <- makeCluster(detectCores(), type = 'PSOCK')
   registerDoParallel(cl)
   
- 
-## loads the script where the learning models are specified (Q-learning, social Q-learning, UCB etc)
-source(here("./C_modelfittingCode/","diff_evo(depricated)/","learning_models.R"))
-
-## load functions that perform Maximul Likelihood Estimation
-source(here("./C_modelfittingCode/","diff_evo(depricated)/","models_mle.R"))
-
-## load functions that initialize the model fit
-source(here("./C_modelfittingCode/","diff_evo(depricated)/","model_fitting_functions_social_bandits.R"))
-
+  ## loads the script where the learning models are specified (Q-learning, social Q-learning, UCB etc)
+  source('./C_modelfittingCode/learning_models.R')
+  
+  ## load functions that perform Maximul Likelihood Estimation
+  source("./C_modelfittingCode/models_mle.R")
+  
+  ## load functions that initialize the model fit
+  source("./C_modelfittingCode/model_fitting_functions_social_bandits.R")
   
   social_fits <- foreach(
     player_nr = unique(social_data$uniqueID),

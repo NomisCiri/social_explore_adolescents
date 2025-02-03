@@ -74,6 +74,7 @@ s_policy_shaping <- function(par, dat) {
   #avoid nan and unreasonable value in objective function
   if (any(is.nan(sum(nLL))) | par[2]>1 | par[2]<0)
   { 
+    #browser()
     nLL=10 ^ 30# really high value (not good)
   }
   #return sum of negative log likelihod

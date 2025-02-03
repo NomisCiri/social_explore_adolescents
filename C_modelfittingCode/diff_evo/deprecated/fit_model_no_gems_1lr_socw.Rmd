@@ -184,13 +184,14 @@ social_sims_plot_one <- list()
                #(points - mean(points)) /sd(points),
                social_info = social_info,
                choices = cells) %>% rowwise() %>%
+        mutate(social_info = ifelse(social_info == 64, 1, social_info)) %>%
         ungroup()
       
       #### unpack parameters
-      estimates <- c(
+      estimates <- c(unique(d1$lr),
+                     #unique(d1$lr_n),
                      unique(d1$tau),
-                     unique(d1$soc_w)
-                     )
+                     unique(d1$soc_w))
       ####
       #for (r in rounds) { # loop through rounds in roundList
       cv <- explore_env_social_fitted_pars_social(
